@@ -531,6 +531,11 @@ export abstract class BasePermissionHandler {
         if (this.isPermissionRequestClaimed(toolCallId)) {
             return Promise.reject(new Error(`Permission request ${toolCallId} is reserved by a newer runtime`));
         }
+        // A turn finalizer may reset this reusable handler and release its RPC ownership.
+        // Reacquire it only when this handler starts another live permission request.
+        if (!this.unregisterPermissionRpcConsumer) {
+            this.setupRpcHandler();
+        }
         const normalizedInput = normalizeAskUserQuestionInputForPublication(toolName, input);
         const hasExistingContext = this.requestCoordinator.getResponseContext(toolCallId) !== null;
         if (!hasExistingContext) {

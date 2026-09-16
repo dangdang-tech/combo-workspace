@@ -199,6 +199,34 @@ describe('CodexLikePermissionHandler', () => {
     secondHandler.reset();
   });
 
+  it('accepts a second-turn denial through the session router after resetting an approved turn', async () => {
+    const session = new FakeSession();
+    const handler = new CodexLikePermissionHandler({ session: session as any, logPrefix: '[Test]' });
+    const rpc = session.rpcHandlerManager.handlers.get('permission')!;
+
+    try {
+      const first = handler.handleToolCall('turn-one', 'CodexBash', { command: 'printf first > output.txt' });
+      await expect(rpc({ id: 'turn-one', approved: true, decision: 'approved' })).resolves.toEqual({ ok: true });
+      await expect(first).resolves.toEqual({ decision: 'approved' });
+      handler.reset();
+
+      await expect(rpc({ id: 'turn-one', approved: false, decision: 'denied' })).resolves.toMatchObject({
+        ok: false,
+        errorCode: 'permission_request_not_found',
+      });
+
+      const second = handler.handleToolCall('turn-two', 'CodexBash', { command: 'printf second > output.txt' });
+      void second.catch(() => undefined); // Allow cleanup to cancel the waiter if the regression assertion fails.
+      expect(session.agentState.requests['turn-two']).toBeDefined();
+      await expect(rpc({ id: 'turn-two', approved: false, decision: 'denied' })).resolves.toEqual({ ok: true });
+      await expect(second).resolves.toEqual({ decision: 'denied' });
+      expect(session.agentState.requests['turn-two']).toBeUndefined();
+      expect(session.agentState.completedRequests['turn-two']).toMatchObject({ status: 'denied', decision: 'denied' });
+    } finally {
+      handler.reset();
+    }
+  });
+
   it('isolates identical provider permission ids by execution run and disposes only one run', async () => {
     const session = new FakeSession();
     const owner = new CodexLikePermissionHandler({ session: session as any, logPrefix: '[ExecutionRun]' });
