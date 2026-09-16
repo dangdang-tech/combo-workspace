@@ -21,7 +21,8 @@ vi.mock('../sync', () => ({
     },
 }));
 
-import { sessionDeny } from './sessions';
+import { createPermissionActionDispatchGuard } from '@/components/tools/shell/permissions/permissionActionDispatchGuard';
+import { sessionAllow, sessionAllowWithAnswers, sessionAllowWithPermissionUpdates, sessionDeny } from './sessions';
 
 const initialStorageState = storage.getState();
 
@@ -66,5 +67,57 @@ describe('sessionDeny', () => {
             method: 'permission',
             payload: expect.objectContaining({ id: 'perm_1', approved: false, decision: 'abort' }),
         });
+    });
+
+    it.each([
+        ['allow', () => sessionAllow('s_permission_response', 'perm_1')],
+        ['allow with updates', () => sessionAllowWithPermissionUpdates('s_permission_response', 'perm_1', { updatedPermissions: [] })],
+        ['allow with legacy answers', () => sessionAllowWithAnswers('s_permission_response', 'perm_1', { protocol: 'legacy-permission', answers: { Question: 'Answer' } })],
+        ['deny', () => sessionDeny('s_permission_response', 'perm_1')],
+    ] as const)('rejects a decrypted application failure for %s', async (_name, decide) => {
+        mockSessionRpcWithPreferredSessionScope.mockResolvedValue({
+            ok: false,
+            errorCode: 'permission_request_not_found',
+            errorMessage: 'This permission request is no longer available',
+            requestId: 'perm_1',
+        });
+
+        await expect(decide()).rejects.toMatchObject({
+            message: 'This permission request is no longer available',
+            rpcErrorCode: 'permission_request_not_found',
+        });
+    });
+
+    it('preserves thinking and allows the same permission to be retried after an application failure', async () => {
+        const sessionId = 's_permission_retry';
+        storage.getState().applySessions([buildSession(sessionId)]);
+        storage.getState().markSessionOptimisticThinking(sessionId);
+        const requestKey = `${sessionId}\u0000perm_1`;
+        const guard = createPermissionActionDispatchGuard(requestKey);
+        guard.retainRequest(requestKey);
+        mockSessionRpcWithPreferredSessionScope
+            .mockResolvedValueOnce({ ok: false, errorCode: 'permission_response_failed', errorMessage: 'Try again' })
+            .mockResolvedValueOnce({ ok: true });
+
+        try {
+            await expect(guard.dispatch(requestKey, () => sessionDeny(sessionId, 'perm_1'))).rejects.toThrow('Try again');
+            expect(storage.getState().sessions[sessionId]?.thinking).toBe(true);
+            expect(storage.getState().sessions[sessionId]?.optimisticThinkingAt).not.toBeNull();
+            await expect(guard.dispatch(requestKey, () => sessionDeny(sessionId, 'perm_1'))).resolves.toBe(true);
+            expect(mockSessionRpcWithPreferredSessionScope).toHaveBeenCalledTimes(2);
+            expect(storage.getState().sessions[sessionId]?.thinking).toBe(false);
+        } finally {
+            guard.releaseRequest(requestKey);
+        }
+    });
+
+    it('rejects a decrypted RPC handler error instead of treating it as a successful permission response', async () => {
+        mockSessionRpcWithPreferredSessionScope.mockResolvedValue({ error: 'Invalid RPC params' });
+        await expect(sessionDeny('s_permission_error', 'perm_1')).rejects.toThrow('Invalid RPC params');
+    });
+
+    it.each([undefined, null, { ok: true }])('accepts a successful or legacy void acknowledgement: %j', async (result) => {
+        mockSessionRpcWithPreferredSessionScope.mockResolvedValue(result);
+        await expect(sessionAllow('s_permission_success', 'perm_1')).resolves.toBeUndefined();
     });
 });

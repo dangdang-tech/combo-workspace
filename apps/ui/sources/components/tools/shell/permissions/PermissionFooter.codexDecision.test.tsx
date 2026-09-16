@@ -25,6 +25,11 @@ vi.mock('@/sync/sync', () => ({
     },
 }));
 
+vi.mock('@/modal', async () => {
+    const { createModalModuleMock } = await import('@/dev/testkit/mocks/modal');
+    return createModalModuleMock().module;
+});
+
 installPermissionShellCommonModuleMocks({
     storage: async () => {
         const { createStorageModuleStub } = await import('@/dev/testkit/mocks/storage');
@@ -160,5 +165,38 @@ describe('PermissionFooter (codexDecision)', () => {
         });
 
         expect(sessionAllow).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['allow', 'deny'] as const)('shows a failed %s decision and allows the pending request to be retried', async (action) => {
+        const { PermissionFooter } = await import('../permissions/PermissionFooter');
+        const { sessionAllow, sessionDeny } = await import('@/sync/ops');
+        const { Modal } = await import('@/modal');
+        const decision = vi.mocked(action === 'allow' ? sessionAllow : sessionDeny);
+        decision.mockClear();
+        decision.mockRejectedValueOnce(new Error('permission_request_not_found')).mockResolvedValueOnce(undefined);
+        vi.mocked(Modal.alert).mockClear();
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        try {
+            const screen = await renderScreen(React.createElement(PermissionFooter, {
+                permission: { id: `p-retry-${action}`, status: 'pending' },
+                sessionId: 's1',
+                toolName: 'execute',
+                toolInput: { command: 'pwd' },
+                metadata: { flavor: 'codex' },
+            }));
+
+            await screen.pressByTestIdAsync(`permission-footer.${action}`);
+
+            expect(Modal.alert).toHaveBeenCalledWith('common.error', 'permission_request_not_found');
+            expect(screen.findByProps({ testID: `permission-footer.${action}` }).props.disabled).toBe(false);
+
+            await screen.pressByTestIdAsync(`permission-footer.${action}`);
+
+            expect(decision).toHaveBeenCalledTimes(2);
+            expect(Modal.alert).toHaveBeenCalledTimes(1);
+        } finally {
+            consoleError.mockRestore();
+        }
     });
 });

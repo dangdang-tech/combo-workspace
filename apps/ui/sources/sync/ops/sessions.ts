@@ -569,6 +569,31 @@ export async function sessionAbort(sessionId: string): Promise<void> {
     ]);
 }
 
+async function sendSessionPermissionResponse<A>(params: Readonly<{
+    sessionId: string;
+    method: string;
+    payload: A;
+}>): Promise<void> {
+    const result = await sessionRpcWithPreferredSessionScope<unknown, A>(params);
+    // The transport acknowledgement only proves the RPC was delivered. The receiver
+    // can still reject this permission response inside its encrypted result.
+    if (result && typeof result === 'object' && !Array.isArray(result)) {
+        const response = result as Record<string, unknown>;
+        if (response.ok === false || typeof response.error === 'string') {
+            throw createRpcCallError({
+                error: typeof response.errorMessage === 'string'
+                    ? response.errorMessage
+                    : typeof response.error === 'string'
+                        ? response.error
+                        : typeof response.errorCode === 'string'
+                            ? response.errorCode
+                            : 'Permission response was rejected',
+                errorCode: typeof response.errorCode === 'string' ? response.errorCode : undefined,
+            });
+        }
+    }
+}
+
 /**
  * Allow a permission request
  */
@@ -588,7 +613,7 @@ export async function sessionAllow(
         decision,
         execPolicyAmendment
     };
-    await sessionRpcWithPreferredSessionScope<void, SessionPermissionRequest>({
+    await sendSessionPermissionResponse({
         sessionId,
         method: 'permission',
         payload: request,
@@ -619,7 +644,7 @@ export async function sessionAllowWithPermissionUpdates(
         decision: params.decision,
         updatedPermissions: params.updatedPermissions,
     };
-    await sessionRpcWithPreferredSessionScope<void, SessionPermissionRequest>({
+    await sendSessionPermissionResponse({
         sessionId,
         method: 'permission',
         payload: request,
@@ -638,7 +663,7 @@ export async function sessionAllowWithAnswers(
     payload: SendableAskUserQuestionAnswerPayload,
 ): Promise<void> {
     if (payload.protocol === 'structured-question-v1') {
-        await sessionRpcWithPreferredSessionScope<void, { id: string; structuredAnswersV1: typeof payload.structuredAnswersV1 }>({
+        await sendSessionPermissionResponse({
             sessionId,
             method: SESSION_RPC_METHODS.SESSION_STRUCTURED_QUESTION_RESPOND_V1,
             payload: { id, structuredAnswersV1: payload.structuredAnswersV1 },
@@ -646,7 +671,7 @@ export async function sessionAllowWithAnswers(
         return;
     }
     const request: SessionPermissionRequest = { id, approved: true, answers: { ...payload.answers } };
-    await sessionRpcWithPreferredSessionScope<void, SessionPermissionRequest>({
+    await sendSessionPermissionResponse({
         sessionId,
         method: SESSION_RPC_METHODS.SESSION_PERMISSION_RESPOND_LEGACY,
         payload: request,
@@ -665,7 +690,7 @@ export async function sessionDeny(
     reason?: string,
 ): Promise<void> {
     const request: SessionPermissionRequest = { id, approved: false, mode, allowedTools, decision, reason };
-    await sessionRpcWithPreferredSessionScope<void, SessionPermissionRequest>({
+    await sendSessionPermissionResponse({
         sessionId,
         method: 'permission',
         payload: request,

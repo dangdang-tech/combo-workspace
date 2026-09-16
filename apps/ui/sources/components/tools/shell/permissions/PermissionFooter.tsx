@@ -4,6 +4,8 @@ import { sessionAbort, sessionAllow, sessionAllowWithPermissionUpdates, sessionD
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { storage } from '@/sync/domains/state/storage';
 import { t } from '@/text';
+import { Modal } from '@/modal';
+import { getErrorMessage } from '@/utils/errors/getErrorMessage';
 import { resolveAgentIdForPermissionUi } from '@/agents/catalog/resolve';
 import { getPermissionFooterCopy } from '@/agents/catalog/permissionUiCopy';
 import { getAgentBehavior } from '@/agents/catalog/catalog';
@@ -187,9 +189,14 @@ export const PermissionFooter: React.FC<PermissionFooterProps> = ({
         actionDispatchGuard.retainRequest(requestKey);
         return () => actionDispatchGuard.releaseRequest(requestKey);
     }, [actionDispatchGuard, permission.status, requestKey]);
-    const dispatchPermissionAction = (action: () => Promise<void>) => (
-        actionDispatchGuard.dispatch(requestKey, action)
-    );
+    const dispatchPermissionAction = async (action: () => Promise<void>) => {
+        try {
+            return await actionDispatchGuard.dispatch(requestKey, action);
+        } catch (error) {
+            Modal.alert(t('common.error'), getErrorMessage(error) || t('approvals.decisionError'));
+            throw error;
+        }
+    };
     
     // A terminal outcome was decided by whoever was running at the time, so a
     // Session that later switched Agent must not re-label its history. A
