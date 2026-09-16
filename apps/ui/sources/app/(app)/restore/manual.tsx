@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, ScrollView, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { resolveAuthReturnToRoute } from '@/auth/routing/resolveAuthReturnToRoute';
 import { useAuth } from '@/auth/context/AuthContext';
 import { RoundButton } from '@/components/ui/buttons/RoundButton';
 import { Typography } from '@/constants/Typography';
@@ -94,6 +95,8 @@ export default function Restore() {
     const styles = stylesheet;
     const auth = useAuth();
     const router = useRouter();
+    const params = useLocalSearchParams<{ returnTo?: string }>();
+    const returnTo = resolveAuthReturnToRoute(params.returnTo, false);
     const [restoreKey, setRestoreKey] = useState('');
     const [revealed, setRevealed] = useState(false);
 
@@ -125,7 +128,7 @@ export default function Restore() {
             await auth.login(token, normalizedKey);
 
             // Dismiss the restore stack instead of replacing inside it; nested replace can race during auth bootstrap.
-            router.dismissTo('/');
+            router.dismissTo(returnTo);
 
         } catch (error) {
             Modal.alert(t('common.error'), t('connect.invalidSecretKey'));

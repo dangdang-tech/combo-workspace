@@ -1,4 +1,4 @@
-import { normalizeInternalReturnTo } from '@/auth/routing/resolveAuthReturnToRoute';
+import { normalizeInternalReturnTo, withAuthReturnTo } from '@/auth/routing/resolveAuthReturnToRoute';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -88,10 +88,10 @@ function tryResolveProviderIdFromWebPathname(): string | null {
     }
 }
 
-function buildRestoreRedirectUrl(params: { providerId: string; reason: 'provider_already_linked' }): string {
+function buildRestoreRedirectUrl(params: { providerId: string; reason: 'provider_already_linked'; returnTo: string }): string {
     const provider = encodeURIComponent(params.providerId);
     const reason = encodeURIComponent(params.reason);
-    return `/restore?provider=${provider}&reason=${reason}`;
+    return withAuthReturnTo(`/restore?provider=${provider}&reason=${reason}`, params.returnTo);
 }
 
 function normalizeComparableServerUrl(value: unknown): string {
@@ -273,16 +273,16 @@ export default function OAuthProviderReturn() {
                 if (err === 'provider-already-linked') {
                     await TokenStorage.clearPendingExternalAuth();
                     pendingAuthContextRef.current = null;
-                    router.replace(buildRestoreRedirectUrl({ providerId: ctx.providerId, reason: 'provider_already_linked' }));
+                    router.replace(buildRestoreRedirectUrl({ providerId: ctx.providerId, reason: 'provider_already_linked', returnTo: ctx.returnTo }));
                     return;
                 }
                 if (err === 'restore-required') {
                     await TokenStorage.clearPendingExternalAuth();
                     pendingAuthContextRef.current = null;
-                    router.replace('/restore');
+                    router.replace(withAuthReturnTo('/restore', ctx.returnTo));
                     return;
                 }
-                if (err === 'username-required' || err === 'username-taken') {
+                if (err === 'username-required' || err === 'username-taken' || err === 'invalid-username') {
                     const initialHint = err === 'username-taken' ? t('friends.username.taken') : t('friends.username.invalid');
                     setUsernameHint(initialHint);
                     return;
@@ -299,6 +299,13 @@ export default function OAuthProviderReturn() {
                 await TokenStorage.clearPendingExternalAuth();
                 pendingAuthContextRef.current = null;
                 router.replace('/');
+            } catch {
+                // Finalization may already have consumed the pending request. Return to
+                // the existing login entry instead of automatically replaying it.
+                await Modal.alert(t('common.error'), t('errors.tokenExchangeFailed'));
+                await TokenStorage.clearPendingExternalAuth();
+                pendingAuthContextRef.current = null;
+                router.replace(withAuthReturnTo('/', ctx.returnTo));
             } finally {
                 setBusy(false);
             }
@@ -322,7 +329,7 @@ export default function OAuthProviderReturn() {
         setUsernameHint(null);
 
         if (nextCtx.accountMode === 'e2ee') {
-            router.replace('/restore');
+            router.replace(withAuthReturnTo('/restore', nextCtx.returnTo));
             return;
         }
         if (nextCtx.accountMode === 'plain') {
@@ -503,7 +510,7 @@ export default function OAuthProviderReturn() {
                     }
 
                     if (resolvedAccountMode === 'e2ee') {
-                        safeReplace('/restore');
+                        safeReplace(withAuthReturnTo('/restore', returnTo));
                         return;
                     }
 

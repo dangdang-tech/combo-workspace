@@ -1,0 +1,30 @@
+name: combo-workspace-test
+
+services:
+  relay:
+    image: ${COMBO_IMAGE:?Set the source-built COMBO image tag}
+    container_name: combo-workspace-test
+    restart: unless-stopped
+    env_file:
+      - ${COMBO_ENV_FILE:?Set the absolute runtime environment file path}
+    ports:
+      - "127.0.0.1:${COMBO_API_PORT:-39421}:3005"
+    volumes:
+      - ${COMBO_DATA_DIR:?Set the dedicated data directory}:/data
+      - ${COMBO_CONFIG_DIR:?Set the dedicated config directory}:/run/combo:ro
+    cpus: 1.5
+    mem_limit: 2g
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:3005/ready"]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 4
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

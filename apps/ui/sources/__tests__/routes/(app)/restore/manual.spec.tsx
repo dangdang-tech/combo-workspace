@@ -15,6 +15,7 @@ const routerReplaceSpy = vi.hoisted(() => vi.fn());
 const routerDismissToSpy = vi.hoisted(() => vi.fn());
 const authLoginSpy = vi.hoisted(() => vi.fn(async () => {}));
 const authState = vi.hoisted(() => ({ isAuthenticated: false }));
+const routeParams = vi.hoisted(() => ({ returnTo: undefined as string | undefined }));
 const normalizeSecretKeySpy = vi.hoisted(() => vi.fn((input: string) => input.trim()));
 
 vi.mock('@expo/vector-icons/Ionicons', () => ({
@@ -26,6 +27,7 @@ installRestoreRouteCommonModuleMocks({
         const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router');
         const routerMock = createExpoRouterMock({
             router: { back: routerBackSpy, replace: routerReplaceSpy, dismissTo: routerDismissToSpy },
+            params: () => routeParams,
         });
         return routerMock.module;
     },
@@ -85,6 +87,7 @@ vi.mock('@/components/ui/layout/layout', () => ({
 }));
 
 afterEach(() => {
+    routeParams.returnTo = undefined;
     authState.isAuthenticated = false;
     vi.restoreAllMocks();
     standardCleanup();
@@ -107,6 +110,18 @@ function flattenStyle(style: unknown): Record<string, unknown> {
 }
 
 describe('/restore/manual', () => {
+    it.each([
+        ['/invite/abc?server=https%3A%2F%2Frelay.example', '/invite/abc?server=https%3A%2F%2Frelay.example'],
+        ['https://evil.example', '/'],
+    ])('continues to the safe target after restoring a key (%s)', async (returnTo, expected) => {
+        routeParams.returnTo = returnTo;
+        const screen = await renderManualRestoreScreen();
+        await act(async () => { screen.changeTextByTestId('restore-manual-secret-input', 'secret-key'); });
+        await act(async () => { await screen.findByTestId('restore-manual-submit')?.props.action(); });
+        expect(authLoginSpy).toHaveBeenCalled();
+        expect(routerDismissToSpy).toHaveBeenCalledWith(expected);
+    });
+
     it('renders manual secret-key restore inside the unauthenticated split shell without mobile hero', async () => {
         const screen = await renderManualRestoreScreen();
 

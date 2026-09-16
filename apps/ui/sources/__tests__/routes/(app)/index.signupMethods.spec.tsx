@@ -25,11 +25,11 @@ vi.mock('@/components/navigation/shell/MainView', () => ({ MainView: () => null 
 vi.mock('@shopify/react-native-skia', () => ({}));
 
 const applyBrandHeroSeenSpy = vi.hoisted(() => vi.fn());
-const routeState = vi.hoisted(() => ({ params: {} as { returnTo?: string } }));
+const routeState = vi.hoisted(() => ({ params: {} as { returnTo?: string }, push: vi.fn() }));
 
 vi.mock('expo-router', async () => {
     const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router');
-    return createExpoRouterMock({ params: () => routeState.params }).module;
+    return createExpoRouterMock({ params: () => routeState.params, router: { push: routeState.push } }).module;
 });
 
 vi.mock('@/components/onboarding/unauthShell', async () => {
@@ -127,6 +127,7 @@ vi.mock('@/sync/api/capabilities/serverFeaturesClient', () => ({
 describe('/ (welcome) signup methods', () => {
     beforeEach(() => {
         routeState.params = {};
+        routeState.push.mockClear();
         applyBrandHeroSeenSpy.mockReset();
         getReadyServerFeaturesMock.mockReset();
         getReadyServerFeaturesMock.mockResolvedValue(defaultWelcomeFeatures);
@@ -134,6 +135,18 @@ describe('/ (welcome) signup methods', () => {
         getServerFeaturesSnapshotMock.mockResolvedValue({ status: 'ready', features: defaultWelcomeFeatures });
     });
     afterEach(standardCleanup);
+
+    it.each([
+        ['/invite/abc?server=https%3A%2F%2Frelay.example', '/restore?returnTo=%2Finvite%2Fabc%3Fserver%3Dhttps%253A%252F%252Frelay.example'],
+        ['https://evil.example', '/restore'],
+    ])('preserves only an internal continuation when opening restore (%s)', async (returnTo, expected) => {
+        vi.resetModules();
+        routeState.params = { returnTo };
+        const screen = await renderWelcomeScreen();
+        await waitForWelcomeTestId(screen, 'welcome-secondary-login');
+        await screen.pressByTestIdAsync('welcome-secondary-login');
+        expect(routeState.push).toHaveBeenCalledWith(expected);
+    });
 
     it('uses an extended initial server-features timeout before showing the server unavailable state', async () => {
         vi.resetModules();

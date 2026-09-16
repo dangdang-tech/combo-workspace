@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { normalizeInternalReturnTo, withAuthReturnTo } from '@/auth/routing/resolveAuthReturnToRoute';
 import { useAuth } from '@/auth/context/AuthContext';
 import { RoundButton } from '@/components/ui/buttons/RoundButton';
 import { Typography } from '@/constants/Typography';
@@ -112,6 +113,7 @@ export const RestoreQrView = React.memo(function RestoreQrView() {
     const auth = useAuth();
     const router = useRouter();
     const params = useLocalSearchParams() as any;
+    const returnTo = normalizeInternalReturnTo(paramString(params, 'returnTo'));
     const [authReady, setAuthReady] = useState(false);
     const [providerResetEnabled, setProviderResetEnabled] = useState(false);
     const isCancelledRef = useRef(false);
@@ -161,7 +163,8 @@ export const RestoreQrView = React.memo(function RestoreQrView() {
                     const secretString = encodeBase64(credentials.secret, 'base64url');
                     await auth.login(credentials.token, secretString);
                     if (!isCancelledRef.current) {
-                        router.back();
+                        if (returnTo) router.dismissTo(returnTo);
+                        else router.back();
                     }
                 } else if (!isCancelledRef.current) {
                     Modal.alert(t('common.error'), t('errors.authenticationFailed'));
@@ -220,7 +223,7 @@ export const RestoreQrView = React.memo(function RestoreQrView() {
                                 size="normal"
                                 title={t('connect.restoreWithSecretKeyInstead')}
                                 display="inverted"
-                                onPress={() => router.push('/restore/manual')}
+                                onPress={() => router.push(withAuthReturnTo('/restore/manual', returnTo))}
                             />
                         </View>
                         {providerResetEnabled ? (
@@ -232,7 +235,7 @@ export const RestoreQrView = React.memo(function RestoreQrView() {
                                         size="small"
                                         title={t('connect.lostAccessLink')}
                                         display="inverted"
-                                        onPress={() => router.push('/restore/lost-access')}
+                                        onPress={() => router.push(withAuthReturnTo('/restore/lost-access', returnTo))}
                                     />
                                 </View>
                             </>

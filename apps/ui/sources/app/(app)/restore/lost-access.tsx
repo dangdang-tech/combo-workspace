@@ -1,6 +1,7 @@
 import React from 'react';
 import { Linking, Platform, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { resolveAuthReturnToRoute } from '@/auth/routing/resolveAuthReturnToRoute';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 
 import { RoundButton } from '@/components/ui/buttons/RoundButton';
@@ -31,6 +32,8 @@ export default function LostAccess() {
     const auth = useAuth();
     useUnistyles();
     const router = useRouter();
+    const params = useLocalSearchParams<{ returnTo?: string }>();
+    const returnTo = resolveAuthReturnToRoute(params.returnTo, false);
     const [providers, setProviders] = React.useState<string[] | null>(null);
 
     const styles = stylesheet;
@@ -111,7 +114,7 @@ export default function LostAccess() {
                 provider: providerId,
                 secret,
                 intent: 'reset',
-                returnTo: '/',
+                returnTo,
                 ...(serverUrl ? { serverUrl } : {}),
             });
 

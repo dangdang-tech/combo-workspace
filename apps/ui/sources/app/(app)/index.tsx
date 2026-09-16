@@ -41,7 +41,7 @@ import {
     type RemoteSignupOptions,
 } from "@/components/account/auth/useRemoteAuthEntryOptions";
 
-import { resolveAuthReturnToRoute as resolveInternalAuthReturnToRoute } from "@/auth/routing/resolveAuthReturnToRoute";
+import { resolveAuthReturnToRoute as resolveInternalAuthReturnToRoute, withAuthReturnTo } from "@/auth/routing/resolveAuthReturnToRoute";
 
 import { shouldAutoRedirectToSetupOnFirstLaunch } from "@/utils/navigation/firstLaunchSetupRedirectPolicy";
 
@@ -439,7 +439,7 @@ function NotAuthenticated() {
     });
     const handleRestore = () => {
         trackAccountRestored();
-        router.push('/restore');
+        router.push(withAuthReturnTo('/restore', returnTo));
     };
     const renderDecisionPanel = () => (
         <RemoteWelcomeDecisionPanel

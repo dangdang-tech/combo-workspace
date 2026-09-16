@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import renderer, { act } from 'react-test-renderer';
 import { renderScreen } from '@/dev/testkit';
 import { lightTheme } from '@/theme';
+import { createWelcomeFeaturesResponse } from '../index.testHelpers';
 import { installRestoreRouteCommonModuleMocks, resetRestoreRouteTestState } from './restoreRouteTestHelpers';
 
 
@@ -10,6 +11,7 @@ type ReactActEnvironmentGlobal = typeof globalThis & {
     IS_REACT_ACT_ENVIRONMENT?: boolean;
 };
 (globalThis as ReactActEnvironmentGlobal).IS_REACT_ACT_ENVIRONMENT = true;
+const restoreNavigation = vi.hoisted(() => ({ returnTo: undefined as string | undefined, dismissTo: vi.fn() }));
 
 installRestoreRouteCommonModuleMocks({
     reactNative: async () => {
@@ -35,11 +37,12 @@ installRestoreRouteCommonModuleMocks({
     router: async () => {
         const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router');
         const routerMock = createExpoRouterMock({
-            router: { back: vi.fn(), push: pushSpy, replace: vi.fn() },
-            params: {
+            router: { back: vi.fn(), push: pushSpy, replace: vi.fn(), dismissTo: restoreNavigation.dismissTo },
+            params: () => ({
                 provider: 'github',
                 reason: 'provider_already_linked',
-            },
+                returnTo: restoreNavigation.returnTo,
+            }),
         });
         return routerMock.module;
     },
@@ -142,12 +145,43 @@ vi.mock('@/utils/system/fireAndForget', () => ({
 }));
 
 afterEach(() => {
+    restoreNavigation.returnTo = undefined;
+    restoreNavigation.dismissTo.mockClear();
+    pushSpy.mockClear();
     authState.isAuthenticated = false;
     vi.restoreAllMocks();
     resetRestoreRouteTestState();
 });
 
 describe('/restore', () => {
+    it('preserves the invitation through manual and lost-access alternatives', async () => {
+        vi.resetModules();
+        restoreNavigation.returnTo = '/invite/abc?server=https%3A%2F%2Frelay.example';
+        const { getReadyServerFeatures } = await import('@/sync/api/capabilities/getReadyServerFeatures');
+        vi.mocked(getReadyServerFeatures).mockResolvedValue(createWelcomeFeaturesResponse({ recoveryProviderResetEnabled: true }));
+        const { default: Screen } = await import('@/app/(app)/restore/index');
+        const screen = await renderScreen(<Screen />);
+        await act(async () => {});
+        await screen.pressByTestIdAsync('restore-open-manual');
+        await screen.pressByTestIdAsync('restore-open-lost-access');
+        for (const route of ['/restore/manual', '/restore/lost-access']) {
+            expect(pushSpy).toHaveBeenCalledWith(`${route}?returnTo=${encodeURIComponent(restoreNavigation.returnTo)}`);
+        }
+    });
+
+    it('continues to the invitation after QR approval', async () => {
+        vi.resetModules();
+        restoreNavigation.returnTo = '/invite/qr';
+        const { authQRStart } = await import('@/auth/flows/qrStart');
+        const { authQRWait } = await import('@/auth/flows/qrWait');
+        vi.mocked(authQRStart).mockResolvedValue(true);
+        vi.mocked(authQRWait).mockResolvedValue({ token: 'token', secret: new Uint8Array(32) });
+        const { default: Screen } = await import('@/app/(app)/restore/index');
+        await renderScreen(<Screen />);
+        await act(async () => {});
+        expect(restoreNavigation.dismissTo).toHaveBeenCalledWith('/invite/qr');
+    });
+
     it('renders the restore route inside the unauthenticated split shell without mobile hero', async () => {
         vi.resetModules();
         const { default: Screen } = await import('@/app/(app)/restore/index');

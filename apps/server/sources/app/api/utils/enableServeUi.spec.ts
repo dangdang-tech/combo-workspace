@@ -26,6 +26,38 @@ async function withApp(run: (app: ReturnType<typeof Fastify>) => Promise<void>) 
 }
 
 describe('enableServeUi (mountRoot)', () => {
+  it.each(['/', '/ui'])('serves the web manifest as manifest JSON when mounted at %s', async (prefix) => {
+    await withTempDir('happier-ui-manifest-', async (dir) => {
+      const manifest = { name: 'COMBO', start_url: '/', display: 'standalone' };
+      await writeFile(join(dir, 'index.html'), '<html><body>app shell</body></html>', 'utf-8');
+      await writeFile(join(dir, 'manifest.webmanifest'), JSON.stringify(manifest), 'utf-8');
+      await withApp(async (app) => {
+        enableServeUi(app, { dir, prefix, mountRoot: prefix === '/', required: true });
+        await app.ready();
+
+        const res = await app.inject({ method: 'GET', url: `${prefix === '/' ? '' : prefix}/manifest.webmanifest` });
+        expect(res.statusCode).toBe(200);
+        expect(res.headers['content-type']).toMatch(/^application\/manifest\+json(?:;|$)/i);
+        expect(res.headers['cache-control']).toBe('no-cache');
+        expect(res.json()).toEqual(manifest);
+      });
+    });
+  });
+
+  it('returns 404 for a missing web manifest instead of the SPA shell at root', async () => {
+    await withTempDir('happier-ui-missing-manifest-', async (dir) => {
+      await writeFile(join(dir, 'index.html'), '<html><body>app shell</body></html>', 'utf-8');
+      await withApp(async (app) => {
+        enableServeUi(app, { dir, prefix: '/', mountRoot: true, required: true });
+        await app.ready();
+
+        const res = await app.inject({ method: 'GET', url: '/manifest.webmanifest' });
+        expect(res.statusCode).toBe(404);
+        expect(res.body).not.toContain('app shell');
+      });
+    });
+  });
+
   it('serves an opaque no-store deployment identity and stays silent when it is absent', async () => {
     await withTempDir('happier-ui-deployment-', async (dir) => {
       await writeFile(join(dir, 'index.html'), '<!doctype html><html><body>ok</body></html>\n', 'utf-8');

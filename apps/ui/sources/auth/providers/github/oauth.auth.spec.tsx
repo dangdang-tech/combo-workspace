@@ -60,6 +60,58 @@ afterEach(() => {
 });
 
 describe('/oauth/[provider] (auth flow)', () => {
+    it('shows a finalize transport error and returns to login with the invitation intact', async () => {
+        const returnTo = '/invite/retry?server=https%3A%2F%2Frelay.example';
+        setPendingExternalAuthState({ provider: 'github', secret: OAUTH_SECRET, returnTo });
+        localSearchParamsMock.mockReturnValue({ provider: 'github', flow: 'auth', pending: 'p1' });
+        stubFetch(async (url) => {
+            const health = await handleHealthCheck(url);
+            if (health) return health;
+            throw new TypeError('Failed to fetch');
+        });
+
+        await runWithOAuthScreen(async () => {
+            await flushOAuthEffects();
+            expect(modal.alert).toHaveBeenCalledWith(t('common.error'), t('errors.tokenExchangeFailed'));
+            expect(clearPendingExternalAuthMock).toHaveBeenCalled();
+            expect(replaceSpy).toHaveBeenCalledWith(`/?returnTo=${encodeURIComponent(returnTo)}`);
+            expect(loginSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    it('keeps invalid username input editable and completes after correction without restarting OAuth', async () => {
+        setPendingExternalAuthState({ provider: 'github', secret: OAUTH_SECRET, returnTo: '/invite/username' });
+        localSearchParamsMock.mockReturnValue({
+            provider: 'github', flow: 'auth', status: 'username_required', reason: 'invalid_login', login: 'user@example.test', pending: 'p1',
+        });
+        const submitted: string[] = [];
+        stubFetch(async (url, init) => {
+            const health = await handleHealthCheck(url);
+            if (health) return health;
+            const body = JSON.parse(String(init?.body ?? '{}')) as { username: string };
+            submitted.push(body.username);
+            return body.username === 'valid_user'
+                ? { ok: true, body: { success: true, token: 'tok_1' } }
+                : { ok: false, status: 400, body: { error: 'invalid-username' } };
+        });
+        const { default: Screen } = await import('@/app/(app)/oauth/[provider]');
+        const screen = await renderScreen(React.createElement(Screen));
+        await flushOAuthEffects();
+        act(() => { screen.changeTextByTestId('oauth-username-input', 'invalid!'); });
+        await screen.pressByTestIdAsync('oauth-username-save');
+        await flushOAuthEffects();
+        expect.soft(clearPendingExternalAuthMock).not.toHaveBeenCalled();
+        expect.soft(replaceSpy).not.toHaveBeenCalled();
+        expect(screen.findByTestId('oauth-username-input')?.props.value).toBe('invalid!');
+        expect(screen.getTextContent()).toContain(t('friends.username.invalid'));
+        act(() => { screen.changeTextByTestId('oauth-username-input', 'valid_user'); });
+        await screen.pressByTestIdAsync('oauth-username-save');
+        await flushOAuthEffects();
+        expect(submitted).toEqual(['invalid!', 'valid_user']);
+        expect(loginSpy).toHaveBeenCalledWith('tok_1', OAUTH_SECRET);
+        expect(replaceSpy).toHaveBeenCalledWith('/invite/username');
+    });
+
     it('uses the pending external auth serverUrl for finalize requests when present', async () => {
         setPendingExternalAuthState({ provider: 'github', secret: OAUTH_SECRET, serverUrl: 'http://api.example.test' });
         setActiveServerSnapshot({ serverUrl: '' });

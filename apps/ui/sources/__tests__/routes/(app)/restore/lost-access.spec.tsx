@@ -11,6 +11,7 @@ type ReactActEnvironmentGlobal = typeof globalThis & {
 (globalThis as ReactActEnvironmentGlobal).IS_REACT_ACT_ENVIRONMENT = true;
 
 const mockState = vi.hoisted(() => ({
+    returnTo: undefined as string | undefined,
     auth: {
         isAuthenticated: false,
     },
@@ -49,6 +50,7 @@ installRestoreRouteCommonModuleMocks({
         const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router');
         const routerMock = createExpoRouterMock({
             router: { replace: vi.fn(), back: vi.fn(), push: vi.fn() },
+            params: () => ({ returnTo: mockState.returnTo }),
         });
         return routerMock.module;
     },
@@ -164,6 +166,7 @@ function findProviderButtonAction(tree: renderer.ReactTestRenderer): () => Promi
 
 afterEach(() => {
     mockState.auth.isAuthenticated = false;
+    mockState.returnTo = undefined;
     vi.restoreAllMocks();
     resetRestoreRouteTestState();
 });
@@ -191,6 +194,7 @@ describe('/restore/lost-access', () => {
 
     it('starts provider reset flow by setting intent=reset and opening the external signup URL', async () => {
         vi.resetModules();
+        mockState.returnTo = '/invite/reset?server=https%3A%2F%2Frelay.example';
         mockState.openURL.mockClear();
         mockState.canOpenURL.mockClear();
         mockState.setPendingExternalAuth.mockClear();
@@ -214,7 +218,9 @@ describe('/restore/lost-access', () => {
                 await triggerProviderReset();
             });
 
-            expect(mockState.setPendingExternalAuth).toHaveBeenCalledWith(expect.objectContaining({ provider: 'github', intent: 'reset' }));
+            expect(mockState.setPendingExternalAuth).toHaveBeenCalledWith(expect.objectContaining({
+                provider: 'github', intent: 'reset', returnTo: mockState.returnTo,
+            }));
             expect(mockState.getExternalAuthUrl).toHaveBeenCalledWith(
                 expect.objectContaining({ mode: 'keyed', publicKey: 'base64-value+slash/plus+' }),
             );

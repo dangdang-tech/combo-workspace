@@ -2,6 +2,46 @@
 
 This document describes how to deploy the Happier backend (`apps/server`) and the infrastructure it expects.
 
+## COMBO single-instance test deployment
+
+The COMBO fork can run the API and exported web UI in one source-built image, using SQLite and local file storage. This light profile does not require the Postgres, Redis, or S3 services described for the full profile below. Shared workspace presence currently requires a single API instance.
+
+Use the `relay-server-local-source` Docker target. The `relay-server` target downloads upstream release artifacts, which do not contain the COMBO fork changes. Build from a committed source archive so local credentials and test state cannot enter the image:
+
+```sh
+COMBO_SHA=$(git rev-parse HEAD)
+git archive "$COMBO_SHA" | docker buildx build \
+  --target relay-server-local-source \
+  --build-arg HAPPIER_BUILD_DB_PROVIDERS=sqlite \
+  --build-arg HAPPIER_EMBEDDED_POLICY_ENV=preview \
+  --build-arg SENTRY_RELEASE="$COMBO_SHA" \
+  --load -t "combo-workspace-test:$COMBO_SHA" -
+```
+
+Empty build-time server URLs use the browser's own origin. Put HTTPS in front of the container and configure all runtime public URLs to that same origin. Do not compile a localhost API URL into the deployed UI.
+
+The deployment templates are:
+
+- [Compose service](../docker/compose.combo-test.yml): one API/UI instance, loopback port, dedicated data/config mounts, readiness check, and bounded resources.
+- [Runtime environment example](../docker/combo-test.env.example): copy outside the repository and set the actual HTTPS origin.
+- [Nginx configuration](../docker/nginx.combo-test.conf.template): replace `COMBO_TEST_HOST` and `COMBO_API_PORT`; provision the named certificate before loading its HTTPS server block. It forwards Socket.IO polling and WebSocket upgrades as well as ordinary API requests.
+
+Create a dedicated writable data directory for UID/GID 1000. The config directory must contain an `oidc.json` array readable by that user. Keep both outside the checkout. Preserve the data directory across releases: it includes the SQLite database, local assets, and the generated server master secret. Never share it with another environment.
+
+```sh
+COMBO_IMAGE="combo-workspace-test:$COMBO_SHA" \
+COMBO_ENV_FILE=/etc/combo-workspace-test/runtime.env \
+COMBO_DATA_DIR=/var/lib/combo-workspace-test/data \
+COMBO_CONFIG_DIR=/etc/combo-workspace-test/providers \
+docker compose -f docker/compose.combo-test.yml up -d
+```
+
+Real shared-entry acceptance requires a Google OAuth test application with callback `<HTTPS_ORIGIN>/v1/oauth/google/callback`, provider ID `google`, and verified-email enforcement. Use the [Google OIDC configuration](../apps/docs/content/docs/self-hosting/auth-oidc.mdx#google-keyed-accounts-with-e2ee). An empty provider array can support key-based account checks if anonymous signup is explicitly enabled and the Google signup/login requirements are removed; it does not validate Google login or invitation eligibility. Never expose the local signed test issuer as real Google authentication.
+
+Before accepting a deployment, verify `/ready`, `/v1/features`, the application version, a fresh browser login and account restore, host pairing and presence, a real Codex task in a disposable project, persisted history after a service restart, and two-account invitation/revocation/offline behavior. Host-owned file editing, tool approvals, and an enabled terminal require their own live checks. Guest direct machine file/terminal access is not granted by a shared conversation.
+
+On a shared build host, use a dedicated builder with CPU/memory limits and limited parallelism; see [Docker container-driver limits](https://docs.docker.com/build/builders/drivers/docker-container/) and [BuildKit parallelism](https://docs.docker.com/build/buildkit/configure/#max-parallelism). Stop that builder after the build without pruning unrelated Docker resources.
+
 ## Runtime overview
 - **App server:** Node.js running `tsx ./sources/main.ts` (Fastify + Socket.IO).
 - **Database:** Postgres via Prisma.

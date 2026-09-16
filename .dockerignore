@@ -6,6 +6,12 @@ node_modules
 **/.turbo
 **/.next
 
+# Runtime credentials are mounted into the deployed service, never baked into images.
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
 # Local agent, review, profiling, and build artifacts are not Docker inputs.
 .project
 .reviews

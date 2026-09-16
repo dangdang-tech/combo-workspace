@@ -5,6 +5,7 @@ import { renderScreen } from '@/dev/testkit';
 import {
     installRestoreScanComputerQrViewCommonModuleMocks,
     resetRestoreScanComputerQrViewCommonModuleMockState,
+    restoreScanComputerQrViewModuleState,
 } from './restoreScanComputerQrViewTestHelpers';
 
 type ReactActEnvironmentGlobal = typeof globalThis & {
@@ -81,16 +82,11 @@ vi.mock('@/sync/domains/server/activeServerSwitch', () => ({
     upsertActivateAndSwitchServer: vi.fn(async () => {}),
 }));
 
-vi.mock('@/auth/pairing/pairingUrl', () => ({
-    buildPairingDeepLink: () => 'happier:///pair?v=1&pairId=p&secret=s',
-    parsePairingDeepLink: () => null,
-}));
-
 let lastScannerProps: any = null;
 vi.mock('@/components/qr/QrCodeScannerView', () => ({
     QrCodeScannerView: (props: any) => {
         lastScannerProps = props;
-        return React.createElement('div', { 'data-testid': 'QrCodeScannerView' });
+        return React.createElement('div', { 'data-testid': 'QrCodeScannerView' }, props.footer);
     },
 }));
 
@@ -101,6 +97,26 @@ describe('RestoreScanComputerQrView (web phone)', () => {
         navigationState.isFocused = true;
         lastScannerProps = null;
         modalAlertSpy.mockClear();
+    });
+
+    it('preserves the invitation in scanner alternatives and after pairing approval', async () => {
+        const returnTo = '/invite/mobile?server=https%3A%2F%2Frelay.example';
+        restoreScanComputerQrViewModuleState.routeParams = { returnTo };
+        const { pairingRequest } = await import('@/sync/api/account/apiPairingAuth');
+        const { authQRWait } = await import('@/auth/flows/qrWait');
+        vi.mocked(pairingRequest).mockResolvedValue({ ok: true, data: { state: 'requested', confirmCode: '123456' } });
+        vi.mocked(authQRWait).mockResolvedValue({ token: 'token', secret: new Uint8Array(32) });
+        const { RestoreScanComputerQrView } = await import('./RestoreScanComputerQrView');
+        const screen = await renderScreen(<RestoreScanComputerQrView />);
+        await act(async () => { await screen.findByTestId('restore-open-manual')?.props.action(); });
+        await act(async () => { await screen.findByTestId('restore-show-qr-instead')?.props.action(); });
+        for (const route of ['/restore/manual', '/restore/show-qr']) {
+            expect.soft(restoreScanComputerQrViewModuleState.routerPushSpy).toHaveBeenCalledWith(`${route}?returnTo=${encodeURIComponent(returnTo)}`);
+        }
+        await act(async () => {
+            await lastScannerProps.onScan('happier:///pair?v=1&pairId=pair_123&secret=secret_123');
+        });
+        expect(restoreScanComputerQrViewModuleState.routerReplaceSpy).toHaveBeenCalledWith(returnTo);
     });
 
     it('renders the QR scanner in idle state on web', async () => {

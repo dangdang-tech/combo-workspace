@@ -12,6 +12,7 @@ type InstallRestoreScanComputerQrViewCommonModuleMocksOptions = Readonly<{
 }>;
 
 const restoreScanComputerQrViewModuleState = vi.hoisted(() => ({
+    routeParams: {} as Record<string, string | undefined>,
     routerBackSpy: vi.fn(),
     routerPushSpy: vi.fn(),
     routerReplaceSpy: vi.fn(),
@@ -26,6 +27,7 @@ const restoreScanComputerQrViewModuleState = vi.hoisted(() => ({
 }));
 
 export function resetRestoreScanComputerQrViewCommonModuleMockState() {
+    restoreScanComputerQrViewModuleState.routeParams = {};
     restoreScanComputerQrViewModuleState.routerBackSpy.mockClear();
     restoreScanComputerQrViewModuleState.routerPushSpy.mockClear();
     restoreScanComputerQrViewModuleState.routerReplaceSpy.mockClear();
@@ -63,6 +65,7 @@ export function installRestoreScanComputerQrViewCommonModuleMocks(
 
         const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router');
         const routerMock = createExpoRouterMock({
+            params: () => restoreScanComputerQrViewModuleState.routeParams,
             router: {
                 back: restoreScanComputerQrViewModuleState.routerBackSpy,
                 push: restoreScanComputerQrViewModuleState.routerPushSpy,

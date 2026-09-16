@@ -75,6 +75,9 @@ function setUiFileHeaders(reply: any, ext: string): void {
     } else if (ext === '.json') {
         reply.header('content-type', 'application/json; charset=utf-8');
         reply.header('cache-control', 'public, max-age=31536000, immutable');
+    } else if (ext === '.webmanifest') {
+        reply.header('content-type', 'application/manifest+json; charset=utf-8');
+        reply.header('cache-control', 'no-cache');
     } else if (ext === '.map') {
         reply.header('content-type', 'application/json; charset=utf-8');
         reply.header('cache-control', 'public, max-age=31536000, immutable');
@@ -224,6 +227,7 @@ export function enableServeUi(app: AnyFastifyInstance, ui: UiConfig) {
                     '.js',
                     '.css',
                     '.json',
+                    '.webmanifest',
                     '.svg',
                     '.ico',
                     '.wasm',

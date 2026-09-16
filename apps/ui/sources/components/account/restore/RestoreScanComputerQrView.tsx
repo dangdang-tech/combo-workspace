@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { Platform, ScrollView, View } from 'react-native';
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { resolveAuthReturnToRoute, withAuthReturnTo } from '@/auth/routing/resolveAuthReturnToRoute';
 import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
@@ -102,6 +103,8 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
     const { theme } = useUnistyles();
     const styles = stylesheet;
     const router = useRouter();
+    const params = useLocalSearchParams<{ returnTo?: string }>();
+    const returnTo = resolveAuthReturnToRoute(params.returnTo, false);
     const isFocused = useIsFocused();
     const auth = useAuth();
     const pairingDecision = useFeatureDecision('auth.pairing.desktopQrMobileScan');
@@ -117,7 +120,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
             if (parseAccountConnectDeepLink(rawUrl.trim())) {
                 const action = await promptAccountConnectApprovalRequired();
                 if (action === 'showQr') {
-                    router.push('/restore/show-qr');
+                    router.push(withAuthReturnTo('/restore/show-qr', returnTo));
                 }
                 return;
             }
@@ -199,7 +202,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                     const secretString = encodeBase64(credentials.secret, 'base64url');
                     await auth.login(credentials.token, secretString);
                     if (!isCancelledRef.current) {
-                        router.replace('/');
+                        router.replace(returnTo);
                     }
                 } else if (!isCancelledRef.current) {
                     await Modal.alertAsync(t('common.error'), t('errors.authenticationFailed'));
@@ -212,7 +215,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                 setPhase('idle');
             }
         },
-        [auth, router],
+        [auth, router, returnTo],
     );
 
     React.useEffect(() => {
@@ -249,7 +252,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                                     title={t('connect.restoreWithSecretKeyInstead')}
                                     display="inverted"
                                     action={async () => {
-                                        router.push('/restore/manual');
+                                        router.push(withAuthReturnTo('/restore/manual', returnTo));
                                     }}
                                 />
                             </View>
@@ -260,7 +263,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                                     title={t('connect.showQrInstead')}
                                     display="inverted"
                                     action={async () => {
-                                        router.push('/restore/show-qr');
+                                        router.push(withAuthReturnTo('/restore/show-qr', returnTo));
                                     }}
                                 />
                             </View>
@@ -302,7 +305,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                                     title={t('connect.restoreWithSecretKeyInstead')}
                                     display="inverted"
                                     action={async () => {
-                                        router.push('/restore/manual');
+                                        router.push(withAuthReturnTo('/restore/manual', returnTo));
                                     }}
                                 />
                             </View>
@@ -313,7 +316,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                                     title={t('connect.showQrInstead')}
                                     display="inverted"
                                     action={async () => {
-                                        router.push('/restore/show-qr');
+                                        router.push(withAuthReturnTo('/restore/show-qr', returnTo));
                                     }}
                                 />
                             </View>
@@ -383,7 +386,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                                 title={t('connect.restoreWithSecretKeyInstead')}
                                 display="inverted"
                                 action={async () => {
-                                    router.push('/restore/manual');
+                                    router.push(withAuthReturnTo('/restore/manual', returnTo));
                                 }}
                             />
                         </View>
@@ -394,7 +397,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                                 title={t('connect.showQrInstead')}
                                 display="inverted"
                                 action={async () => {
-                                    router.push('/restore/show-qr');
+                                    router.push(withAuthReturnTo('/restore/show-qr', returnTo));
                                 }}
                             />
                         </View>
@@ -455,7 +458,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                                 title={t('connect.restoreWithSecretKeyInstead')}
                                 display="inverted"
                                 action={async () => {
-                                    router.push('/restore/manual');
+                                    router.push(withAuthReturnTo('/restore/manual', returnTo));
                                 }}
                             />
                         </View>
@@ -466,7 +469,7 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
                                 title={t('connect.showQrInstead')}
                                 display="inverted"
                                 action={async () => {
-                                    router.push('/restore/show-qr');
+                                    router.push(withAuthReturnTo('/restore/show-qr', returnTo));
                                 }}
                             />
                         </View>

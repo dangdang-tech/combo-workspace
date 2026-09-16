@@ -7,3 +7,10 @@ export function normalizeInternalReturnTo(value: unknown): string | null {
 export function resolveAuthReturnToRoute(returnTo: unknown, pendingDesktopSetup: boolean): string {
     return normalizeInternalReturnTo(returnTo) ?? (pendingDesktopSetup ? '/setup' : '/');
 }
+
+/** Carry a validated continuation through an authentication or recovery screen. */
+export function withAuthReturnTo(route: string, returnTo: unknown): string {
+    const target = normalizeInternalReturnTo(returnTo);
+    if (!target || target === '/') return route;
+    return `${route}${route.includes('?') ? '&' : '?'}returnTo=${encodeURIComponent(target)}`;
+}
