@@ -15,10 +15,11 @@ import { HappyError } from '@/utils/errors/errors';
 import { setAccountIdentityShowOnProfile } from '@/sync/api/account/apiIdentity';
 import { storage } from '@/sync/domains/state/storageStore';
 import { TokenStorage, type AuthCredentials } from '@/auth/storage/tokenStorage';
-import { authProviderRegistry, normalizeProviderId } from '@/auth/providers/registry';
+import { authProviderRegistry, getAuthProvider, normalizeProviderId } from '@/auth/providers/registry';
 import { useOAuthProviderConfigured } from '@/hooks/server/useOAuthProviderConfigured';
 import { isSafeExternalAuthUrl } from '@/auth/providers/externalAuthUrl';
 import { Icon } from '@/components/ui/icons/Icon';
+import { useServerFeaturesRuntimeSnapshot } from '@/sync/domains/features/featureDecisionRuntime';
 
 type ProviderIdentityItemsProps = Readonly<{
     profile: Profile;
@@ -150,6 +151,7 @@ function ProviderIdentityItem(props: Readonly<{
     if (!identity) {
         return (
             <Item
+                testID={`account-identity-provider-${providerId}`}
                 title={providerDisplayName}
                 subtitle={
                     oauthSupported === false
@@ -168,6 +170,7 @@ function ProviderIdentityItem(props: Readonly<{
     return (
         <>
             <Item
+                testID={`account-identity-provider-${providerId}`}
                 title={providerDisplayName}
                 detail={identity.login ? `@${identity.login}` : identity.displayName ?? undefined}
                 subtitle={t('settingsAccount.tapToDisconnect')}
@@ -196,9 +199,30 @@ function ProviderIdentityItem(props: Readonly<{
 }
 
 export const ProviderIdentityItems = React.memo((props: ProviderIdentityItemsProps) => {
+    const serverFeatures = useServerFeaturesRuntimeSnapshot();
+    const providers = React.useMemo(() => {
+        const ids = new Set(authProviderRegistry.map((provider) => provider.id));
+        const additionalIds = [
+            ...(serverFeatures.status === 'ready'
+                ? Object.entries(serverFeatures.features.capabilities.oauth.providers)
+                    .filter(([, state]) => state.configured)
+                    .map(([id]) => id)
+                : []),
+            ...props.profile.linkedProviders.map((identity) => identity.id),
+        ];
+        for (const id of additionalIds) {
+            const normalized = normalizeProviderId(id);
+            if (normalized) ids.add(normalized);
+        }
+        return [...ids].flatMap((id) => {
+            const provider = getAuthProvider(id);
+            return provider ? [provider] : [];
+        });
+    }, [serverFeatures, props.profile.linkedProviders]);
+
     return (
         <>
-            {authProviderRegistry.map((provider) => (
+            {providers.map((provider) => (
                 <ProviderIdentityItem
                     key={provider.id}
                     provider={provider}
