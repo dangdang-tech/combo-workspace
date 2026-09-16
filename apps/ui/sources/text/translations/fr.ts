@@ -4268,13 +4268,13 @@ export const fr: TranslationStructure = {
         expConnectedServicesQuotas: 'Quotas des services connectés',
         expConnectedServicesQuotasSubtitle: 'Afficher les badges de quota et les jauges d’utilisation des services connectés',
         expChannelBridges: 'Passerelles de canaux',
-        expChannelBridgesSubtitle: 'Connecter Telegram et d’autres canaux de chat aux sessions Happier (expérimental)',
+        expChannelBridgesSubtitle: 'Connecter Telegram et d’autres canaux de chat aux sessions COMBO (expérimental)',
         expMemorySearch: 'Recherche mémoire',
         expMemorySearchSubtitle: 'Activer les écrans et réglages de recherche mémoire locale',
         expSessionsDirect: 'Sessions directes',
         expSessionsDirectSubtitle: 'Lister et ouvrir les sessions directes adossées aux providers dans la barre latérale',
         expSessionsFolders: 'Dossiers de sessions',
-        expSessionsFoldersSubtitle: 'Organiser les sessions de la barre latérale Happier en dossiers de workspace',
+        expSessionsFoldersSubtitle: 'Organiser les sessions de la barre latérale COMBO en dossiers de workspace',
         expPetsCompanion: 'Compagnons',
         expPetsCompanionSubtitle: 'Activer les surfaces du compagnon Blink et la sélection locale de compagnon',
             expFriends: 'Amis',
@@ -4313,7 +4313,7 @@ export const fr: TranslationStructure = {
         groupInactiveSessionsByProject: 'Regrouper les sessions inactives par projet',
         groupInactiveSessionsByProjectSubtitle: 'Organiser les chats inactifs sous chaque projet',
         environmentBadge: 'Badge d’environnement',
-        environmentBadgeSubtitle: 'Afficher un petit badge à côté du titre Happier indiquant l’environnement actuel de l’app',
+        environmentBadgeSubtitle: 'Afficher un petit badge à côté du titre COMBO indiquant l’environnement actuel de l’app',
         enhancedSessionWizard: 'Assistant de session amélioré',
         enhancedSessionWizardEnabled: 'Lanceur de session orienté profil actif',
         enhancedSessionWizardDisabled: 'Lanceur de session standard utilisé',
@@ -5857,7 +5857,7 @@ export const fr: TranslationStructure = {
     },
     sessionsList: {
         serverHeader: ({ server }: { server: string }) => `Serveur : ${server}`,
-        storagePersistedTab: 'Happier',
+        storagePersistedTab: 'COMBO',
         storageDirectTab: 'Direct',
         renameWorkspace: 'Renommer le workspace',
         renameWorkspacePromptTitle: 'Renommer le workspace',
@@ -6426,7 +6426,7 @@ export const fr: TranslationStructure = {
     },
 
     sidebar: {
-        sessionsTitle: 'Happier',
+        sessionsTitle: 'COMBO',
     },
 
     toolView: {
@@ -8142,9 +8142,9 @@ settingsSession: {
           },
           defaultStorage: {
               title: 'Type de session par défaut',
-              footer: 'Choisis si les nouvelles sessions démarrent en sessions Happier ou en sessions directes adossées au provider.',
+              footer: 'Choisis si les nouvelles sessions démarrent en sessions COMBO ou en sessions directes adossées au provider.',
               globalTitle: 'Valeur par défaut globale',
-              persistedSubtitle: 'Stocke les nouvelles sessions dans Happier et les synchronise entre tes appareils par défaut.',
+              persistedSubtitle: 'Stocke les nouvelles sessions dans COMBO et les synchronise entre tes appareils par défaut.',
               directSubtitle: 'Démarre des sessions directes liées à la machine quand le provider le permet.',
               globalSubtitle: ({ label }: { label: string }) => `Valeur par défaut globale : ${label}`,
               useGlobalDefault: 'Utiliser la valeur globale',
@@ -10180,7 +10180,7 @@ settingsSession: {
         },
     defaultStorage: {
       title: 'Type de session par défaut',
-      footer: 'Remplace le type de session Happier/direct par défaut du compte pour les nouvelles sessions quand ce profil est sélectionné.',
+      footer: 'Remplace le type de session COMBO/direct par défaut du compte pour les nouvelles sessions quand ce profil est sélectionné.',
       accountDefaultSubtitle: ({ label }: { label: string }) => `Défaut du compte : ${label}`,
       useAccountDefault: 'Utiliser le défaut du compte',
       currently: ({ label }: { label: string }) => `Actuellement : ${label}`,

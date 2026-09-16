@@ -4277,13 +4277,13 @@ export const en = {
         expConnectedServicesQuotas: 'Connected services quotas',
         expConnectedServicesQuotasSubtitle: 'Show quota badges and usage meters for connected services',
         expChannelBridges: 'Channel bridges',
-        expChannelBridgesSubtitle: 'Connect Telegram and other chat channels to Happier sessions (experimental)',
+        expChannelBridgesSubtitle: 'Connect Telegram and other chat channels to COMBO sessions (experimental)',
         expMemorySearch: 'Memory search',
         expMemorySearchSubtitle: 'Enable local memory search screens and settings',
         expSessionsDirect: 'Direct sessions',
         expSessionsDirectSubtitle: 'List and open provider-backed direct sessions in the sidebar',
         expSessionsFolders: 'Session folders',
-        expSessionsFoldersSubtitle: 'Organize Happier sidebar sessions into workspace folders',
+        expSessionsFoldersSubtitle: 'Organize COMBO sidebar sessions into workspace folders',
         expPetsCompanion: 'Pets',
         expPetsCompanionSubtitle: 'Enable Blink companion surfaces and local pet selection',
             expFriends: 'Friends',
@@ -4322,7 +4322,7 @@ export const en = {
         groupInactiveSessionsByProject: 'Group inactive sessions by project',
         groupInactiveSessionsByProjectSubtitle: 'Organize inactive chats under each project',
         environmentBadge: 'Environment badge',
-        environmentBadgeSubtitle: 'Show a small badge next to the Happier title indicating the current app environment',
+        environmentBadgeSubtitle: 'Show a small badge next to the COMBO title indicating the current app environment',
         enhancedSessionWizard: 'Enhanced Session Wizard',
         enhancedSessionWizardEnabled: 'Profile-first session launcher active',
         enhancedSessionWizardDisabled: 'Using standard session launcher',
@@ -5885,7 +5885,7 @@ export const en = {
     },
     sessionsList: {
         serverHeader: ({ server }: { server: string }) => `Server: ${server}`,
-        storagePersistedTab: 'Happier',
+        storagePersistedTab: 'COMBO',
         storageDirectTab: 'Direct',
         renameWorkspace: 'Rename workspace',
         renameWorkspacePromptTitle: 'Rename workspace',
@@ -6460,7 +6460,7 @@ export const en = {
     },
 
     sidebar: {
-        sessionsTitle: 'Happier',
+        sessionsTitle: 'COMBO',
     },
 
     toolView: {
@@ -8176,9 +8176,9 @@ settingsSession: {
           },
           defaultStorage: {
               title: 'Default session type',
-              footer: 'Choose whether new sessions start as Happier sessions or direct provider-backed sessions.',
+              footer: 'Choose whether new sessions start as COMBO sessions or direct provider-backed sessions.',
               globalTitle: 'Global default',
-              persistedSubtitle: 'Store new sessions in Happier and sync them across devices by default.',
+              persistedSubtitle: 'Store new sessions in COMBO and sync them across devices by default.',
               directSubtitle: 'Start machine-bound direct sessions when the provider supports it.',
               globalSubtitle: ({ label }: { label: string }) => `Global default: ${label}`,
               useGlobalDefault: 'Use global default',
@@ -10214,7 +10214,7 @@ settingsSession: {
         },
     defaultStorage: {
       title: 'Default session type',
-      footer: 'Overrides the account-level default Happier/direct session type for new sessions when this profile is selected.',
+      footer: 'Overrides the account-level default COMBO/direct session type for new sessions when this profile is selected.',
       accountDefaultSubtitle: ({ label }: { label: string }) => `Account default: ${label}`,
       useAccountDefault: 'Use account default',
       currently: ({ label }: { label: string }) => `Currently: ${label}`,

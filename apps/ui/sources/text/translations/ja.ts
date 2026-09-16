@@ -1507,7 +1507,7 @@ export const ja: TranslationStructure = {
     defaultStorage: {
       title: "既定のセッションタイプ",
       footer:
-        "このプロフィールを選択したとき、新しいセッションに対してアカウント既定の Happier/直接セッションタイプを上書きします。",
+        "このプロフィールを選択したとき、新しいセッションに対してアカウント既定の COMBO/直接セッションタイプを上書きします。",
       accountDefaultSubtitle: ({ label }: { label: string }) => `アカウント既定: ${label}`,
       useAccountDefault: "アカウント既定を使用",
       currently: ({ label }: { label: string }) => `現在: ${label}`,
@@ -4858,13 +4858,13 @@ localTailscale: {
     expConnectedServicesQuotasSubtitle:
       "連携サービスのクォータバッジと使用量メーターを表示",
     expChannelBridges: "チャンネルブリッジ",
-    expChannelBridgesSubtitle: "Telegram などのチャットチャンネルを Happier セッションに接続（実験的）",
+    expChannelBridgesSubtitle: "Telegram などのチャットチャンネルを COMBO セッションに接続（実験的）",
     expMemorySearch: "メモリ検索",
     expMemorySearchSubtitle: "ローカルメモリ検索の画面と設定を有効化",
     expSessionsDirect: "ダイレクトセッション",
     expSessionsDirectSubtitle: "サイドバーでプロバイダー直結のダイレクトセッションを一覧表示して開く",
     expSessionsFolders: "セッションフォルダー",
-    expSessionsFoldersSubtitle: "Happier サイドバーセッションをワークスペースのフォルダーで整理",
+    expSessionsFoldersSubtitle: "COMBO サイドバーセッションをワークスペースのフォルダーで整理",
     expPetsCompanion: "ペット",
     expPetsCompanionSubtitle: "Blink コンパニオン画面とローカルペット選択を有効化",
     expFriends: "友だち",
@@ -4909,7 +4909,7 @@ localTailscale: {
       "非アクティブなチャットをプロジェクトごとに整理",
     environmentBadge: "環境バッジ",
     environmentBadgeSubtitle:
-      "Happier のタイトル横に現在のアプリ環境を示す小さなバッジを表示",
+      "COMBO のタイトル横に現在のアプリ環境を示す小さなバッジを表示",
     enhancedSessionWizard: "拡張セッションウィザード",
     enhancedSessionWizardEnabled: "プロファイル優先セッションランチャーが有効",
     enhancedSessionWizardDisabled: "標準セッションランチャーを使用",
@@ -6494,7 +6494,7 @@ localTailscale: {
   },
   sessionsList: {
     serverHeader: ({ server }: { server: string }) => `サーバー: ${server}`,
-    storagePersistedTab: "Happier",
+    storagePersistedTab: "COMBO",
     storageDirectTab: "ダイレクト",
     renameWorkspace: 'ワークスペース名を変更',
     renameWorkspacePromptTitle: 'ワークスペース名を変更',
@@ -7108,7 +7108,7 @@ localTailscale: {
   },
 
   sidebar: {
-    sessionsTitle: "Happier",
+    sessionsTitle: "COMBO",
   },
 
   toolView: {
@@ -8858,9 +8858,9 @@ settingsSession: {
       },
           defaultStorage: {
       title: "既定のセッションタイプ",
-              footer: "新しいセッションを、Happier セッションとして開始するか、プロバイダー直結の直接セッションとして開始するかを選択します。",
+              footer: "新しいセッションを、COMBO セッションとして開始するか、プロバイダー直結の直接セッションとして開始するかを選択します。",
               globalTitle: "グローバル既定",
-              persistedSubtitle: "新しいセッションを Happier に保存し、既定でデバイス間で同期します。",
+              persistedSubtitle: "新しいセッションを COMBO に保存し、既定でデバイス間で同期します。",
               directSubtitle: "プロバイダーが対応している場合は、マシンに紐づく直接セッションを開始します。",
               globalSubtitle: ({ label }: { label: string }) => `グローバル既定: ${label}`,
               useGlobalDefault: "グローバル既定を使用",

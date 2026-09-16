@@ -4574,14 +4574,14 @@ export const es: TranslationStructure = {
       expConnectedServicesQuotasSubtitle:
         "Mostrar insignias de cuota y medidores de uso para servicios conectados",
       expChannelBridges: "Puentes de canal",
-      expChannelBridgesSubtitle: "Conecta Telegram y otros canales de chat a sesiones de Happier (experimental)",
+      expChannelBridgesSubtitle: "Conecta Telegram y otros canales de chat a sesiones de COMBO (experimental)",
       expMemorySearch: "Búsqueda de memoria",
       expMemorySearchSubtitle:
         "Habilitar pantallas y ajustes de búsqueda de memoria local",
     expSessionsDirect: "Sesiones directas",
     expSessionsDirectSubtitle: "Muestra y abre en la barra lateral sesiones directas respaldadas por el proveedor",
     expSessionsFolders: "Carpetas de sesiones",
-    expSessionsFoldersSubtitle: "Organiza las sesiones Happier de la barra lateral en carpetas de espacio de trabajo",
+    expSessionsFoldersSubtitle: "Organiza las sesiones COMBO de la barra lateral en carpetas de espacio de trabajo",
     expPetsCompanion: "Mascotas",
     expPetsCompanionSubtitle: "Activa las superficies de compañía de Blink y la selección local de mascotas",
     expFriends: "Amigos",
@@ -4627,7 +4627,7 @@ export const es: TranslationStructure = {
       "Organiza los chats inactivos por proyecto",
       environmentBadge: "Insignia de entorno",
       environmentBadgeSubtitle:
-        "Mostrar una pequeña insignia junto al título Happier indicando el entorno actual de la app",
+        "Mostrar una pequeña insignia junto al título COMBO indicando el entorno actual de la app",
     enhancedSessionWizard: "Asistente de sesión mejorado",
     enhancedSessionWizardEnabled: "Lanzador de sesión con perfil activo",
     enhancedSessionWizardDisabled: "Usando el lanzador de sesión estándar",
@@ -6231,7 +6231,7 @@ export const es: TranslationStructure = {
   },
   sessionsList: {
     serverHeader: ({ server }: { server: string }) => `Servidor: ${server}`,
-    storagePersistedTab: "Happier",
+    storagePersistedTab: "COMBO",
     storageDirectTab: "Directas",
     renameWorkspace: 'Renombrar espacio de trabajo',
     renameWorkspacePromptTitle: 'Renombrar espacio de trabajo',
@@ -6839,7 +6839,7 @@ export const es: TranslationStructure = {
   },
 
   sidebar: {
-    sessionsTitle: "Happier",
+    sessionsTitle: "COMBO",
   },
 
   toolView: {
@@ -8661,9 +8661,9 @@ settingsSession: {
       },
           defaultStorage: {
               title: 'Tipo de sesión predeterminado',
-              footer: 'Elige si las nuevas sesiones comienzan como sesiones de Happier o como sesiones directas respaldadas por el proveedor.',
+              footer: 'Elige si las nuevas sesiones comienzan como sesiones de COMBO o como sesiones directas respaldadas por el proveedor.',
               globalTitle: 'Predeterminado global',
-              persistedSubtitle: 'Guarda las nuevas sesiones en Happier y sincronízalas entre dispositivos de forma predeterminada.',
+              persistedSubtitle: 'Guarda las nuevas sesiones en COMBO y sincronízalas entre dispositivos de forma predeterminada.',
               directSubtitle: 'Inicia sesiones directas vinculadas a la máquina cuando el proveedor lo admita.',
               globalSubtitle: ({ label }: { label: string }) => `Predeterminado global: ${label}`,
               useGlobalDefault: 'Usar el predeterminado global',
@@ -10886,7 +10886,7 @@ settingsSession: {
     },
     defaultStorage: {
       title: 'Tipo de sesión predeterminado',
-      footer: 'Anula el tipo de sesión predeterminado Happier/directo de la cuenta para las nuevas sesiones cuando se selecciona este perfil.',
+      footer: 'Anula el tipo de sesión predeterminado COMBO/directo de la cuenta para las nuevas sesiones cuando se selecciona este perfil.',
       accountDefaultSubtitle: ({ label }: { label: string }) => `Predeterminado de la cuenta: ${label}`,
       useAccountDefault: 'Usar el valor predeterminado de la cuenta',
       currently: ({ label }: { label: string }) => `Actualmente: ${label}`,

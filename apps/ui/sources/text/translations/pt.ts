@@ -4698,14 +4698,14 @@ export const pt: TranslationStructure = {
       expConnectedServicesQuotasSubtitle:
         "Mostrar badges de cota e medidores de uso para serviços conectados",
       expChannelBridges: "Pontes de canal",
-      expChannelBridgesSubtitle: "Conecte Telegram e outros canais de chat a sessões do Happier (experimental)",
+      expChannelBridgesSubtitle: "Conecte Telegram e outros canais de chat a sessões do COMBO (experimental)",
       expMemorySearch: "Busca de memória",
       expMemorySearchSubtitle:
         "Ativar telas e configurações de busca de memória local",
     expSessionsDirect: "Sessões diretas",
     expSessionsDirectSubtitle: "Liste e abra na barra lateral sessões diretas apoiadas pelo provedor",
     expSessionsFolders: "Pastas de sessões",
-    expSessionsFoldersSubtitle: "Organize sessões Happier da barra lateral em pastas de workspace",
+    expSessionsFoldersSubtitle: "Organize sessões COMBO da barra lateral em pastas de workspace",
     expPetsCompanion: "Mascotes",
     expPetsCompanionSubtitle: "Ativa superfícies de companheiro Blink e seleção local de mascotes",
     expFriends: "Amigos",
@@ -4751,7 +4751,7 @@ export const pt: TranslationStructure = {
       "Organize os chats inativos por projeto",
       environmentBadge: "Badge de ambiente",
       environmentBadgeSubtitle:
-        "Mostrar um pequeno badge ao lado do título Happier indicando o ambiente atual do app",
+        "Mostrar um pequeno badge ao lado do título COMBO indicando o ambiente atual do app",
     enhancedSessionWizard: "Assistente de sessão aprimorado",
     enhancedSessionWizardEnabled: "Lançador de sessão com perfil ativo",
     enhancedSessionWizardDisabled: "Usando o lançador de sessão padrão",
@@ -6349,7 +6349,7 @@ export const pt: TranslationStructure = {
   },
   sessionsList: {
     serverHeader: ({ server }: { server: string }) => `Servidor: ${server}`,
-    storagePersistedTab: "Happier",
+    storagePersistedTab: "COMBO",
     storageDirectTab: "Diretas",
     renameWorkspace: 'Renomear área de trabalho',
     renameWorkspacePromptTitle: 'Renomear área de trabalho',
@@ -6969,7 +6969,7 @@ export const pt: TranslationStructure = {
   },
 
   sidebar: {
-    sessionsTitle: "Happier",
+    sessionsTitle: "COMBO",
   },
 
   toolView: {
@@ -8737,9 +8737,9 @@ settingsSession: {
       },
           defaultStorage: {
               title: 'Tipo de sessão padrão',
-              footer: 'Escolha se novas sessões começam como sessões do Happier ou sessões diretas apoiadas pelo provedor.',
+              footer: 'Escolha se novas sessões começam como sessões do COMBO ou sessões diretas apoiadas pelo provedor.',
               globalTitle: 'Padrão global',
-              persistedSubtitle: 'Armazene novas sessões no Happier e sincronize-as entre dispositivos por padrão.',
+              persistedSubtitle: 'Armazene novas sessões no COMBO e sincronize-as entre dispositivos por padrão.',
               directSubtitle: 'Inicie sessões diretas vinculadas à máquina quando o provedor oferecer suporte.',
               globalSubtitle: ({ label }: { label: string }) => `Padrão global: ${label}`,
               useGlobalDefault: 'Usar padrão global',
@@ -10930,7 +10930,7 @@ settingsSession: {
     },
     defaultStorage: {
       title: 'Tipo de sessão padrão',
-      footer: 'Substitui o tipo de sessão padrão Happier/direto no nível da conta para novas sessões quando este perfil estiver selecionado.',
+      footer: 'Substitui o tipo de sessão padrão COMBO/direto no nível da conta para novas sessões quando este perfil estiver selecionado.',
       accountDefaultSubtitle: ({ label }: { label: string }) => `Padrão da conta: ${label}`,
       useAccountDefault: 'Usar padrão da conta',
       currently: ({ label }: { label: string }) => `Atual: ${label}`,

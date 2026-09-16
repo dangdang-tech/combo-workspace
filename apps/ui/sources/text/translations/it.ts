@@ -1524,7 +1524,7 @@ export const it: TranslationStructure = {
     defaultStorage: {
       title: "Tipo di sessione predefinito",
       footer:
-        "Sovrascrive il tipo di sessione predefinito Happier/diretto a livello account per le nuove sessioni quando questo profilo è selezionato.",
+        "Sovrascrive il tipo di sessione predefinito COMBO/diretto a livello account per le nuove sessioni quando questo profilo è selezionato.",
       accountDefaultSubtitle: ({ label }: { label: string }) =>
         `Predefinito account: ${label}`,
       useAccountDefault: "Usa predefinito account",
@@ -4920,14 +4920,14 @@ export const it: TranslationStructure = {
       expConnectedServicesQuotasSubtitle:
         "Mostra badge quota e indicatori di utilizzo per i servizi connessi",
       expChannelBridges: "Bridge di canale",
-      expChannelBridgesSubtitle: "Collega Telegram e altri canali di chat alle sessioni Happier (sperimentale)",
+      expChannelBridgesSubtitle: "Collega Telegram e altri canali di chat alle sessioni COMBO (sperimentale)",
       expMemorySearch: "Ricerca memoria",
       expMemorySearchSubtitle:
         "Abilita schermate e impostazioni di ricerca memoria locale",
     expSessionsDirect: "Sessioni dirette",
     expSessionsDirectSubtitle: "Mostra e apri nella barra laterale le sessioni dirette basate sul provider",
     expSessionsFolders: "Cartelle sessioni",
-    expSessionsFoldersSubtitle: "Organizza le sessioni Happier della barra laterale in cartelle workspace",
+    expSessionsFoldersSubtitle: "Organizza le sessioni COMBO della barra laterale in cartelle workspace",
     expPetsCompanion: "Mascotte",
     expPetsCompanionSubtitle: "Attiva le superfici compagno di Blink e la selezione locale delle mascotte",
     expFriends: "Amici",
@@ -4973,7 +4973,7 @@ export const it: TranslationStructure = {
       "Organizza le chat inattive per progetto",
       environmentBadge: "Badge ambiente",
       environmentBadgeSubtitle:
-        "Mostra un piccolo badge accanto al titolo Happier che indica l'ambiente corrente dell'app",
+        "Mostra un piccolo badge accanto al titolo COMBO che indica l'ambiente corrente dell'app",
     enhancedSessionWizard: "Wizard sessione avanzato",
     enhancedSessionWizardEnabled: "Avvio sessioni con profili attivo",
     enhancedSessionWizardDisabled: "Usando avvio sessioni standard",
@@ -6574,7 +6574,7 @@ export const it: TranslationStructure = {
   },
   sessionsList: {
     serverHeader: ({ server }: { server: string }) => `Server: ${server}`,
-    storagePersistedTab: "Happier",
+    storagePersistedTab: "COMBO",
     storageDirectTab: "Dirette",
     renameWorkspace: 'Rinomina area di lavoro',
     renameWorkspacePromptTitle: 'Rinomina area di lavoro',
@@ -7180,7 +7180,7 @@ export const it: TranslationStructure = {
   },
 
   sidebar: {
-    sessionsTitle: "Happier",
+    sessionsTitle: "COMBO",
   },
 
   toolView: {
@@ -8943,9 +8943,9 @@ settingsSession: {
       },
           defaultStorage: {
               title: "Tipo di sessione predefinito",
-              footer: "Scegli se le nuove sessioni iniziano come sessioni Happier o come sessioni dirette supportate dal provider.",
+              footer: "Scegli se le nuove sessioni iniziano come sessioni COMBO o come sessioni dirette supportate dal provider.",
               globalTitle: "Predefinito globale",
-              persistedSubtitle: "Salva le nuove sessioni in Happier e sincronizzale tra i dispositivi per impostazione predefinita.",
+              persistedSubtitle: "Salva le nuove sessioni in COMBO e sincronizzale tra i dispositivi per impostazione predefinita.",
               directSubtitle: "Avvia sessioni dirette legate alla macchina quando il provider lo supporta.",
               globalSubtitle: ({ label }: { label: string }) => `Predefinito globale: ${label}`,
               useGlobalDefault: "Usa predefinito globale",

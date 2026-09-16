@@ -4531,13 +4531,13 @@ export const ru: TranslationStructure = {
     expConnectedServicesQuotas: "Квоты подключённых сервисов",
     expConnectedServicesQuotasSubtitle: "Показывать бейджи квот и счётчики использования подключённых сервисов",
     expChannelBridges: "Мосты каналов",
-    expChannelBridgesSubtitle: "Подключайте Telegram и другие чаты к сессиям Happier (экспериментально)",
+    expChannelBridgesSubtitle: "Подключайте Telegram и другие чаты к сессиям COMBO (экспериментально)",
     expMemorySearch: "Поиск по памяти",
     expMemorySearchSubtitle: "Включить экраны и настройки локального поиска по памяти",
     expSessionsDirect: "Прямые сессии",
     expSessionsDirectSubtitle: "Показывать и открывать в боковой панели прямые сессии провайдера",
     expSessionsFolders: "Папки сессий",
-    expSessionsFoldersSubtitle: "Организуйте сеансы Happier на боковой панели по папкам рабочих пространств",
+    expSessionsFoldersSubtitle: "Организуйте сеансы COMBO на боковой панели по папкам рабочих пространств",
     expPetsCompanion: "Питомцы",
     expPetsCompanionSubtitle: "Включить поверхности компаньона Blink и локальный выбор питомцев",
     expFriends: "Друзья",
@@ -4584,7 +4584,7 @@ export const ru: TranslationStructure = {
       "Организовать неактивные чаты по проектам",
     environmentBadge: "Бейдж окружения",
     environmentBadgeSubtitle:
-      "Показывать маленький бейдж рядом с названием Happier с текущим окружением приложения",
+      "Показывать маленький бейдж рядом с названием COMBO с текущим окружением приложения",
     enhancedSessionWizard: "Улучшенный мастер сессий",
     enhancedSessionWizardEnabled: "Лаунчер с профилем активен",
     enhancedSessionWizardDisabled: "Используется стандартный лаунчер",
@@ -5209,7 +5209,7 @@ export const ru: TranslationStructure = {
   },
   sessionsList: {
     serverHeader: ({ server }: { server: string }) => `Сервер: ${server}`,
-    storagePersistedTab: "Happier",
+    storagePersistedTab: "COMBO",
     storageDirectTab: "Прямые",
     renameWorkspace: 'Переименовать рабочую область',
     renameWorkspacePromptTitle: 'Переименовать рабочую область',
@@ -6840,7 +6840,7 @@ export const ru: TranslationStructure = {
   },
 
   sidebar: {
-    sessionsTitle: "Happier",
+    sessionsTitle: "COMBO",
   },
 
   toolView: {
@@ -8600,9 +8600,9 @@ settingsSession: {
       },
           defaultStorage: {
               title: "Тип сеанса по умолчанию",
-              footer: "Выберите, будут ли новые сеансы начинаться как сеансы Happier или как прямые сеансы, поддерживаемые провайдером.",
+              footer: "Выберите, будут ли новые сеансы начинаться как сеансы COMBO или как прямые сеансы, поддерживаемые провайдером.",
               globalTitle: "Глобальное значение по умолчанию",
-              persistedSubtitle: "Сохраняйте новые сеансы в Happier и синхронизируйте их между устройствами по умолчанию.",
+              persistedSubtitle: "Сохраняйте новые сеансы в COMBO и синхронизируйте их между устройствами по умолчанию.",
               directSubtitle: "Запускайте прямые сеансы с привязкой к компьютеру, если поставщик поддерживает это.",
               globalSubtitle: ({ label }: { label: string }) => `Global default: ${label}`,
               useGlobalDefault: "Использовать глобальное значение по умолчанию",
@@ -10796,7 +10796,7 @@ settingsSession: {
     },
     defaultStorage: {
       title: "Тип сеанса по умолчанию",
-      footer: "Переопределяет тип сеанса Happier/прямого сеанса по умолчанию на уровне учетной записи для новых сеансов, когда выбран этот профиль.",
+      footer: "Переопределяет тип сеанса COMBO/прямого сеанса по умолчанию на уровне учетной записи для новых сеансов, когда выбран этот профиль.",
       accountDefaultSubtitle: ({ label }: { label: string }) => `Account default: ${label}`,
       useAccountDefault: "Использовать учетную запись по умолчанию",
       currently: ({ label }: { label: string }) => `Currently: ${label}`,

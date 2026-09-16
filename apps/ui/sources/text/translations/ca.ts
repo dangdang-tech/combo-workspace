@@ -4331,13 +4331,13 @@ export const ca: TranslationStructure = {
         expConnectedServicesQuotas: 'Quotes de serveis connectats',
         expConnectedServicesQuotasSubtitle: 'Mostra insígnies de quota i mesuradors d’ús per als serveis connectats',
         expChannelBridges: 'Ponts de canals',
-        expChannelBridgesSubtitle: 'Connecta Telegram i altres canals de xat a sessions de Happier (experimental)',
+        expChannelBridgesSubtitle: 'Connecta Telegram i altres canals de xat a sessions de COMBO (experimental)',
         expMemorySearch: 'Cerca de memòria',
         expMemorySearchSubtitle: 'Activa pantalles i ajustos de cerca de memòria local',
         expSessionsDirect: 'Sessions directes',
         expSessionsDirectSubtitle: 'Mostra i obre sessions directes del proveïdor a la barra lateral',
         expSessionsFolders: 'Carpetes de sessions',
-        expSessionsFoldersSubtitle: 'Organitza les sessions Happier de la barra lateral en carpetes d’espai de treball',
+        expSessionsFoldersSubtitle: 'Organitza les sessions COMBO de la barra lateral en carpetes d’espai de treball',
         expPetsCompanion: 'Mascotes',
         expPetsCompanionSubtitle: 'Activa les superfícies de companyia de Blink i la selecció local de mascotes',
         expFriends: 'Amics',
@@ -4376,7 +4376,7 @@ export const ca: TranslationStructure = {
         groupInactiveSessionsByProject: 'Agrupa les sessions inactives per projecte',
         groupInactiveSessionsByProjectSubtitle: 'Organitza els xats inactius per projecte',
         environmentBadge: 'Insígnia d\'entorn',
-        environmentBadgeSubtitle: 'Mostra una petita insígnia al costat del títol Happier indicant l\'entorn actual de l\'app',
+        environmentBadgeSubtitle: 'Mostra una petita insígnia al costat del títol COMBO indicant l\'entorn actual de l\'app',
         enhancedSessionWizard: 'Assistent de sessió millorat',
         enhancedSessionWizardEnabled: 'Llançador de sessió amb perfil actiu',
         enhancedSessionWizardDisabled: 'Usant el llançador de sessió estàndard',
@@ -5871,7 +5871,7 @@ deps: {
     },
     sessionsList: {
         serverHeader: ({ server }: { server: string }) => `Servidor: ${server}`,
-        storagePersistedTab: 'Happier',
+        storagePersistedTab: 'COMBO',
         storageDirectTab: 'Directes',
         renameWorkspace: "Reanomena l'espai de treball",
         renameWorkspacePromptTitle: "Reanomena l'espai de treball",
@@ -6438,7 +6438,7 @@ deps: {
     },
 
     sidebar: {
-        sessionsTitle: 'Happier',
+        sessionsTitle: 'COMBO',
     },
 
     toolView: {
@@ -8146,9 +8146,9 @@ settingsSession: {
           },
           defaultStorage: {
               title: 'Tipus de sessió per defecte',
-              footer: 'Tria si les sessions noves comencen com a sessions Happier o com a sessions directes del proveïdor.',
+              footer: 'Tria si les sessions noves comencen com a sessions COMBO o com a sessions directes del proveïdor.',
               globalTitle: 'Predeterminat global',
-              persistedSubtitle: 'Desa les sessions noves a Happier i sincronitza-les entre dispositius per defecte.',
+              persistedSubtitle: 'Desa les sessions noves a COMBO i sincronitza-les entre dispositius per defecte.',
               directSubtitle: 'Inicia sessions directes lligades a la màquina quan el proveïdor ho admeti.',
               globalSubtitle: ({ label }: { label: string }) => `Predeterminat global: ${label}`,
               useGlobalDefault: 'Fes servir el predeterminat global',
@@ -10045,7 +10045,7 @@ settingsSession: {
         },
     defaultStorage: {
       title: 'Tipus de sessió per defecte',
-      footer: 'Sobreescriu el tipus de sessió per defecte Happier/directe del compte per a sessions noves quan se selecciona aquest perfil.',
+      footer: 'Sobreescriu el tipus de sessió per defecte COMBO/directe del compte per a sessions noves quan se selecciona aquest perfil.',
       accountDefaultSubtitle: ({ label }: { label: string }) => `Predeterminat del compte: ${label}`,
       useAccountDefault: 'Fes servir el predeterminat del compte',
       currently: ({ label }: { label: string }) => `Actualment: ${label}`,

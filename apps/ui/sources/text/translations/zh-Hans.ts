@@ -4441,13 +4441,13 @@ export const zhHans: TranslationStructure = {
     expConnectedServicesQuotas: "已连接服务配额",
     expConnectedServicesQuotasSubtitle: "显示已连接服务的配额徽标与用量仪表",
     expChannelBridges: "频道桥接",
-    expChannelBridgesSubtitle: "将 Telegram 等聊天渠道连接到 Happier 会话（实验性）",
+    expChannelBridgesSubtitle: "将 Telegram 等聊天渠道连接到 COMBO 会话（实验性）",
     expMemorySearch: "记忆搜索",
     expMemorySearchSubtitle: "启用本地记忆搜索页面与设置",
     expSessionsDirect: "直连会话",
     expSessionsDirectSubtitle: "在侧边栏中列出并打开由提供方支撑的直连会话",
     expSessionsFolders: "会话文件夹",
-    expSessionsFoldersSubtitle: "用工作区文件夹整理 Happier 侧边栏会话",
+    expSessionsFoldersSubtitle: "用工作区文件夹整理 COMBO 侧边栏会话",
     expPetsCompanion: "宠物",
     expPetsCompanionSubtitle: "启用 Blink 伙伴界面和本地宠物选择",
     expFriends: "好友",
@@ -4488,7 +4488,7 @@ export const zhHans: TranslationStructure = {
     groupInactiveSessionsByProjectSubtitle: "按项目整理非活跃聊天",
     environmentBadge: "环境徽标",
     environmentBadgeSubtitle:
-      "在 Happier 标题旁显示小徽标，指示当前应用环境",
+      "在 COMBO 标题旁显示小徽标，指示当前应用环境",
     enhancedSessionWizard: "增强会话向导",
     enhancedSessionWizardEnabled: "配置文件优先启动器已激活",
     enhancedSessionWizardDisabled: "使用标准会话启动器",
@@ -6028,7 +6028,7 @@ export const zhHans: TranslationStructure = {
   },
   sessionsList: {
     serverHeader: ({ server }: { server: string }) => `服务器：${server}`,
-    storagePersistedTab: "Happier",
+    storagePersistedTab: "COMBO",
     storageDirectTab: "直连",
     renameWorkspace: '重命名工作区',
     renameWorkspacePromptTitle: '重命名工作区',
@@ -6629,7 +6629,7 @@ export const zhHans: TranslationStructure = {
   },
 
   sidebar: {
-    sessionsTitle: "Happier",
+    sessionsTitle: "COMBO",
   },
 
   toolView: {
@@ -8344,9 +8344,9 @@ settingsSession: {
     },
           defaultStorage: {
               title: '默认会话类型',
-              footer: '选择新会话默认是作为 Happier 会话启动，还是作为直接由提供方支持的会话启动。',
+              footer: '选择新会话默认是作为 COMBO 会话启动，还是作为直接由提供方支持的会话启动。',
               globalTitle: '全局默认',
-              persistedSubtitle: '默认将新会话存储在 Happier 中，并在设备之间同步。',
+              persistedSubtitle: '默认将新会话存储在 COMBO 中，并在设备之间同步。',
               directSubtitle: '在提供方支持时启动绑定设备的直连会话。',
               globalSubtitle: ({ label }: { label: string }) => `全局默认：${label}`,
               useGlobalDefault: '使用全局默认值',
@@ -10416,7 +10416,7 @@ settingsSession: {
     },
     defaultStorage: {
       title: "默认会话类型",
-      footer: "当选择此配置文件时，为新会话覆盖账号级默认的 Happier/直连会话类型。",
+      footer: "当选择此配置文件时，为新会话覆盖账号级默认的 COMBO/直连会话类型。",
       accountDefaultSubtitle: ({ label }: { label: string }) => `账号默认：${label}`,
       useAccountDefault: "使用账号默认值",
       currently: ({ label }: { label: string }) => `当前：${label}`,

@@ -4115,13 +4115,13 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         expConnectedServicesQuotas: '已連結服務配額',
         expConnectedServicesQuotasSubtitle: '顯示已連結服務的配額徽章與用量儀表',
         expChannelBridges: '頻道橋接',
-        expChannelBridgesSubtitle: '將 Telegram 等聊天頻道連接到 Happier 工作階段（實驗性）',
+        expChannelBridgesSubtitle: '將 Telegram 等聊天頻道連接到 COMBO 工作階段（實驗性）',
         expMemorySearch: '記憶搜尋',
         expMemorySearchSubtitle: '啟用本機記憶搜尋頁面與設定',
         expSessionsDirect: '直接工作階段',
         expSessionsDirectSubtitle: '在側邊欄列出並開啟由供應商支援的直接工作階段',
         expSessionsFolders: '工作階段資料夾',
-        expSessionsFoldersSubtitle: '使用工作區資料夾整理 Happier 側邊欄工作階段',
+        expSessionsFoldersSubtitle: '使用工作區資料夾整理 COMBO 側邊欄工作階段',
         expPetsCompanion: '寵物',
         expPetsCompanionSubtitle: '啟用 Blink 夥伴介面與本機寵物選擇',
         expScmOperations: '版本控制操作',
@@ -5248,7 +5248,7 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
     },
     sessionsList: {
         serverHeader: ({ server }: { server: string }) => `伺服器：${server}`,
-        storagePersistedTab: 'Happier',
+        storagePersistedTab: 'COMBO',
         storageDirectTab: '直接',
         renameWorkspace: '重新命名工作區',
         renameWorkspacePromptTitle: '重新命名工作區',
@@ -5686,7 +5686,7 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
     },
 
     sidebar: {
-        sessionsTitle: 'Happier',
+        sessionsTitle: 'COMBO',
     },
 
     toolView: {
@@ -7245,9 +7245,9 @@ settingsSession: {
           },
           defaultStorage: {
               title: '預設工作階段類型',
-              footer: '選擇新工作階段要以 Happier 工作階段，或直接由提供者支援的工作階段啟動。',
+              footer: '選擇新工作階段要以 COMBO 工作階段，或直接由提供者支援的工作階段啟動。',
               globalTitle: '全域預設',
-              persistedSubtitle: '預設將新工作階段儲存在 Happier 中，並在裝置間同步。',
+              persistedSubtitle: '預設將新工作階段儲存在 COMBO 中，並在裝置間同步。',
               directSubtitle: '在提供者支援時，啟動綁定機器的直接工作階段。',
               globalSubtitle: ({ label }: { label: string }) => `全域預設：${label}`,
               useGlobalDefault: '使用全域預設',

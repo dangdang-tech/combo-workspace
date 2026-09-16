@@ -4268,13 +4268,13 @@ export const de: TranslationStructure = {
         expConnectedServicesQuotas: 'Kontingente verbundener Dienste',
         expConnectedServicesQuotasSubtitle: 'Kontingent-Badges und Nutzungsanzeigen für verbundene Dienste zeigen',
         expChannelBridges: 'Channel-Bridges',
-        expChannelBridgesSubtitle: 'Telegram und andere Chat-Kanäle mit Happier-Sessions verbinden (experimentell)',
+        expChannelBridgesSubtitle: 'Telegram und andere Chat-Kanäle mit COMBO-Sessions verbinden (experimentell)',
         expMemorySearch: 'Memory-Suche',
         expMemorySearchSubtitle: 'Bildschirme und Einstellungen für die lokale Memory-Suche aktivieren',
         expSessionsDirect: 'Direkte Sessions',
         expSessionsDirectSubtitle: 'Provider-eigene direkte Sessions in der Seitenleiste auflisten und öffnen',
         expSessionsFolders: 'Session-Ordner',
-        expSessionsFoldersSubtitle: 'Sessions in der Happier-Seitenleiste in Workspace-Ordner einsortieren',
+        expSessionsFoldersSubtitle: 'Sessions in der COMBO-Seitenleiste in Workspace-Ordner einsortieren',
         expPetsCompanion: 'Haustiere',
         expPetsCompanionSubtitle: 'Blink-Begleiteroberflächen und lokale Pet-Auswahl aktivieren',
             expFriends: 'Freunde',
@@ -4313,7 +4313,7 @@ export const de: TranslationStructure = {
         groupInactiveSessionsByProject: 'Inaktive Sessions nach Projekt gruppieren',
         groupInactiveSessionsByProjectSubtitle: 'Inaktive Chats unter ihrem jeweiligen Projekt einsortieren',
         environmentBadge: 'Umgebungs-Badge',
-        environmentBadgeSubtitle: 'Ein kleines Badge neben dem Happier-Titel zeigen, das die aktuelle App-Umgebung angibt',
+        environmentBadgeSubtitle: 'Ein kleines Badge neben dem COMBO-Titel zeigen, das die aktuelle App-Umgebung angibt',
         enhancedSessionWizard: 'Erweiterter Session-Assistent',
         enhancedSessionWizardEnabled: 'Profil-orientierter Session-Start aktiv',
         enhancedSessionWizardDisabled: 'Standard-Session-Start wird genutzt',
@@ -5870,7 +5870,7 @@ export const de: TranslationStructure = {
     },
     sessionsList: {
         serverHeader: ({ server }: { server: string }) => `Server: ${server}`,
-        storagePersistedTab: 'Happier',
+        storagePersistedTab: 'COMBO',
         storageDirectTab: 'Direkt',
         renameWorkspace: 'Workspace umbenennen',
         renameWorkspacePromptTitle: 'Workspace umbenennen',
@@ -6439,7 +6439,7 @@ export const de: TranslationStructure = {
     },
 
     sidebar: {
-        sessionsTitle: 'Happier',
+        sessionsTitle: 'COMBO',
     },
 
     toolView: {
@@ -8155,9 +8155,9 @@ settingsSession: {
           },
           defaultStorage: {
               title: 'Standard-Session-Typ',
-              footer: 'Lege fest, ob neue Sessions als Happier-Sessions oder als direkte, provider-eigene Sessions starten.',
+              footer: 'Lege fest, ob neue Sessions als COMBO-Sessions oder als direkte, provider-eigene Sessions starten.',
               globalTitle: 'Globaler Standard',
-              persistedSubtitle: 'Neue Sessions standardmäßig in Happier speichern und über deine Geräte synchronisieren.',
+              persistedSubtitle: 'Neue Sessions standardmäßig in COMBO speichern und über deine Geräte synchronisieren.',
               directSubtitle: 'Rechnergebundene direkte Sessions starten, wenn der Provider das unterstützt.',
               globalSubtitle: ({ label }: { label: string }) => `Globaler Standard: ${label}`,
               useGlobalDefault: 'Globalen Standard nutzen',
@@ -10193,7 +10193,7 @@ settingsSession: {
         },
     defaultStorage: {
       title: 'Standard-Session-Typ',
-      footer: 'Überschreibt den kontoweiten Standard für Happier- bzw. direkte Sessions, wenn dieses Profil gewählt ist.',
+      footer: 'Überschreibt den kontoweiten Standard für COMBO- bzw. direkte Sessions, wenn dieses Profil gewählt ist.',
       accountDefaultSubtitle: ({ label }: { label: string }) => `Konto-Standard: ${label}`,
       useAccountDefault: 'Konto-Standard nutzen',
       currently: ({ label }: { label: string }) => `Aktuell: ${label}`,
