@@ -150,8 +150,10 @@ export const EmbeddedTerminalPaneFrame = React.memo(function EmbeddedTerminalPan
             ) : null}
 
             <View testID={testId('surface')} style={terminalSurfaceStyle}>
-                {props.surface}
-                {props.footer}
+                <View style={styles.terminalContent}>
+                    {props.surface}
+                    {props.footer}
+                </View>
                 {shouldShowOverlay ? (
                     <View testID={testId('overlay')} style={styles.overlay} pointerEvents="auto">
                         <Text style={styles.overlayTitle}>{overlayTitle}</Text>

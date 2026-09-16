@@ -68,6 +68,14 @@ export const embeddedTerminalPaneStyles = StyleSheet.create((theme) => ({
         minWidth: 0,
         padding: 8,
     },
+    terminalContent: {
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        position: 'relative',
+        // Keep xterm's canvas and input layers below the sibling recovery overlay.
+        zIndex: 0,
+    },
     quickKeysScroll: {
         marginTop: 8,
         flexGrow: 0,
@@ -93,6 +101,7 @@ export const embeddedTerminalPaneStyles = StyleSheet.create((theme) => ({
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,
+        zIndex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 16,
