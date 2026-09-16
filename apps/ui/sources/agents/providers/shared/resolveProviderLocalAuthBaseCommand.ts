@@ -2,7 +2,7 @@ function needsShellQuoting(value: string): boolean {
     return /[\s"'`$&|;<>()[\]{}*?!\\]/.test(value);
 }
 
-function quoteShellArgument(value: string, platform: NodeJS.Platform | string | null | undefined): string {
+export function quoteShellArgument(value: string, platform: NodeJS.Platform | string | null | undefined): string {
     if (platform === 'win32') {
         return `"${value.replaceAll('"', '""')}"`;
     }

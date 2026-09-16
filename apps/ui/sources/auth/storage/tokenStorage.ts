@@ -304,6 +304,8 @@ export interface PendingExternalAuth {
     serverId?: string;
     serverUrl?: string;
     returnTo?: string;
+    /** The server may have committed this key; retain it until credentials are durable. */
+    finalizeAttempted?: boolean;
 }
 
 export interface PendingExternalConnect {
@@ -370,6 +372,7 @@ function isPendingExternalAuthRecord(value: unknown): value is PendingExternalAu
     if (maybe.serverId !== undefined && !isNonEmptyString(maybe.serverId)) return false;
     if (maybe.serverUrl !== undefined && !isNonEmptyString(maybe.serverUrl)) return false;
     if (maybe.returnTo !== undefined && normalizeInternalReturnTo(maybe.returnTo) === null) return false;
+    if (maybe.finalizeAttempted !== undefined && typeof maybe.finalizeAttempted !== 'boolean') return false;
     if (maybe.intent === undefined) return true;
     return maybe.intent === 'signup' || maybe.intent === 'reset';
 }

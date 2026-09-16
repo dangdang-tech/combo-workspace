@@ -14,6 +14,10 @@ import {
     setStoredCredentialsState,
     setActiveServerSnapshot,
     upsertAndActivateServerSpy,
+    setPendingExternalAuthMock,
+    getPendingExternalAuthState,
+    loginWithCredentialsSpy,
+    setPendingExternalAuthServerMismatch,
 } from './test/oauthReturnHarness';
 import { renderScreen } from '@/dev/testkit';
 import { t } from '@/text';
@@ -60,22 +64,147 @@ afterEach(() => {
 });
 
 describe('/oauth/[provider] (auth flow)', () => {
-    it('shows a finalize transport error and returns to login with the invitation intact', async () => {
+    it('preserves a committed account key through an old consumed callback before a fresh OAuth retry', async () => {
+        const returnTo = '/invite/reopen?server=https%3A%2F%2Frelay.example';
+        setPendingExternalAuthState({ provider: 'github', secret: OAUTH_SECRET, returnTo });
+        localSearchParamsMock.mockReturnValue({ provider: 'github', flow: 'auth', pending: 'p1' });
+        let committedPublicKey: string | null = null;
+        const pendings: string[] = [];
+        stubFetch(async (url, init) => {
+            const health = await handleHealthCheck(url);
+            if (health) return health;
+            const body = JSON.parse(String(init?.body));
+            pendings.push(body.pending);
+            if (!committedPublicKey) {
+                committedPublicKey = body.publicKey;
+                throw new TypeError('Response lost after commit');
+            }
+            if (body.pending === 'p1') return { ok: false, status: 400, body: { error: 'invalid-pending' } };
+            expect(body.publicKey).toBe(committedPublicKey);
+            return { ok: true, body: { token: 'same-account-token' } };
+        });
+
+        await runWithOAuthScreen(async () => {
+            expect(getPendingExternalAuthState()).toEqual(expect.objectContaining({ secret: OAUTH_SECRET, finalizeAttempted: true }));
+        });
+        // Refresh/back reopens the consumed callback. Its rejection must not destroy the account key.
+        await runWithOAuthScreen(async () => {
+            expect(getPendingExternalAuthState()).toEqual(expect.objectContaining({ secret: OAUTH_SECRET, finalizeAttempted: true, returnTo }));
+            expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
+            expect(loginSpy).not.toHaveBeenCalled();
+        });
+        localSearchParamsMock.mockReturnValue({ provider: 'github', flow: 'auth', pending: 'p2', accountMode: 'e2ee' });
+        await runWithOAuthScreen(async () => {
+            expect(loginSpy).toHaveBeenCalledWith('same-account-token', OAUTH_SECRET);
+            expect(getPendingExternalAuthState()).toBeNull();
+            expect(replaceSpy).toHaveBeenLastCalledWith(returnTo);
+        });
+        expect(pendings).toEqual(['p1', 'p1', 'p2']);
+    });
+
+    it.each(['server-id', 'server-url'] as const)('retains server A recovery state without a request when its callback is opened on server B (%s)', async (mismatch) => {
+        const pending = {
+            provider: 'github', secret: OAUTH_SECRET, finalizeAttempted: true,
+            serverId: 'server-a', serverUrl: 'https://a.example', returnTo: '/invite/a?server=https%3A%2F%2Fa.example',
+        };
+        setPendingExternalAuthState(pending);
+        setActiveServerSnapshot({ serverId: 'server-b', serverUrl: 'https://b.example' });
+        setPendingExternalAuthServerMismatch(mismatch === 'server-id');
+        localSearchParamsMock.mockReturnValue({ provider: 'github', flow: 'auth', pending: 'p1' });
+        const fetchMock = stubFetch(async () => { throw new Error('Wrong-server request'); });
+        await runWithOAuthScreen(async () => {
+            expect(fetchMock).not.toHaveBeenCalled();
+            expect(getPendingExternalAuthState()).toEqual(pending);
+            expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
+            expect(loginSpy).not.toHaveBeenCalled();
+            expect(modal.alert).toHaveBeenCalledWith(t('common.error'), t('errors.oauthStateMismatch'));
+        });
+    });
+
+    it.each(['username-cancel', 'unsupported-provisioning'] as const)('keeps a possibly committed key when leaving an incomplete callback (%s)', async (outcome) => {
+        setPendingExternalAuthState({ provider: 'github', secret: OAUTH_SECRET, proof: 'proof', finalizeAttempted: true, returnTo: '/invite/cancel' });
+        localSearchParamsMock.mockReturnValue({
+            provider: 'github', flow: 'auth', pending: 'p2',
+            ...(outcome === 'username-cancel'
+                ? { status: 'username_required' }
+                : { provisioning: 'required', storagePolicy: 'optional', provisioningModes: '' }),
+        });
+        const fetchMock = stubFetch(async () => { throw new Error('Unexpected request'); });
+        const { default: Screen } = await import('@/app/(app)/oauth/[provider]');
+        const screen = await renderScreen(React.createElement(Screen));
+        await flushOAuthEffects();
+        if (outcome === 'username-cancel') await screen.pressByTestIdAsync('oauth-username-cancel');
+        await flushOAuthEffects();
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(getPendingExternalAuthState()).toEqual(expect.objectContaining({ secret: OAUTH_SECRET, finalizeAttempted: true }));
+        expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
+    });
+
+    it.each([{ accountMode: 'plain' }, { mode: 'keyless' }])('does not exchange a protected account key for plaintext credentials (%j)', async (modeParams) => {
+        setPendingExternalAuthState({ provider: 'github', secret: OAUTH_SECRET, proof: 'proof', finalizeAttempted: true, returnTo: '/invite/keyed' });
+        localSearchParamsMock.mockReturnValue({ provider: 'github', flow: 'auth', pending: 'p2', ...modeParams });
+        const fetchMock = stubFetch(async (url) => (await handleHealthCheck(url)) ?? { ok: true, body: { token: 'different-plain-account' } });
+        await runWithOAuthScreen(async () => {
+            expect(fetchMock).not.toHaveBeenCalled();
+            expect(loginWithCredentialsSpy).not.toHaveBeenCalled();
+            expect(getPendingExternalAuthState()).toEqual(expect.objectContaining({ secret: OAUTH_SECRET, finalizeAttempted: true }));
+            expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
+            expect(modal.alert).toHaveBeenCalled();
+        });
+    });
+
+    it.each(['response-lost', 'server-error', 'incomplete-success'] as const)('recovers the committed account with the preserved key after %s and a fresh OAuth round trip', async (failure) => {
         const returnTo = '/invite/retry?server=https%3A%2F%2Frelay.example';
         setPendingExternalAuthState({ provider: 'github', secret: OAUTH_SECRET, returnTo });
         localSearchParamsMock.mockReturnValue({ provider: 'github', flow: 'auth', pending: 'p1' });
-        stubFetch(async (url) => {
+        let committedPublicKey: string | null = null;
+        const finalizePendings: string[] = [];
+        const fetchMock = stubFetch(async (url, init) => {
             const health = await handleHealthCheck(url);
             if (health) return health;
-            throw new TypeError('Failed to fetch');
+            expect(url).toContain('/finalize');
+            const body = JSON.parse(String(init?.body));
+            finalizePendings.push(body.pending);
+            if (!committedPublicKey) {
+                committedPublicKey = body.publicKey;
+                if (failure === 'server-error') return { ok: false, status: 500, body: { error: 'internal-error' } };
+                if (failure === 'incomplete-success') return { ok: true, body: {} };
+                throw new TypeError('Response lost after account commit');
+            }
+            expect(body.publicKey).toBe(committedPublicKey);
+            return { ok: true, body: { token: 'committed-account-token' } };
         });
 
         await runWithOAuthScreen(async () => {
             await flushOAuthEffects();
             expect(modal.alert).toHaveBeenCalledWith(t('common.error'), t('errors.tokenExchangeFailed'));
-            expect(clearPendingExternalAuthMock).toHaveBeenCalled();
+            expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
+            expect(setPendingExternalAuthMock).toHaveBeenCalledWith(expect.objectContaining({ secret: OAUTH_SECRET, finalizeAttempted: true }));
             expect(replaceSpy).toHaveBeenCalledWith(`/?returnTo=${encodeURIComponent(returnTo)}`);
             expect(loginSpy).not.toHaveBeenCalled();
+        });
+        // A user starts a fresh provider authorization; the old pending request is never replayed.
+        localSearchParamsMock.mockReturnValue({ provider: 'github', flow: 'auth', pending: 'p2', accountMode: 'e2ee' });
+        await runWithOAuthScreen(async () => {
+            await flushOAuthEffects();
+            expect(loginSpy).toHaveBeenCalledWith('committed-account-token', OAUTH_SECRET);
+            expect(clearPendingExternalAuthMock).toHaveBeenCalledTimes(1);
+            expect(replaceSpy).toHaveBeenLastCalledWith(returnTo);
+        });
+        expect(finalizePendings).toEqual(['p1', 'p2']);
+        expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('retains the keyed recovery state when credentials cannot be persisted after finalize succeeds', async () => {
+        setPendingExternalAuthState({ provider: 'github', secret: OAUTH_SECRET, returnTo: '/invite/storage' });
+        localSearchParamsMock.mockReturnValue({ provider: 'github', flow: 'auth', pending: 'p1' });
+        loginSpy.mockRejectedValueOnce(new Error('Credential storage failed'));
+        stubFetch(async (url) => (await handleHealthCheck(url)) ?? { ok: true, body: { token: 'committed-token' } });
+        await runWithOAuthScreen(async () => {
+            await flushOAuthEffects();
+            expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
+            expect(setPendingExternalAuthMock).toHaveBeenCalledWith(expect.objectContaining({ secret: OAUTH_SECRET, finalizeAttempted: true }));
+            expect(replaceSpy).toHaveBeenCalledWith('/?returnTo=%2Finvite%2Fstorage');
         });
     });
 
@@ -169,7 +298,7 @@ describe('/oauth/[provider] (auth flow)', () => {
         await runWithOAuthScreen(async () => {
             await flushOAuthEffects();
             expect(fetchMock).not.toHaveBeenCalled();
-            expect(clearPendingExternalAuthMock).toHaveBeenCalled();
+            expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
             expect(modal.alert).toHaveBeenCalledWith(t('common.error'), t('errors.oauthStateMismatch'));
             expect(loginSpy).not.toHaveBeenCalled();
             expect(replaceSpy).toHaveBeenCalledWith('/');
@@ -611,7 +740,8 @@ describe('/oauth/[provider] (auth flow)', () => {
             });
             await flushOAuthEffects();
 
-            expect(clearPendingExternalAuthMock).toHaveBeenCalled();
+            expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
+            expect(getPendingExternalAuthState()).toEqual(expect.objectContaining({ secret: OAUTH_SECRET, finalizeAttempted: true }));
             expect(replaceSpy).toHaveBeenCalledWith('/restore?provider=github&reason=provider_already_linked');
         } finally {
             act(() => {

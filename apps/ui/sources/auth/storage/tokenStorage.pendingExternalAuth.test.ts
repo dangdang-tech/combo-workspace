@@ -22,6 +22,28 @@ describe('TokenStorage pending external auth (web)', () => {
         localStorageHandle = null;
     });
 
+    it('preserves an attempted account key across reload without exposing it to another server', async () => {
+        const active = { url: 'https://relay-a.example.test' };
+        vi.doMock('@/sync/domains/server/serverProfiles', async (importOriginal) => ({
+            ...await importOriginal<typeof import('@/sync/domains/server/serverProfiles')>(),
+            getActiveServerUrl: () => active.url,
+        }));
+        const { TokenStorage } = await import('./tokenStorage');
+        const pending = {
+            provider: 'github', secret: 'preserved-account-key', proof: 'proof',
+            serverUrl: active.url, returnTo: '/invite/recovery', finalizeAttempted: true,
+        };
+        expect(await TokenStorage.setPendingExternalAuth(pending)).toBe(true);
+        vi.resetModules();
+        const reloaded = (await import('./tokenStorage')).TokenStorage;
+        expect(await reloaded.getPendingExternalAuth()).toEqual(pending);
+        active.url = 'https://relay-b.example.test';
+        expect(await reloaded.getPendingExternalAuth()).toBeNull();
+        active.url = pending.serverUrl;
+        expect(await reloaded.getPendingExternalAuth()).toEqual(pending);
+        vi.doUnmock('@/sync/domains/server/serverProfiles');
+    });
+
     it('round-trips pending external auth state', async () => {
         vi.doMock('@/sync/domains/server/serverProfiles', async (importOriginal) => {
             const actual = await importOriginal<typeof import('@/sync/domains/server/serverProfiles')>();

@@ -97,6 +97,7 @@ vi.mock('@/encryption/libsodium.lib', () => ({
 vi.mock('@/auth/storage/tokenStorage', () => ({
     TokenStorage: {
         getAuthAutoRedirectSuppressedUntil: () => mockState.getSuppressedUntilMock(),
+        getPendingExternalAuth: async () => null,
         setPendingExternalAuth: () => mockState.setPendingExternalAuthMock(),
         clearPendingExternalAuth: () => mockState.clearPendingExternalAuthMock(),
     },

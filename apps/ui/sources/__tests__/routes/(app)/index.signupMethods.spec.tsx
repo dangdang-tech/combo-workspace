@@ -9,6 +9,7 @@ import {
 import { flushHookEffects, standardCleanup } from '@/dev/testkit';
 import type { ServerFeaturesSnapshot } from '@/sync/api/capabilities/serverFeaturesClient';
 import type { FeaturesResponse } from '@happier-dev/protocol';
+import { encodeBase64 } from '@/encryption/base64';
 
 type ReactActEnvironmentGlobal = typeof globalThis & {
     IS_REACT_ACT_ENVIRONMENT?: boolean;
@@ -26,6 +27,53 @@ vi.mock('@shopify/react-native-skia', () => ({}));
 
 const applyBrandHeroSeenSpy = vi.hoisted(() => vi.fn());
 const routeState = vi.hoisted(() => ({ params: {} as { returnTo?: string }, push: vi.fn() }));
+const externalAuthState = vi.hoisted(() => ({
+    pending: null as null | {
+        provider: string; proof?: string; secret?: string; returnTo?: string; serverUrl?: string;
+        intent?: 'signup' | 'reset'; finalizeAttempted?: boolean;
+    },
+    writes: vi.fn(),
+    writeSucceeds: true,
+    serverSnapshot: { serverId: 'server-a', serverUrl: 'https://relay.example', generation: 1 },
+    randomBytes: vi.fn(async (length: number) => new Uint8Array(length).fill(9)),
+    clear: vi.fn(),
+    getExternalAuthUrl: vi.fn(async (_params: unknown) => 'https://provider.example/authorize'),
+    alert: vi.fn(),
+    seedKeyPair: vi.fn((seed: Uint8Array) => ({ publicKey: seed, privateKey: seed })),
+}));
+
+vi.mock('@/auth/storage/tokenStorage', () => ({
+    TokenStorage: {
+        getPendingExternalAuth: async () => externalAuthState.pending,
+        setPendingExternalAuth: async (pending: NonNullable<typeof externalAuthState.pending>) => {
+            externalAuthState.writes(pending);
+            if (!externalAuthState.writeSucceeds) return false;
+            externalAuthState.pending = pending;
+            return true;
+        },
+        clearPendingExternalAuth: async () => {
+            externalAuthState.clear();
+            externalAuthState.pending = null;
+            return true;
+        },
+    },
+    isLegacyAuthCredentials: (credentials: unknown) => Boolean(credentials),
+}));
+vi.mock('@/auth/providers/registry', () => ({
+    getAuthProvider: () => ({
+        id: 'github', displayName: 'GitHub', getExternalAuthUrl: externalAuthState.getExternalAuthUrl,
+    }),
+}));
+vi.mock('@/platform/cryptoRandom', () => ({
+    getRandomBytesAsync: externalAuthState.randomBytes,
+}));
+vi.mock('@/sync/domains/server/serverRuntime', () => ({
+    getActiveServerSnapshot: () => externalAuthState.serverSnapshot,
+}));
+vi.mock('@/modal', async () => {
+    const { createModalModuleMock } = await import('@/dev/testkit/mocks/modal');
+    return createModalModuleMock({ spies: { alert: externalAuthState.alert } }).module;
+});
 
 vi.mock('expo-router', async () => {
     const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router');
@@ -62,10 +110,7 @@ vi.mock('@/components/onboarding/unauthShell', async () => {
 });
 vi.mock('@/encryption/libsodium.lib', () => ({
     default: {
-        crypto_sign_seed_keypair: () => ({
-            publicKey: new Uint8Array(),
-            privateKey: new Uint8Array(),
-        }),
+        crypto_sign_seed_keypair: externalAuthState.seedKeyPair,
     },
 }));
 vi.mock('react-native-safe-area-context', () => ({
@@ -128,6 +173,17 @@ describe('/ (welcome) signup methods', () => {
     beforeEach(() => {
         routeState.params = {};
         routeState.push.mockClear();
+        externalAuthState.pending = null;
+        externalAuthState.writes.mockClear();
+        externalAuthState.writeSucceeds = true;
+        externalAuthState.serverSnapshot = { serverId: 'server-a', serverUrl: 'https://relay.example', generation: 1 };
+        externalAuthState.randomBytes.mockReset();
+        externalAuthState.randomBytes.mockImplementation(async (length: number) => new Uint8Array(length).fill(9));
+        externalAuthState.clear.mockClear();
+        externalAuthState.alert.mockClear();
+        externalAuthState.seedKeyPair.mockClear();
+        externalAuthState.getExternalAuthUrl.mockReset();
+        externalAuthState.getExternalAuthUrl.mockResolvedValue('https://provider.example/authorize');
         applyBrandHeroSeenSpy.mockReset();
         getReadyServerFeaturesMock.mockReset();
         getReadyServerFeaturesMock.mockResolvedValue(defaultWelcomeFeatures);
@@ -135,6 +191,136 @@ describe('/ (welcome) signup methods', () => {
         getServerFeaturesSnapshotMock.mockResolvedValue({ status: 'ready', features: defaultWelcomeFeatures });
     });
     afterEach(standardCleanup);
+
+    const invitation = '/invite/abc?server=https%3A%2F%2Frelay.example';
+    function retainAttemptedAuth(provider = 'github') {
+        externalAuthState.pending = {
+            provider,
+            proof: 'original-proof',
+            secret: encodeBase64(new Uint8Array(32).fill(1), 'base64url'),
+            returnTo: invitation,
+            serverUrl: 'https://relay.example',
+            intent: 'reset',
+            finalizeAttempted: true,
+        };
+        return { ...externalAuthState.pending };
+    }
+
+    it('restarts the same provider with a fresh proof and the retained account key after ambiguous finalize', async () => {
+        vi.resetModules();
+        const original = retainAttemptedAuth();
+        const screen = await renderWelcomeScreen();
+        await waitForWelcomeTestId(screen, 'welcome-signup-provider');
+        await screen.pressByTestIdAsync('welcome-signup-provider');
+        await flushHookEffects();
+
+        expect(externalAuthState.pending).toEqual(expect.objectContaining({
+            secret: original.secret,
+            returnTo: invitation,
+            intent: 'reset',
+            finalizeAttempted: true,
+        }));
+        expect(externalAuthState.pending?.proof).not.toBe(original.proof);
+        expect(externalAuthState.seedKeyPair).toHaveBeenCalledWith(new Uint8Array(32).fill(1));
+        expect(externalAuthState.getExternalAuthUrl).toHaveBeenCalledWith(expect.objectContaining({
+            mode: 'keyed', publicKey: encodeBase64(new Uint8Array(32).fill(1)),
+        }));
+        expect(externalAuthState.clear).not.toHaveBeenCalled();
+    });
+
+    it.each(['rejected', 'unsafe-url'] as const)('retains the attempted account key when a fresh OAuth start fails (%s)', async (failure) => {
+        vi.resetModules();
+        const original = retainAttemptedAuth();
+        if (failure === 'rejected') externalAuthState.getExternalAuthUrl.mockRejectedValueOnce(new Error('network'));
+        else externalAuthState.getExternalAuthUrl.mockResolvedValueOnce('javascript:alert(1)');
+        const screen = await renderWelcomeScreen();
+        await waitForWelcomeTestId(screen, 'welcome-signup-provider');
+        await screen.pressByTestIdAsync('welcome-signup-provider');
+        await flushHookEffects();
+
+        expect(externalAuthState.pending).toEqual(expect.objectContaining({ secret: original.secret, finalizeAttempted: true }));
+        expect(externalAuthState.clear).not.toHaveBeenCalled();
+        expect(externalAuthState.alert).toHaveBeenCalled();
+    });
+
+    it('does not replace an attempted account key when another provider is selected', async () => {
+        vi.resetModules();
+        const original = retainAttemptedAuth('google');
+        const screen = await renderWelcomeScreen();
+        await waitForWelcomeTestId(screen, 'welcome-signup-provider');
+        await screen.pressByTestIdAsync('welcome-signup-provider');
+        await flushHookEffects();
+
+        expect(externalAuthState.pending).toEqual(original);
+        expect(externalAuthState.writes).not.toHaveBeenCalled();
+        expect(externalAuthState.getExternalAuthUrl).not.toHaveBeenCalled();
+        expect(externalAuthState.alert).toHaveBeenCalled();
+    });
+
+    it('does not start a fresh OAuth request when its updated proof cannot be saved', async () => {
+        vi.resetModules();
+        const original = retainAttemptedAuth();
+        externalAuthState.writeSucceeds = false;
+        const screen = await renderWelcomeScreen();
+        await waitForWelcomeTestId(screen, 'welcome-signup-provider');
+        await screen.pressByTestIdAsync('welcome-signup-provider');
+        await flushHookEffects();
+
+        expect(externalAuthState.writes).toHaveBeenCalledTimes(1);
+        expect(externalAuthState.pending).toEqual(original);
+        expect(externalAuthState.clear).not.toHaveBeenCalled();
+        expect(externalAuthState.getExternalAuthUrl).not.toHaveBeenCalled();
+        expect(externalAuthState.alert).toHaveBeenCalled();
+    });
+
+    it.each(['different-server', 'switch-away-and-back'] as const)('does not move a retained account key across a server change while preparing OAuth (%s)', async (change) => {
+        vi.resetModules();
+        const original = retainAttemptedAuth();
+        let releaseProof!: (bytes: Uint8Array<ArrayBuffer>) => void;
+        externalAuthState.randomBytes.mockImplementationOnce(() => new Promise<Uint8Array<ArrayBuffer>>((resolve) => { releaseProof = resolve; }));
+        const screen = await renderWelcomeScreen();
+        await waitForWelcomeTestId(screen, 'welcome-signup-provider');
+        await screen.pressByTestIdAsync('welcome-signup-provider');
+        await flushHookEffects();
+        expect(externalAuthState.randomBytes).toHaveBeenCalledTimes(1);
+
+        externalAuthState.serverSnapshot = change === 'different-server'
+            ? { serverId: 'server-b', serverUrl: 'https://other.example', generation: 2 }
+            : { serverId: 'server-a', serverUrl: 'https://relay.example', generation: 3 };
+        releaseProof(new Uint8Array(32).fill(9));
+        await flushHookEffects();
+
+        expect(externalAuthState.pending).toEqual(original);
+        expect(externalAuthState.writes).not.toHaveBeenCalled();
+        expect(externalAuthState.getExternalAuthUrl).not.toHaveBeenCalled();
+        expect(externalAuthState.clear).not.toHaveBeenCalled();
+        expect(externalAuthState.alert).toHaveBeenCalled();
+    });
+
+    it('does not replace an attempted account key with a keyless login', async () => {
+        vi.resetModules();
+        const original = retainAttemptedAuth();
+        getServerFeaturesSnapshotMock.mockResolvedValueOnce({
+            status: 'ready',
+            features: createWelcomeFeaturesResponse({
+                signupMethods: [{ id: 'anonymous', enabled: false }],
+                authMethods: [{
+                    id: 'github',
+                    actions: [{ id: 'login', enabled: true, mode: 'keyless' }],
+                    ui: { displayName: 'GitHub', iconHint: 'github' },
+                }],
+            }),
+        });
+        const screen = await renderWelcomeScreen();
+        await waitForWelcomeTestId(screen, 'welcome-create-account');
+        await screen.pressByTestIdAsync('welcome-create-account');
+        await flushHookEffects();
+
+        expect(externalAuthState.pending).toEqual(original);
+        expect(externalAuthState.writes).not.toHaveBeenCalled();
+        expect(externalAuthState.getExternalAuthUrl).not.toHaveBeenCalled();
+        expect(externalAuthState.alert).toHaveBeenCalled();
+    });
 
     it.each([
         ['/invite/abc?server=https%3A%2F%2Frelay.example', '/restore?returnTo=%2Finvite%2Fabc%3Fserver%3Dhttps%253A%252F%252Frelay.example'],

@@ -47,11 +47,22 @@ let authState: {
     credentials: null,
 };
 
-export const clearPendingExternalAuthMock = vi.fn(async () => true);
+export const clearPendingExternalAuthMock = vi.fn(async () => {
+    pendingExternalAuthState = null;
+    return true;
+});
+export const setPendingExternalAuthMock = vi.fn(async (next: PendingExternalAuth) => {
+    pendingExternalAuthState = next;
+    return true;
+});
 export const clearPendingExternalConnectMock = vi.fn(async () => true);
 
 export function setPendingExternalAuthState(next: PendingExternalAuth | null) {
     pendingExternalAuthState = next;
+}
+
+export function getPendingExternalAuthState(): PendingExternalAuth | null {
+    return pendingExternalAuthState;
 }
 
 export function setPendingExternalAuthServerMismatch(next: boolean) {
@@ -145,6 +156,7 @@ vi.mock('@/auth/storage/tokenStorage', async () => {
                 serverMismatch: pendingExternalAuthServerMismatch,
             }),
             clearPendingExternalAuth: clearPendingExternalAuthMock,
+            setPendingExternalAuth: setPendingExternalAuthMock,
             getPendingExternalConnect: async () => pendingExternalConnectState,
             clearPendingExternalConnect: clearPendingExternalConnectMock,
             getCredentials: async () => storedCredentialsState,
@@ -200,6 +212,7 @@ export async function renderOAuthReturnScreen() {
 
 export function resetOAuthHarness() {
     replaceSpy.mockReset();
+    setPendingExternalAuthMock.mockClear();
     loginSpy.mockReset();
     loginWithCredentialsSpy.mockReset();
     upsertAndActivateServerSpy.mockReset();
@@ -221,7 +234,10 @@ export function resetOAuthHarness() {
         modal.confirm = vi.fn(async () => true);
     }
     clearPendingExternalAuthMock.mockReset();
-    clearPendingExternalAuthMock.mockResolvedValue(true);
+    clearPendingExternalAuthMock.mockImplementation(async () => {
+        pendingExternalAuthState = null;
+        return true;
+    });
     clearPendingExternalConnectMock.mockReset();
     clearPendingExternalConnectMock.mockResolvedValue(true);
     setPendingExternalAuthState({

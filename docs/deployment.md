@@ -12,13 +12,13 @@ Use the `relay-server-local-source` Docker target. The `relay-server` target dow
 COMBO_SHA=$(git rev-parse HEAD)
 git archive "$COMBO_SHA" | docker buildx build \
   --target relay-server-local-source \
-  --build-arg HAPPIER_BUILD_DB_PROVIDERS=sqlite \
+  --build-arg HAPPIER_BUILD_DB_PROVIDERS=all \
   --build-arg HAPPIER_EMBEDDED_POLICY_ENV=preview \
   --build-arg SENTRY_RELEASE="$COMBO_SHA" \
   --load -t "combo-workspace-test:$COMBO_SHA" -
 ```
 
-Empty build-time server URLs use the browser's own origin. Put HTTPS in front of the container and configure all runtime public URLs to that same origin. Do not compile a localhost API URL into the deployed UI.
+Generate all database client types at build time: the server typecheck resolves the MySQL import even when the deployed runtime uses SQLite. This does not start or require a MySQL service. Empty build-time server URLs use the browser's own origin. Put HTTPS in front of the container and configure all runtime public URLs to that same origin. Do not compile a localhost API URL into the deployed UI.
 
 The deployment templates are:
 

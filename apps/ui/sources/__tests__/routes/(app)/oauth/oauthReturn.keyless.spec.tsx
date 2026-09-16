@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe('oauth/[provider] return (keyless)', () => {
-    it('surfaces oauth state mismatch and clears stale pending auth when the pending auth belongs to a different server context', async () => {
+    it('surfaces oauth state mismatch without clearing pending auth owned by another server context', async () => {
         replaceSpy.mockReset();
         loginWithCredentialsSpy.mockReset();
         clearPendingExternalAuthMock.mockReset();
@@ -47,7 +47,7 @@ describe('oauth/[provider] return (keyless)', () => {
 
         await runWithOAuthScreen(async () => {
             expect(fetchMock).not.toHaveBeenCalled();
-            expect(clearPendingExternalAuthMock).toHaveBeenCalled();
+            expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
             expect(modal.alert).toHaveBeenCalledWith(t('common.error'), t('errors.oauthStateMismatch'));
             expect(loginWithCredentialsSpy).not.toHaveBeenCalled();
             expect(replaceSpy).toHaveBeenCalledWith('/');

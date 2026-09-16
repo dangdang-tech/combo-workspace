@@ -99,6 +99,12 @@ function normalizeComparableServerUrl(value: unknown): string {
     return createServerUrlComparableKey(value);
 }
 
+async function clearUncommittedPendingExternalAuth(): Promise<void> {
+    const pending = await TokenStorage.readPendingExternalAuthState();
+    if (pending.serverMismatch || (pending.value?.finalizeAttempted && pending.value.secret)) return;
+    await TokenStorage.clearPendingExternalAuth();
+}
+
 function resolveProvisioningModes(raw: string | null): Readonly<{ allowPlain: boolean; allowE2ee: boolean }> {
     if (raw == null) {
         // Back-compat: older servers don't include provisioningModes, so assume both options.
@@ -154,6 +160,7 @@ export default function OAuthProviderReturn() {
         accountMode: string | null;
         username: string | null;
         chosenMode: 'plain' | 'e2ee' | null;
+        finalizeAttempted: boolean;
     }>>(null);
 
     const resolvedProviderId =
@@ -182,9 +189,15 @@ export default function OAuthProviderReturn() {
         fireAndForget((async () => {
             setBusy(true);
             try {
+                if (params.mode === 'plain') {
+                    const pending = await TokenStorage.readPendingExternalAuthState();
+                    if (pending.value?.finalizeAttempted && pending.value.secret) {
+                        throw new Error('A possibly committed encrypted account requires its original key');
+                    }
+                }
                 if (params.mode === 'plain' && !ctx.proof) {
                     await Modal.alert(t('common.error'), t('errors.oauthInitializationFailed'));
-                    await TokenStorage.clearPendingExternalAuth();
+                    await clearUncommittedPendingExternalAuth();
                     pendingAuthContextRef.current = null;
                     router.replace('/');
                     return;
@@ -244,6 +257,18 @@ export default function OAuthProviderReturn() {
                         payload.contentPublicKey = binding.contentPublicKey;
                         payload.contentPublicKeySig = binding.contentPublicKeySig;
                     }
+                    // Persist this before sending: a lost response cannot tell us whether
+                    // this key already owns an account on the server.
+                    const stored = await TokenStorage.setPendingExternalAuth({
+                        provider: ctx.providerId,
+                        secret: secret!,
+                        ...(ctx.proof ? { proof: ctx.proof } : {}),
+                        ...(ctx.intent ? { intent: ctx.intent } : {}),
+                        ...(ctx.serverUrl ? { serverUrl: ctx.serverUrl } : {}),
+                        returnTo: ctx.returnTo,
+                        finalizeAttempted: true,
+                    });
+                    if (!stored) throw new Error('Unable to preserve account recovery state');
                 }
 
                 const response = await serverFetch(url, {
@@ -251,11 +276,12 @@ export default function OAuthProviderReturn() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                 }, { includeAuth: false, retry: 'none' });
-                const json = await response.json().catch(() => ({}));
+                const json = await response.json();
+                if (response.status >= 500 || (response.ok && !json?.token)) {
+                    throw new Error('Account finalization outcome is unknown');
+                }
 
                 if (response.ok && json?.token) {
-                    await TokenStorage.clearPendingExternalAuth();
-                    pendingAuthContextRef.current = null;
                     setUsernameHint(null);
                     setProvisioningChoiceOpen(false);
                     maybeActivateServerUrl(ctx.serverUrl);
@@ -265,19 +291,21 @@ export default function OAuthProviderReturn() {
                     } else {
                         await auth.login(json.token, secret!);
                     }
+                    await TokenStorage.clearPendingExternalAuth();
+                    pendingAuthContextRef.current = null;
                     router.replace(ctx.returnTo);
                     return;
                 }
 
                 const err = typeof json?.error === 'string' ? json.error : 'token-exchange-failed';
                 if (err === 'provider-already-linked') {
-                    await TokenStorage.clearPendingExternalAuth();
+                    await clearUncommittedPendingExternalAuth();
                     pendingAuthContextRef.current = null;
                     router.replace(buildRestoreRedirectUrl({ providerId: ctx.providerId, reason: 'provider_already_linked', returnTo: ctx.returnTo }));
                     return;
                 }
                 if (err === 'restore-required') {
-                    await TokenStorage.clearPendingExternalAuth();
+                    await clearUncommittedPendingExternalAuth();
                     pendingAuthContextRef.current = null;
                     router.replace(withAuthReturnTo('/restore', ctx.returnTo));
                     return;
@@ -289,21 +317,20 @@ export default function OAuthProviderReturn() {
                 }
                 if (err === 'invalid-pending') {
                     await Modal.alert(t('common.error'), t('errors.oauthStateMismatch'));
-                    await TokenStorage.clearPendingExternalAuth();
+                    await clearUncommittedPendingExternalAuth();
                     pendingAuthContextRef.current = null;
-                    router.replace('/');
+                    router.replace(withAuthReturnTo('/', ctx.returnTo));
                     return;
                 }
 
                 await Modal.alert(t('common.error'), mapFinalizeErrorToMessage(err));
-                await TokenStorage.clearPendingExternalAuth();
+                await clearUncommittedPendingExternalAuth();
                 pendingAuthContextRef.current = null;
-                router.replace('/');
+                router.replace(withAuthReturnTo('/', ctx.returnTo));
             } catch {
-                // Finalization may already have consumed the pending request. Return to
-                // the existing login entry instead of automatically replaying it.
+                // Keep the original key for a fresh, user-initiated provider login.
+                // The server may have committed the account before the response was lost.
                 await Modal.alert(t('common.error'), t('errors.tokenExchangeFailed'));
-                await TokenStorage.clearPendingExternalAuth();
                 pendingAuthContextRef.current = null;
                 router.replace(withAuthReturnTo('/', ctx.returnTo));
             } finally {
@@ -329,7 +356,8 @@ export default function OAuthProviderReturn() {
         setUsernameHint(null);
 
         if (nextCtx.accountMode === 'e2ee') {
-            router.replace(withAuthReturnTo('/restore', nextCtx.returnTo));
+            if (nextCtx.finalizeAttempted && nextCtx.secret) finalizeAuth({ mode: 'e2ee' });
+            else router.replace(withAuthReturnTo('/restore', nextCtx.returnTo));
             return;
         }
         if (nextCtx.accountMode === 'plain') {
@@ -354,7 +382,7 @@ export default function OAuthProviderReturn() {
 
                 fireAndForget((async () => {
                     await Modal.alert(t('common.error'), t('errors.oauthInitializationFailed'));
-                    await TokenStorage.clearPendingExternalAuth();
+                    await clearUncommittedPendingExternalAuth();
                 })(), { tag: 'OAuthProviderReturn.provisioningModesUnavailable' });
                 pendingAuthContextRef.current = null;
                 router.replace('/');
@@ -372,14 +400,15 @@ export default function OAuthProviderReturn() {
     }, [finalizeAuth, router, usernameValue]);
 
     const cancelUsername = React.useCallback(() => {
+        const returnTo = pendingAuthContextRef.current?.returnTo;
         fireAndForget((async () => {
-            await TokenStorage.clearPendingExternalAuth();
+            await clearUncommittedPendingExternalAuth();
         })(), { tag: 'OAuthProviderReturn.cancelUsername' });
         pendingAuthContextRef.current = null;
         setUsernameHint(null);
         setUsernameValue('');
         setProvisioningChoiceOpen(false);
-        router.replace('/');
+        router.replace(withAuthReturnTo('/', returnTo));
     }, [router]);
 
     const chooseProvisioningMode = React.useCallback((mode: 'plain' | 'e2ee') => {
@@ -472,7 +501,6 @@ export default function OAuthProviderReturn() {
                         return;
                     }
                     if (serverUrlMismatch) {
-                        await TokenStorage.clearPendingExternalAuth();
                         await Modal.alert(t('common.error'), t('errors.oauthStateMismatch'));
                     } else {
                         await Modal.alert(t('common.error'), t('errors.oauthInitializationFailed'));
@@ -499,6 +527,7 @@ export default function OAuthProviderReturn() {
                         accountMode: resolvedAccountMode,
                         username: null,
                         chosenMode: null,
+                        finalizeAttempted: state.finalizeAttempted === true,
                     };
 
                     if (status === 'username_required') {
@@ -510,7 +539,8 @@ export default function OAuthProviderReturn() {
                     }
 
                     if (resolvedAccountMode === 'e2ee') {
-                        safeReplace(withAuthReturnTo('/restore', returnTo));
+                        if (state.finalizeAttempted && secret) finalizeAuth({ mode: 'e2ee' });
+                        else safeReplace(withAuthReturnTo('/restore', returnTo));
                         return;
                     }
 
@@ -536,7 +566,7 @@ export default function OAuthProviderReturn() {
                             }
 
                             await Modal.alert(t('common.error'), t('errors.oauthInitializationFailed'));
-                            await TokenStorage.clearPendingExternalAuth();
+                            await clearUncommittedPendingExternalAuth();
                             pendingAuthContextRef.current = null;
                             safeReplace('/');
                             return;

@@ -18,9 +18,16 @@ const shared = vi.hoisted(() => ({
     externalLoginUrl: 'https://example.test/oauth-login',
     externalSignupUrl: 'https://example.test/oauth',
     getSuppressedUntilMock: vi.fn(async () => 0),
+    getPendingExternalAuthMock: vi.fn(async (): Promise<{ provider: string; secret: string; finalizeAttempted: boolean } | null> => null),
     openURL: vi.fn(async () => true),
     setPendingExternalAuthMock: vi.fn(async () => true),
+    routeParams: {} as { returnTo?: string },
 }));
+
+vi.mock('expo-router', async () => {
+    const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router');
+    return createExpoRouterMock({ params: () => shared.routeParams }).module;
+});
 
 let expoScheme: string | undefined = undefined;
 vi.mock('expo-constants', () => ({
@@ -85,10 +92,6 @@ vi.mock('@/platform/cryptoRandom', () => ({
     getRandomBytesAsync: async (n: number) => new Uint8Array(n).fill(9),
 }));
 
-vi.mock('@/encryption/base64', () => ({
-    encodeBase64: () => 'x',
-}));
-
 vi.mock('@/encryption/libsodium.lib', () => ({
     default: {
         crypto_sign_seed_keypair: () => ({ publicKey: new Uint8Array([1]), privateKey: new Uint8Array([2]) }),
@@ -98,6 +101,7 @@ vi.mock('@/encryption/libsodium.lib', () => ({
 vi.mock('@/auth/storage/tokenStorage', () => ({
     TokenStorage: {
         getAuthAutoRedirectSuppressedUntil: () => shared.getSuppressedUntilMock(),
+        getPendingExternalAuth: () => shared.getPendingExternalAuthMock(),
         setPendingExternalAuth: () => shared.setPendingExternalAuthMock(),
         clearPendingExternalAuth: () => shared.clearPendingExternalAuthMock(),
     },
@@ -151,7 +155,8 @@ vi.mock('@/sync/api/capabilities/serverFeaturesClient', () => ({
 }));
 
 vi.mock('@/sync/domains/server/serverRuntime', () => ({
-    getActiveServerSnapshot: () => ({ serverUrl: 'https://server.test' }),
+    getActiveServerSnapshot: () => ({ serverId: 'server-test', serverUrl: 'https://server.test', generation: 0 }),
+    subscribeActiveServer: () => () => {},
 }));
 
 describe('/ (welcome) auto redirect', () => {
@@ -163,6 +168,7 @@ describe('/ (welcome) auto redirect', () => {
 
     beforeEach(() => {
         expoScheme = undefined;
+        shared.routeParams = {};
         shared.openURL.mockClear();
         getServerFeaturesMock.mockReset();
         getServerFeaturesMock.mockImplementation(async () =>
@@ -195,6 +201,8 @@ describe('/ (welcome) auto redirect', () => {
         shared.clearPendingExternalAuthMock.mockClear();
         shared.getSuppressedUntilMock.mockReset();
         shared.getSuppressedUntilMock.mockResolvedValue(0);
+        shared.getPendingExternalAuthMock.mockReset();
+        shared.getPendingExternalAuthMock.mockResolvedValue(null);
         shared.externalSignupUrl = 'https://example.test/oauth';
         shared.externalLoginUrl = 'https://example.test/oauth-login';
     });
@@ -203,6 +211,23 @@ describe('/ (welcome) auto redirect', () => {
         vi.resetModules();
         await renderWelcomeScreen();
         expect(shared.openURL).toHaveBeenCalledWith('https://example.test/oauth');
+    }, testTimeoutMs);
+
+    it('waits for an explicit retry after a possibly committed keyed finalize even when auto-redirect is enabled', async () => {
+        vi.resetModules();
+        shared.routeParams = { returnTo: '/invite/abc?server=https%3A%2F%2Frelay.example' };
+        shared.getPendingExternalAuthMock.mockResolvedValue({
+            provider: 'github',
+            secret: 'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE',
+            finalizeAttempted: true,
+        });
+
+        const screen = await renderWelcomeScreen();
+
+        expect(shared.openURL).not.toHaveBeenCalled();
+        expect(shared.setPendingExternalAuthMock).not.toHaveBeenCalled();
+        expect(shared.clearPendingExternalAuthMock).not.toHaveBeenCalled();
+        expect(screen.findAllByTestId('welcome-signup-provider').length).toBeGreaterThan(0);
     }, testTimeoutMs);
 
     it('does not double-trigger auto-redirect when the effect runs twice before suppression is resolved', async () => {

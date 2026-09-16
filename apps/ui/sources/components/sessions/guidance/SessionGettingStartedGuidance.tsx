@@ -33,6 +33,7 @@ import { normalizeNodeForView } from '@/components/ui/rendering/normalizeNodeFor
 import { runAfterInteractionsWithFallback } from '@/utils/timing/runAfterInteractionsWithFallback';
 import { setClipboardStringSafe } from '@/utils/ui/clipboard';
 import { Icon } from '@/components/ui/icons/Icon';
+import { quoteShellArgument } from '@/agents/providers/shared/resolveProviderLocalAuthBaseCommand';
 import {
     shouldForceFreshNewSessionEntryFromPressEvent,
     useResolveNewSessionOrdinaryEntryRoute,
@@ -282,10 +283,21 @@ function buildDeferredCliFollowUpKey(params: Readonly<{
 
 function buildSteps(model: SessionGettingStartedGuidanceViewModel): SessionGettingStartedGuidanceStep[] {
     if (Platform.OS === 'web' && !isTauriDesktop()) {
+        const origin = typeof window !== 'undefined' ? window.location?.origin : undefined;
+        const webappUrl = origin && /^https?:\/\//.test(origin) ? origin : model.serverUrl;
+        const sourceEnvironment = [
+            'export HAPPIER_HOME_DIR="$HOME/.combo-workspace/host"',
+            `export HAPPIER_SERVER_URL=${quoteShellArgument(model.serverUrl, 'linux')}`,
+            `export HAPPIER_WEBAPP_URL=${quoteShellArgument(webappUrl, 'linux')}`,
+            'export HAPPIER_CLI_RUNTIME_DISABLE=1',
+            'export HAPPIER_CLI_SUBPROCESS_PREFER_TSX=1',
+        ];
         const connectStep: SessionGettingStartedGuidanceStep = {
             id: 'auth_login',
             title: t('sourceSetup.connectTitle'),
             description: t('sourceSetup.connectBody'),
+            command: [...sourceEnvironment, 'yarn --cwd apps/cli dev auth login', 'yarn --cwd apps/cli dev daemon start'].join('\n'),
+            copyLabel: t('sourceSetup.connectTitle'),
         };
         switch (model.kind) {
             case 'connect_machine':
@@ -303,7 +315,7 @@ function buildSteps(model: SessionGettingStartedGuidanceViewModel): SessionGetti
                     id: 'start_session',
                     title: t('sessionGettingStarted.steps.startSession.title'),
                     description: t('sourceSetup.runBody'),
-                    command: 'yarn --cwd apps/cli dev codex',
+                    command: [...sourceEnvironment, 'yarn --cwd apps/cli dev codex'].join('\n'),
                     copyLabel: t('sessionGettingStarted.steps.startSession.copyLabel'),
                 }];
             default:

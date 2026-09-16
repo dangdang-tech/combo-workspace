@@ -63,6 +63,26 @@ yarn --cwd apps/cli dev daemon start
 
 Google 登录沿用服务端的 OIDC 配置；提供者 ID 使用 `google`，启用 verified-email 校验与 keyed signup。客户端 ID、密钥及回调地址由部署者配置，见 [Google OIDC 接入](apps/docs/content/docs/self-hosting/auth-oidc.mdx#google-keyed-accounts-with-e2ee)。共享功能还需保留 session sharing 与 content keys 开关。
 
+### 连接远程测试环境
+
+测试站配置地址为 `https://combo-workspace-test.43-160-242-46.sslip.io`，网页与 API 共用此 HTTPS 地址。部署就绪后，按以下步骤连接；功能验收需同时检查网页、远程 API 与执行 Codex 的主机。
+
+在执行 Codex 的主机上完成上面的源码获取与构建，然后在仓库根目录的 Bash 或 Zsh 终端运行：
+
+```sh
+export HAPPIER_HOME_DIR="$HOME/.combo-workspace/host"
+export HAPPIER_SERVER_URL='https://combo-workspace-test.43-160-242-46.sslip.io'
+export HAPPIER_WEBAPP_URL='https://combo-workspace-test.43-160-242-46.sslip.io'
+export HAPPIER_CLI_RUNTIME_DISABLE=1
+export HAPPIER_CLI_SUBPROCESS_PREFER_TSX=1
+yarn --cwd apps/cli dev auth login
+yarn --cwd apps/cli dev daemon start
+```
+
+`HAPPIER_HOME_DIR` 将 COMBO 连接端的身份与状态保存在独立目录，不复用上游默认数据目录。按终端输出，在同一测试站的已登录网页中批准主机连接。主机在线后可在网页新建会话，或在上述终端继续运行 `yarn --cwd apps/cli dev codex`。新开终端时需要重新设置这五个环境变量；网页空会话引导中的复制命令会带上当前选择的服务地址与网页地址。
+
+测试站目前按密钥账户流程部署；请保存账户恢复密钥。真实 Google 登录需另行完成 OAuth 配置和验收。远程环境的部署与检查步骤见[部署说明](docs/deployment.md)。
+
 ## 当前范围
 
 - 已在本地 SQLite 环境验证两个独立账号的真实 Codex 执行、会话隔离、加密密钥交付、离线拒收、撤权和恢复。
