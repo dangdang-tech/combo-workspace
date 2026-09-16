@@ -77,6 +77,24 @@ This is a readiness state, not a permanent block — it resolves once their devi
 
 **The link stopped working.** Check expiry and the usage count against the maximum. Both are shown on the link's own screen. A regenerated link invalidates the previous token.
 
+## Shared workspace entries
+
+<Callout type="info" title="Development-only">
+This fork adds **Shared workspace entry**, disabled by default. Use matching server, CLI, and UI builds with `HAPPIER_FEATURE_SHARING_SESSION_ENTRIES__ENABLED=1` on the server. Session sharing and content keys must also remain enabled. This is not an availability claim for a published Happier release.
+</Callout>
+
+An entry gives each invited Google account its own blank conversation on the host machine. Every conversation uses the source session's project directory and Agent. Project files and changes are shared; conversation histories are separate. Model usage uses the host's Agent credentials. Source conversation history is not copied.
+
+Configure [Google OIDC with keyed accounts](/self-hosting/auth-oidc#google-keyed-accounts-with-e2ee), connect the host daemon, and open an owned session's information screen. Choose **Shared workspace entry**, then **Create invitation** and **Copy invitation link**. If the invitation points to another relay, the recipient first chooses **Continue on the invitation server**. They then sign in with a Google-linked account, accept the invitation, and wait for the host to prepare their conversation. Returning through the invitation reuses that person's conversation.
+
+The host's member list offers **Can use** and **No access**. Members can read and send messages in their assigned conversation; they cannot manage sharing or approve tool permissions. The host handles permission prompts under the Agent's existing execution policy.
+
+Copy the invitation when it is created: reopening the management screen does not reveal the old token. Replace the link to obtain a new one. Invitation links currently have no expiry or redemption limit. Anyone receiving a forwarded link can accept with an eligible Google account. **Replace invitation link** invalidates the previous invitation for future acceptance; it does not disable existing members. Use **Disable access** to remove a member's ongoing access. Re-enabling access restores the same conversation after the host prepares its grant again.
+
+A disconnected host rejects new tasks. The UI keeps rejected input as a draft and requires a manual send after reconnection. Previously accepted tasks stop dispatching while the host is offline or the member is disabled. Re-enabling a member can make their retained queue eligible again. Disabling access does not promise to stop an already running Agent or erase history already downloaded by a recipient.
+
+This development version checks a live host connection on a single relay process. It does not coordinate concurrent edits across conversations in the shared project. Hosts should coordinate work on the same files. Encrypted source sessions need a per-session encryption key; legacy encrypted sessions without one are rejected. Plaintext sources do not require that key. If the account's creation encryption mode has changed since the source session was created, prepare a new source session in the current mode.
+
 ## Related
 
 - [Friends](/accounts/friends) — the direct-sharing prerequisite

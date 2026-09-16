@@ -7,6 +7,7 @@ type StartOidcStubServerOptions = {
     includeRefreshToken?: boolean;
     includeUserInfoEndpoint?: boolean;
     userInfoClaims?: Record<string, unknown>;
+    idTokenClaims?: Record<string, unknown>;
 };
 
 export type OidcStubServer = {
@@ -123,6 +124,7 @@ export async function startOidcStubServer(options: StartOidcStubServerOptions = 
                     preferred_username: "acme_user",
                     email: "acme_user@example.test",
                     groups: ["eng"],
+                    ...options.idTokenClaims,
                 },
                 privateKeyPem,
             });

@@ -1,22 +1,10 @@
 import { useUnistyles } from 'react-native-unistyles';
 
 /**
- * Brand-art exception colors for the unauthenticated onboarding left pane.
- *
- * The brand pane is a controlled website-derived art surface (planet JPG +
- * tagline + trust strip) that follows the same dark/light treatment as the
- * marketing site hero:
- *   - Dark theme → dark canvas + light planet variant + white-on-dark text.
- *   - Light theme → cream paper canvas + warm planet variant + dark-on-cream text.
- *
- * These are the only allowed hard-coded color literals in the unauth onboarding
- * components. All workflow-pane and step-body colors must continue to come
- * from `theme.colors.*` via `useUnistyles()`.
- *
- * Components should consume `useBrandPaneTokens()` at runtime so the palette
- * flips with the user's theme. The named constants are kept for legacy tests
- * that import statically and for non-React asset paths; they snapshot the
- * dark palette (the brand pane was always-dark in earlier drafts).
+ * Bounded, theme-aware palette for the pre-auth brand illustration.
+ * Saturated blue marks the shared project; workflow controls still use app
+ * semantic tokens. Dark mode keeps readable light text and a softer blue.
+ * There is no animation or live-status meaning in this static artwork.
  */
 
 export type BrandPaneTokens = Readonly<{
@@ -26,6 +14,10 @@ export type BrandPaneTokens = Readonly<{
     foregroundSoft: string;
     /** Transparent variant of `background`, useful as the start stop of fades. */
     backgroundTransparent: string;
+    accent: string;
+    accentSurface: string;
+    surface: string;
+    border: string;
 }>;
 
 // Background colors are sampled from the TOP edge of the planet JPGs
@@ -42,6 +34,10 @@ const DARK_TOKENS: BrandPaneTokens = {
     foregroundMuted: 'rgba(255, 255, 255, 0.55)',
     foregroundSoft: 'rgba(255, 255, 255, 0.72)',
     backgroundTransparent: 'rgba(4, 4, 8, 0)',
+    accent: '#91B0FF',
+    accentSurface: '#172850',
+    surface: '#11151F',
+    border: '#29334A',
 };
 
 const LIGHT_TOKENS: BrandPaneTokens = {
@@ -53,6 +49,10 @@ const LIGHT_TOKENS: BrandPaneTokens = {
     foregroundMuted: 'rgba(10, 10, 10, 0.55)',
     foregroundSoft: 'rgba(10, 10, 10, 0.72)',
     backgroundTransparent: 'rgba(251, 250, 249, 0)',
+    accent: '#2457EA',
+    accentSurface: '#EAF0FF',
+    surface: '#FFFFFF',
+    border: '#DCE4F4',
 };
 
 /**

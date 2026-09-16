@@ -96,6 +96,28 @@ describe("oidcProviderConfig", () => {
         expect(instance.httpTimeoutSeconds).toBe(7);
     });
 
+    it.each([
+        { allow: undefined, expected: false },
+        { allow: { requireVerifiedEmail: false }, expected: false },
+        { allow: { requireVerifiedEmail: true }, expected: true },
+    ])("parses optional verified-email policy: $expected", async ({ allow, expected }) => {
+        const { resolveAuthProviderInstancesFromEnv } = await import("./oidcProviderConfig");
+        const result = resolveAuthProviderInstancesFromEnv({
+            AUTH_PROVIDERS_CONFIG_JSON: JSON.stringify([{
+                id: "google",
+                type: "oidc",
+                displayName: "Google",
+                issuer: "https://accounts.google.com",
+                clientId: "client.apps.googleusercontent.com",
+                clientSecret: "test-secret",
+                redirectUrl: "https://server.example.test/v1/oauth/google/callback",
+                allow,
+            }]),
+        });
+        expect(result.errors).toEqual([]);
+        expect(result.instances[0]?.allow.requireVerifiedEmail).toBe(expected);
+    });
+
     it("reports an error for duplicate provider ids", async () => {
         const { resolveAuthProviderInstancesFromEnv } = await import("./oidcProviderConfig");
 

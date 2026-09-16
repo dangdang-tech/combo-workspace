@@ -37,6 +37,7 @@ import {
     type SessionReadCursorReadState,
 } from "./readCursor/resolveSessionReadCursorOperation";
 import { parseSessionMessageRole, resolveSessionMessageRole } from "./messageRole/resolveSessionMessageRole";
+import { resolveSessionEntryTaskRejection, type SessionEntryTaskRejection } from "@/app/share/sessionEntryAdmission";
 import {
     resolveSessionUnreadSinceWrite,
     type SessionUnreadInputs,
@@ -926,7 +927,7 @@ export type CreateSessionMessageResult =
         message: SessionMessageWriteRow;
         participantCursors: [];
       }
-    | { ok: false; error: "invalid-params" | "forbidden" | "session-not-found" | "internal"; code?: EncryptionPolicyRejectionCode }
+    | { ok: false; error: "invalid-params" | "forbidden" | "session-not-found" | "internal" | SessionEntryTaskRejection; code?: EncryptionPolicyRejectionCode }
     | { ok: false; error: "local-id-conflict" };
 
 type CreateSessionMessageParamsBase = Readonly<{
@@ -1011,6 +1012,13 @@ export async function createSessionMessage(
                 source: "session-message",
             },
         }).messageRole;
+    // Follow the same supplied-role/derived-role precedence without recording
+    // duplicate mismatch telemetry before the storage-mode-aware resolution.
+    // Trusted observations persist provider history; their publisher fence is
+    // revalidated below and they never authorize a new user task.
+    const allowOwnerTranscript = Boolean(params.trustedPublisherFence && params.trustedTranscriptObservationProvenance)
+        || (parseSessionMessageRole(params.messageRole)
+            ?? resolveSessionMessageRole({ content }).messageRole) !== "user";
 
     const reconcileExistingLocalId = async (args: Readonly<{
         tx: Tx;
@@ -1131,6 +1139,11 @@ export async function createSessionMessage(
 
     try {
         return await inTx(async (tx) => {
+            const entryRejection = await resolveSessionEntryTaskRejection({
+                tx, actorUserId, sessionId,
+                allowOwnerTranscript,
+            });
+            if (entryRejection) return { ok: false, error: entryRejection };
             if (params.trustedPublisherFence) {
                 const fence = params.trustedPublisherFence;
                 if (
@@ -1326,6 +1339,11 @@ export async function createSessionMessage(
             }
             try {
                 return await inTx(async (tx) => {
+                    const entryRejection = await resolveSessionEntryTaskRejection({
+                        tx, actorUserId, sessionId,
+                        allowOwnerTranscript,
+                    });
+                    if (entryRejection) return { ok: false, error: entryRejection };
                     if (params.trustedPublisherFence) {
                         const fence = params.trustedPublisherFence;
                         if (

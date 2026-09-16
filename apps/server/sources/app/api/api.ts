@@ -25,6 +25,7 @@ import { userRoutes } from "./routes/user/userRoutes";
 import { feedRoutes } from "./routes/feed/feedRoutes";
 import { kvRoutes } from "./routes/kv/kvRoutes";
 import { shareRoutes } from "./routes/share/shareRoutes";
+import { sharedSessionEntryRoutes } from "./routes/share/sharedSessionEntryRoutes";
 import { publicShareRoutes } from "./routes/share/publicShareRoutes";
 import { featuresRoutes } from "./routes/features/featuresRoutes";
 import { sessionPendingRoutes } from "./routes/session/pendingRoutes";
@@ -127,6 +128,7 @@ export async function startApi() {
     feedRoutes(typed);
     kvRoutes(typed);
     shareRoutes(typed);
+    sharedSessionEntryRoutes(typed);
     publicShareRoutes(typed);
     automationRoutes(typed);
 

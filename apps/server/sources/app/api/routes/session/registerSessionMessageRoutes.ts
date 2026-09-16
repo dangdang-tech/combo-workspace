@@ -442,7 +442,8 @@ export function registerSessionMessageRoutes(app: Fastify) {
                     })
                     .passthrough(),
                 400: z.object({ error: z.literal('Invalid parameters'), code: z.string().optional() }).passthrough(),
-                403: z.object({ error: z.literal('Forbidden') }),
+                403: z.object({ error: z.enum(['Forbidden', 'shared_session_access_revoked']) }),
+                409: z.object({ error: z.literal('host_offline') }),
                 404: z.object({ error: z.literal('Session not found') }),
                 500: z.object({ error: z.literal('Failed to create message') }),
             },
@@ -501,6 +502,8 @@ export function registerSessionMessageRoutes(app: Fastify) {
                   });
 
         if (!result.ok) {
+            if (result.error === "host_offline") return reply.code(409).send({ error: result.error });
+            if (result.error === "shared_session_access_revoked") return reply.code(403).send({ error: result.error });
             if (result.error === "invalid-params") {
                 const payload: { error: "Invalid parameters"; code?: string } = { error: "Invalid parameters" };
                 if ("code" in result && typeof result.code === "string") payload.code = result.code;

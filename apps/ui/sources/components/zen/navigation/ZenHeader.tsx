@@ -3,7 +3,7 @@ import { StatusDot } from '@/components/ui/status/StatusDot';
 import { Typography } from '@/constants/Typography';
 import { t } from '@/text';
 import { useIsTablet } from '@/utils/platform/responsive';
-import { Image } from 'expo-image';
+import { BrandMark } from '@/components/ui/icons/BrandMark';
 import { useRouter } from 'expo-router';
 import * as React from 'react';
 import { View, Pressable } from 'react-native';
@@ -90,12 +90,7 @@ function HeaderLeft() {
             alignItems: 'center',
             justifyContent: 'center',
         }}>
-            <Image
-                source={require('@/assets/images/logo-black.png')}
-                contentFit="contain"
-                style={[{ width: 24, height: 24 }]}
-                tintColor={theme.colors.chrome.header.foreground}
-            />
+            <BrandMark color={theme.colors.accent.blue} />
         </View>
     );
 }

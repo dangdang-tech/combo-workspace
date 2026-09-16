@@ -629,6 +629,14 @@ because the secret travels camera-to-app. Web pairing cannot make the same guara
 hostile self-hosted relay: that relay also serves the JavaScript which receives the secret, so the
 web flow necessarily trusts its web origin.
 
+## Shared workspace entry grants
+
+The development-only `sharing.sessionEntries` feature creates a host-owned child Session for each `(entryId, userId)` membership. The CLI creates a blank conversation through `createSpawnedSession`, using a stable member-derived spawn nonce and the source's machine, directory, and Agent. It verifies the child metadata before completing the grant. The UI routes each recipient to their assigned child; source history is not copied, and project files remain shared.
+
+For E2EE children, the host verifies the recipient's content-public-key signature against its account signing key, opens the actual child session DEK, and seals that DEK with the canonical v1 encrypted-data-key envelope. It never substitutes the machine/account encryption key. Plain children require no key envelope. Legacy encrypted sources without a per-session DEK fail closed. The canonical session-creation policy must match the source mode before a new child is spawned; a second check catches changes during allocation.
+
+`SharedSessionEntryMember` owns readiness and revocation; the resulting `SessionShare` grants edit access with no approval delegation. `sessionEntryAdmission` checks current membership and the exact machine's live relay connection at message admission and pending dispatch. Host transcript publication remains possible during reconnection. Grant/revoke operations use the existing share event, change cursor, relay-cache invalidation, and draft lifecycle owners. Revocation prevents future access; it cannot retract previously delivered keys or plaintext from a recipient.
+
 ## Implementation references
 - Client crypto: `apps/cli/src/api/encryption.ts`
 - Session message format: `apps/cli/src/api/types.ts`

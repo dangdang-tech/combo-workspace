@@ -5,7 +5,7 @@ import { Typography } from '@/constants/Typography';
 import { StatusDot } from '@/components/ui/status/StatusDot';
 import { useRouter, useSegments } from 'expo-router';
 import { getServerInfo } from '@/sync/domains/server/serverConfig';
-import { Image } from 'expo-image';
+import { BrandMark } from '@/components/ui/icons/BrandMark';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { t } from '@/text';
 import { useAutomationsSupport } from '@/hooks/server/useAutomationsSupport';
@@ -154,11 +154,7 @@ function HeaderLeft(props: { showAutomations: boolean }) {
     const { theme } = useUnistyles();
     const logo = (
         <View style={styles.logoContainer}>
-            <Image
-                source={theme.dark ? require('@/assets/images/logo-white.png') : require('@/assets/images/logo-black.png')}
-                contentFit="contain"
-                style={[{ width: 24, height: 24 }]}
-            />
+            <BrandMark color={theme.colors.accent.blue} />
         </View>
     );
     return (

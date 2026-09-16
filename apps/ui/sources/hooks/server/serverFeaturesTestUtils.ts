@@ -110,6 +110,7 @@ export function buildServerFeaturesResponse(overrides: FixtureOverrides = {}): F
                 },
             },
             sharing: {
+                sessionEntries: { enabled: false },
                 session: { enabled: true },
                 public: { enabled: true },
                 contentKeys: { enabled: true },

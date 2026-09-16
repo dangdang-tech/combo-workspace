@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { ScrollView, View, type ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,9 +13,7 @@ import { t } from '@/text';
 
 import { BackChevron } from './BackChevron';
 import { BrandWordmark } from './BrandWordmark';
-import { PlanetBackground } from './PlanetBackground';
 import { WelcomeFooterLinks } from './WelcomeFooterLinks';
-import { useBrandPaneTokens } from './brandPaneTokens';
 
 // Mobile welcome wordmark sits at the same coordinates as the brand hero's
 // wordmark (24px top + 24px left, plus the safe-area insets) so users see
@@ -118,26 +115,7 @@ export const WorkflowPanel = React.memo(function WorkflowPanel(props: WorkflowPa
             }
         : styles.contentDesktopPadding;
 
-    // On mobile, the welcome step gets a cosmic backdrop — a heavily oversized,
-    // bottom-anchored planet behind the content. The brand hero on first
-    // launch already shows the same planet imagery; carrying it into the
-    // welcome step keeps the cosmic identity present rather than dropping
-    // back to flat canvas. Scoped to mobile + welcome so other steps stay
-    // clean and desktop still uses the BrandPanel for the planet.
-    const showMobileWelcomeBackdrop = isMobile && props.isWelcomeStep;
-    // When the planet backdrop renders, the underlying canvas color must
-    // match the planet's top-edge color so any area not covered by the
-    // oversized image blends seamlessly with it. Outside the welcome step
-    // (or on desktop) we keep the regular canvas color.
-    const brandPaneTokens = useBrandPaneTokens();
-    const paneBackgroundColor = showMobileWelcomeBackdrop
-        ? brandPaneTokens.background
-        : theme.colors.background.canvas;
-    // Same bottom fade the brand hero overlays on its planet (transparent →
-    // canvas color over the bottom 60%). Without it the welcome step's planet
-    // looked subtly different from the brand hero's. The fade also softens the
-    // backdrop behind the bottom-aligned heading + buttons for legibility.
-    const planetFadeColors = [brandPaneTokens.backgroundTransparent, brandPaneTokens.background] as const;
+    const showMobileWelcomeWordmark = isMobile && props.isWelcomeStep;
 
     return (
         <View
@@ -145,21 +123,12 @@ export const WorkflowPanel = React.memo(function WorkflowPanel(props: WorkflowPa
             style={[
                 styles.paneOuter,
                 {
-                    backgroundColor: paneBackgroundColor,
+                    backgroundColor: theme.colors.background.canvas,
                     maxWidth: paneMaxWidth,
                 },
             ]}
         >
-            {showMobileWelcomeBackdrop ? <PlanetBackground variant="mobile" /> : null}
-            {showMobileWelcomeBackdrop ? (
-                <LinearGradient
-                    pointerEvents="none"
-                    colors={planetFadeColors}
-                    locations={[0, 1]}
-                    style={styles.planetBottomFade}
-                />
-            ) : null}
-            {showMobileWelcomeBackdrop ? (
+            {showMobileWelcomeWordmark ? (
                 <View
                     testID="welcome-mobile-wordmark"
                     style={[
@@ -194,7 +163,7 @@ export const WorkflowPanel = React.memo(function WorkflowPanel(props: WorkflowPa
             <ScrollView
                 testID="unauth-shell-workflow-scroll"
                 style={styles.scrollFill}
-                contentContainerStyle={[styles.scrollContent, contentPaddingStyle]}
+                contentContainerStyle={[styles.scrollContent, contentPaddingStyle, showMobileWelcomeWordmark ? styles.welcomeMobileSpacing : null]}
                 showsVerticalScrollIndicator={false}
                 bounces={false}
                 keyboardShouldPersistTaps="handled"
@@ -312,18 +281,10 @@ const stylesheet = StyleSheet.create(() => ({
         left: 20,
         zIndex: 1,
     },
+    welcomeMobileSpacing: { paddingTop: 104 },
     mobileWordmark: {
         position: 'absolute',
         // top + left are applied inline alongside the safe-area insets.
         zIndex: 1,
-    },
-    // Mirrors BrandPanel's bottomFadeMobile so the welcome-step planet fades
-    // to the canvas color over the bottom 60% exactly like the brand hero.
-    planetBottomFade: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: '60%',
     },
 }));

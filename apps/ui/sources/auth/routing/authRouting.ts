@@ -34,7 +34,7 @@ export function isPublicRouteForUnauthenticated(segments: string[]): boolean {
     if (first === 'mtls') return true;
 
     // Public share links must work unauthenticated.
-    if (first === 'share') return true;
+    if (first === 'share' || first === 'invite') return true;
 
     return false;
 }

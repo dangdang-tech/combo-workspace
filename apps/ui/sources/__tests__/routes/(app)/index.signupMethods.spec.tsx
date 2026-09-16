@@ -25,6 +25,12 @@ vi.mock('@/components/navigation/shell/MainView', () => ({ MainView: () => null 
 vi.mock('@shopify/react-native-skia', () => ({}));
 
 const applyBrandHeroSeenSpy = vi.hoisted(() => vi.fn());
+const routeState = vi.hoisted(() => ({ params: {} as { returnTo?: string } }));
+
+vi.mock('expo-router', async () => {
+    const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router');
+    return createExpoRouterMock({ params: () => routeState.params }).module;
+});
 
 vi.mock('@/components/onboarding/unauthShell', async () => {
     const React = await import('react');
@@ -120,6 +126,7 @@ vi.mock('@/sync/api/capabilities/serverFeaturesClient', () => ({
 
 describe('/ (welcome) signup methods', () => {
     beforeEach(() => {
+        routeState.params = {};
         applyBrandHeroSeenSpy.mockReset();
         getReadyServerFeaturesMock.mockReset();
         getReadyServerFeaturesMock.mockResolvedValue(defaultWelcomeFeatures);
@@ -154,6 +161,16 @@ describe('/ (welcome) signup methods', () => {
 
         expect(shell?.props.onOpenRelayCustomFlow).toBeTypeOf('function');
         expect(screen.findAllByTestId('welcome-hero')).toHaveLength(0);
+    });
+
+    it('bypasses the first-visit mobile hero for an invitation continuation', async () => {
+        vi.resetModules();
+        routeState.params = { returnTo: '/invite/invitation-token?server=https%3A%2F%2Frelay.example.test' };
+        const screen = await renderWelcomeScreen();
+
+        expect(screen.findByTestId('unauth-shell-route-welcome')?.props.allowMobileBrandHero).toBe(false);
+        expect(await waitForWelcomeTestId(screen, 'welcome-signup-provider')).toBeGreaterThan(0);
+        expect(applyBrandHeroSeenSpy).not.toHaveBeenCalled();
     });
 
     it('shows anonymous primary and provider option when both are enabled', async () => {

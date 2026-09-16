@@ -12,6 +12,7 @@ import { db } from "@/storage/db";
 import { fetchSessionOrganizationPinnedSessionIds } from "@/app/session/organization/organizationQueries";
 import { type Fastify } from "../../types";
 import {
+    createSessionSharedWithUserWhere,
     encodeSessionDataEncryptionKey,
     mapStoredSessionRuntimeActivityProjection,
     omitSessionListProjectionFallbackColumns,
@@ -159,7 +160,7 @@ async function findV1SessionListRowsWithSelect(params: Readonly<{
             select: sessionSelect,
         }),
         db.sessionShare.findMany({
-            where: { sharedWithUserId: userId, session: { archivedAt: null } },
+            where: { AND: [createSessionSharedWithUserWhere(userId), { session: { archivedAt: null } }] },
             orderBy: { session: { updatedAt: 'desc' } },
             take: 150,
             select: createV1SessionShareSelect(shareSessionSelect),

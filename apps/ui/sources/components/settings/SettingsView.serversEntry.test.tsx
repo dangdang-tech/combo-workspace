@@ -111,13 +111,6 @@ vi.mock('expo-constants', () => ({
     default: { expoConfig: { version: '0.0.0-test' } },
 }));
 
-vi.mock('@/constants/Typography', () => ({
-    Typography: {
-        default: () => ({}),
-        mono: () => ({}),
-    },
-}));
-
 vi.mock('@/components/ui/lists/ItemList', () => ({
     ItemList: createPassthroughNode('ItemList'),
 }));
@@ -309,7 +302,7 @@ describe('SettingsView', () => {
         expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/features');
     });
 
-    it('routes to the in-app bug report composer by default when Report issue is pressed', async () => {
+    it('opens this fork issue tracker by default when Report issue is pressed', async () => {
         const screen = await renderSettingsViewUnderTest();
 
         expect(screen.findRowByTitle('settings.reportIssue')).toBeTruthy();
@@ -318,8 +311,8 @@ describe('SettingsView', () => {
             await screen.pressRowByTitle('settings.reportIssue');
         });
 
-        expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/report-issue');
-        expect(shared.linkingOpenURLSpy).not.toHaveBeenCalled();
+        expect(shared.routerPushSpy).not.toHaveBeenCalled();
+        expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/dangdang-agent/issues/new/choose');
     });
 
     it('opens EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL when set and supported instead of routing to the composer', async () => {
@@ -345,7 +338,7 @@ describe('SettingsView', () => {
         }
     });
 
-    it('falls back to routing when EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL is set but cannot be opened', async () => {
+    it('falls back to this fork issue tracker when the configured report URL cannot be opened', async () => {
         const previousUrl = process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL;
         process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL = 'https://example.test/report-issue';
         shared.linkingCanOpenURLSpy.mockResolvedValue(false);
@@ -360,8 +353,8 @@ describe('SettingsView', () => {
             });
 
             expect(shared.linkingCanOpenURLSpy).toHaveBeenCalledWith('https://example.test/report-issue');
-            expect(shared.linkingOpenURLSpy).not.toHaveBeenCalled();
-            expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/report-issue');
+            expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/dangdang-agent/issues/new/choose');
+            expect(shared.routerPushSpy).not.toHaveBeenCalled();
         } finally {
             if (previousUrl === undefined) delete process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL;
             else process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL = previousUrl;
@@ -369,12 +362,22 @@ describe('SettingsView', () => {
     });
 
     it('renders the GitHub repository as subtitle, not right-side detail', async () => {
+        shared.linkingCanOpenURLSpy.mockResolvedValue(true);
         const screen = await renderSettingsViewUnderTest();
         const githubItem = screen.findRowByTitle('settings.github');
 
         expect(githubItem).toBeTruthy();
-        expect(githubItem?.props.subtitle).toBe('happier-dev/happier');
+        expect(githubItem?.props.subtitle).toBe('dangdang-tech/dangdang-agent');
         expect(githubItem?.props.detail).toBeUndefined();
+        await act(async () => { screen.pressRowByTitle('settings.github'); });
+        expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/dangdang-agent');
+    });
+
+    it('does not present upstream legal policies as this fork policies', async () => {
+        const screen = await renderSettingsViewUnderTest();
+        expect(screen.findRowByTitle('settings.privacyPolicy')).toBeNull();
+        expect(screen.findRowByTitle('settings.termsOfService')).toBeNull();
+        expect(screen.findRowByTitle('settings.eula')).toBeNull();
     });
 
     it('shows Rate us right below What’s New and triggers store review only when pressed', async () => {

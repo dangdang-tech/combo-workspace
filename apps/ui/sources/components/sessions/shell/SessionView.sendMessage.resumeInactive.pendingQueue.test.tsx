@@ -16,6 +16,9 @@ import { installSessionShellCommonModuleMocks } from './sessionShellTestHelpers'
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
+const sharedEntryFetchSpy = vi.hoisted(() => vi.fn());
+const activeServerIdState = vi.hoisted(() => ({ current: 'server-1' }));
+vi.mock('@/sync/http/client', () => ({ serverFetch: sharedEntryFetchSpy }));
 const previousDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 const enqueuePendingMessageSpy = vi.hoisted(() => vi.fn(async (..._args: any[]) => {}));
 const sendMessageSpy = vi.hoisted(() => vi.fn(async (..._args: any[]) => {}));
@@ -582,7 +585,7 @@ vi.mock('@/components/sessions/model/useSessionMachineTarget', () => ({
     }),
 }));
 vi.mock('@/sync/domains/server/serverRuntime', () => ({
-    getActiveServerSnapshot: () => ({ serverId: 'server-1' }),
+    getActiveServerSnapshot: () => ({ serverId: activeServerIdState.current, serverUrl: 'https://relay.example' }),
     subscribeActiveServer: (listener: any) => {
         listener({ serverId: 'server-1' });
         return () => {};
@@ -736,6 +739,8 @@ describe('SessionView (sendMessage resumeInactive pendingQueue)', () => {
     beforeEach(async () => {
         (globalThis as { __DEV__?: boolean }).__DEV__ = false;
         authCredentials = { token: 't', secret: 's' };
+        activeServerIdState.current = 'server-1';
+        sharedEntryFetchSpy.mockReset();
         enqueuePendingMessageSpy.mockClear();
         sendPendingMessageNowSpy.mockClear();
         updatePendingRequestedActionSpy.mockClear();
@@ -783,6 +788,41 @@ describe('SessionView (sendMessage resumeInactive pendingQueue)', () => {
         pendingFireAndForget.length = 0;
         vi.clearAllMocks();
         (globalThis as { __DEV__?: boolean }).__DEV__ = previousDev;
+    });
+
+    it('keeps shared-session text editable while an offline host disables sending', async () => {
+        activeServerIdState.current = 'server-cache';
+        sessionMetadataOverrides.current = { sharedSessionEntryId: 'entry' };
+        sharedEntryFetchSpy.mockResolvedValue(new Response(JSON.stringify({ access: {
+            entryId: 'entry', title: 'Project', memberId: 'member', status: 'ready', sessionId: 's1', hostOnline: false, errorCode: null,
+        } }), { status: 200 }));
+        const screen = await renderSessionView({ routeServerId: 'server-cache' });
+        await act(async () => { findAgentInput(screen).props.onChangeText('keep my draft'); });
+        expect(findAgentInput(screen).props.isSendDisabled).toBe(true);
+        await act(async () => { findAgentInput(screen).props.onSend(); });
+        expect(findAgentInput(screen).props.value).toBe('keep my draft');
+        expect(enqueuePendingMessageSpy).not.toHaveBeenCalled();
+        expect(screen.getTextContent()).toContain('sharedEntry.hostOffline');
+        await screen.unmount();
+    });
+
+    it('restores the draft and localizes an offline refusal racing with the online preflight', async () => {
+        activeServerIdState.current = 'server-cache';
+        sessionMetadataOverrides.current = { sharedSessionEntryId: 'entry' };
+        sharedEntryFetchSpy.mockImplementation(async () => new Response(JSON.stringify({ access: {
+            entryId: 'entry', title: 'Project', memberId: 'member', status: 'ready', sessionId: 's1', hostOnline: true, errorCode: null,
+        } }), { status: 200 }));
+        enqueuePendingMessageSpy.mockRejectedValueOnce(Object.assign(new Error('host_offline'), { code: 'host_offline' }));
+        const screen = await renderSessionView({ routeServerId: 'server-cache' });
+        await act(async () => { findAgentInput(screen).props.onChangeText('retry this manually'); });
+        expect(findAgentInput(screen).props.isSendDisabled).toBe(false);
+        await act(async () => { findAgentInput(screen).props.onSend(); });
+        await act(async () => { await Promise.all(pendingFireAndForget); });
+        expect(enqueuePendingMessageSpy).toHaveBeenCalledTimes(1);
+        expect(findAgentInput(screen).props.value).toBe('retry this manually');
+        expect(modalMockState.current?.spies.alert).toHaveBeenCalledWith('common.error', 'sharedEntry.hostOffline');
+        expect(resumeSessionSpy).not.toHaveBeenCalled();
+        await screen.unmount();
     });
 
     it('uses the live store session for composer status and send when the retained shell session lags', async () => {

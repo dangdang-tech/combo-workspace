@@ -7,7 +7,7 @@ import { flushHookEffects, renderScreen } from '@/dev/testkit';
 
 const shared = vi.hoisted(() => ({
   routerReplaceSpy: vi.fn(),
-  searchParams: { id: 'session-1', messageId: 'message-1' } as { id?: string; messageId?: string; jumpChildId?: string; serverId?: string },
+  searchParams: { id: 'session-1', messageId: 'message-1' } as { id?: string; messageId?: string; jumpChildId?: string; serverId?: string; returnTo?: string },
 }));
 
 vi.mock('expo-router', async () => {
@@ -57,6 +57,15 @@ vi.mock('@/encryption/base64', () => ({
 vi.mock('@/encryption/libsodium.lib', () => ({ default: {} }));
 
 describe('/ authenticated deep link redirects', () => {
+  it('returns to the invitation when an existing account finishes login on the home route', async () => {
+    shared.routerReplaceSpy.mockClear();
+    shared.searchParams = { returnTo: '/invite/token?server=https%3A%2F%2Frelay.example' };
+    const { default: Screen } = await import('@/app/(app)/index');
+    const screen = await renderScreen(<Screen />);
+    expect(shared.routerReplaceSpy).toHaveBeenCalledWith('/invite/token?server=https%3A%2F%2Frelay.example');
+    await screen.unmount();
+  });
+
   it('redirects to /session/:id/message/:messageId when query params are present', async () => {
     vi.resetModules();
     shared.routerReplaceSpy.mockClear();

@@ -76,6 +76,26 @@ describe('UnauthenticatedSplitShell', () => {
         expect(screen.findByTestId('fake-step-body')).toBeTruthy();
     });
 
+    it('does not send native-only accessibility attributes to decorative web artwork', async () => {
+        mockLayout('split');
+        const screen = await renderScreen(
+            <UnauthenticatedSplitShell
+                stepId="welcome"
+                isWelcomeStep
+                onOpenRelayCustomFlow={() => {}}
+                onBrandHeroGetStarted={() => {}}
+            >
+                <FakeBody label="welcome" />
+            </UnauthenticatedSplitShell>,
+        );
+
+        const artwork = screen.findByTestId('unauth-shell-brand-pane');
+        expect(artwork?.findAll((node) => (
+            node.props.accessibilityElementsHidden !== undefined
+            || node.props.importantForAccessibility !== undefined
+        ))).toHaveLength(0);
+    });
+
     it('keeps the workflow pane shrinkable so nested setup and restore scroll views can scroll', async () => {
         mockLayout('split');
         const screen = await renderScreen(
@@ -133,8 +153,8 @@ describe('UnauthenticatedSplitShell', () => {
 
         const content = screen.findByTestId('unauth-shell-brand-content-mobile');
         const style = flattenStyle(content?.props.style);
-        expect(style.top).toBe(68);
-        expect(style.bottom).toBe(62);
+        expect(style.paddingTop).toBe(68);
+        expect(style.paddingBottom).toBe(62);
     });
 
     it('renders only the workflow pane in mobile-workflow layout', async () => {

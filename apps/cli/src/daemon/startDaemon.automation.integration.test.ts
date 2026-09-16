@@ -90,6 +90,7 @@ function restoreProcessEnvValue(name: string, value: string | undefined): void {
 async function resetAutomationDaemonTestDefaults(): Promise<void> {
   harness.setMachineSyncClientOverride(null);
   harness.axiosGet.mockReset().mockRejectedValue(new Error('Unexpected HTTP request in daemon automation test'));
+  harness.axiosPost.mockReset().mockResolvedValue({ data: { assignment: null } });
   harness.readAccountChangesCursor.mockReset().mockResolvedValue(0);
   harness.writeAccountChangesCursor.mockReset().mockResolvedValue(undefined);
   harness.verifyClaudeSharedGroupGenerationApplication.mockReset().mockResolvedValue({ status: 'unavailable' });
@@ -141,6 +142,7 @@ const harness = vi.hoisted(() => {
     connectedServiceCredentialRevisionsV1: unknown;
   }) => Promise<void> | void> = [];
   const axiosGet = vi.fn();
+  const axiosPost = vi.fn();
   const readAccountChangesCursor = vi.fn(async () => 0);
   const writeAccountChangesCursor = vi.fn(async () => {});
   const verifyClaudeSharedGroupGenerationApplication = vi.fn<VerifyClaudeSharedGroupGenerationApplication>(
@@ -267,6 +269,7 @@ const harness = vi.hoisted(() => {
       machineSyncClientOverride = client;
     },
     axiosGet,
+    axiosPost,
     readAccountChangesCursor,
     writeAccountChangesCursor,
     verifyClaudeSharedGroupGenerationApplication,
@@ -332,6 +335,7 @@ vi.mock('@/api/api', () => ({
 vi.mock('axios', () => ({
   default: {
     get: harness.axiosGet,
+    post: harness.axiosPost,
     isAxiosError: (error: unknown) => Boolean((error as { isAxiosError?: unknown } | null)?.isAxiosError),
   },
 }));
@@ -1011,6 +1015,7 @@ describe('startDaemon automation wiring (integration)', () => {
   beforeEach(async () => {
     vi.resetModules();
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 404 })));
     harness.setAutoShutdownAfterAutomationStart(true);
     harness.setActiveAccountSettingsSnapshot(null);
     harness.resetDaemonListeners();
@@ -1018,6 +1023,7 @@ describe('startDaemon automation wiring (integration)', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     harness.setAutoShutdownAfterAutomationStart(true);
     harness.resetDaemonListeners();
@@ -1663,6 +1669,51 @@ describe('startDaemon automation wiring (integration)', () => {
       expect(harness.automationWorkerStop).toHaveBeenCalledTimes(1);
       expect(exitSpy).toHaveBeenCalledWith(0);
     } finally {
+      exitSpy.mockRestore();
+    }
+  });
+
+  it('stops shared-session allocation before waiting for shutdown publication', async () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    const publicationStarted = createDeferred<void>();
+    const releasePublication = createDeferred<void>();
+    const originalTimeout = process.env.HAPPIER_DAEMON_SHUTDOWN_STATE_UPDATE_TIMEOUT_MS;
+    let run: Promise<void> | undefined;
+    harness.setAutoShutdownAfterAutomationStart(false);
+    process.env.HAPPIER_DAEMON_SHUTDOWN_STATE_UPDATE_TIMEOUT_MS = '10000';
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({
+      features: { sharing: { session: { enabled: true }, contentKeys: { enabled: true }, sessionEntries: { enabled: true } } },
+      capabilities: {},
+    })));
+    harness.apiMachine.updateDaemonState.mockImplementation(async (...args: unknown[]) => {
+      const updater = args[0] as ((state: null) => { status?: string }) | undefined;
+      if (updater?.(null).status === 'shutting-down') {
+        publicationStarted.resolve();
+        await releasePublication.promise;
+      }
+    });
+    const allocationCount = () => harness.axiosPost.mock.calls.filter(([url]) =>
+      String(url).endsWith('/shared-session-entries/claim')).length;
+    try {
+      const { startDaemon } = await import('./startDaemon');
+      const { resetServerFeaturesClientForTests } = await import('@/features/serverFeaturesClient');
+      resetServerFeaturesClientForTests();
+      run = startDaemon();
+      await waitForCondition(() => harness.apiMachine.onConnectionStateChange.mock.calls.length > 0,
+        'Expected machine bootstrap before observing shared-session polling', 2000);
+      await waitForCondition(() => allocationCount() >= 1, 'Expected a live shared-session allocation poll', 1000);
+      const allocationsBeforeShutdown = allocationCount();
+      harness.requestShutdown('happier-cli');
+      await publicationStarted.promise;
+      await new Promise((resolve) => setTimeout(resolve, 3_200));
+      expect(allocationCount()).toBe(allocationsBeforeShutdown);
+    } finally {
+      releasePublication.resolve();
+      harness.requestShutdown('happier-cli');
+      if (run) await run;
+      harness.apiMachine.updateDaemonState.mockReset().mockResolvedValue(undefined);
+      restoreProcessEnvValue('HAPPIER_DAEMON_SHUTDOWN_STATE_UPDATE_TIMEOUT_MS', originalTimeout);
+      vi.unstubAllGlobals();
       exitSpy.mockRestore();
     }
   });
@@ -4129,6 +4180,8 @@ describe('startDaemon automation wiring (integration)', () => {
         lastErrorMessage: null,
       });
 
+      await waitForCondition(() => harness.automationWorkerPause.mock.calls.length === 1,
+        'Expected all daemon resources to finish pausing after the connectivity event');
       expect(harness.automationWorkerPause).toHaveBeenCalledTimes(1);
 
       harness.emitMachineConnectionState({
@@ -4141,6 +4194,8 @@ describe('startDaemon automation wiring (integration)', () => {
         lastErrorMessage: null,
       });
 
+      await waitForCondition(() => harness.automationWorkerResume.mock.calls.length === 1,
+        'Expected all daemon resources to finish resuming after the connectivity event');
       expect(harness.automationWorkerResume).toHaveBeenCalledTimes(1);
 
       harness.requestShutdown('happier-cli');

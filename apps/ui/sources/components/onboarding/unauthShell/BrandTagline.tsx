@@ -12,29 +12,21 @@ export type BrandTaglineProps = Readonly<{
     mobile?: boolean;
 }>;
 
-/**
- * Two-line display tagline on the unauth brand pane:
- *   "Start anywhere."
- *   "Continue everywhere."
- *
- * Line 1 uses the full brand-pane foreground; line 2 uses the muted variant.
- * Both colors flip with the user's theme via `useBrandPaneTokens()` so the
- * tagline reads clearly against both the dark and the light planet variants.
- */
+/** Shared-project headline using the existing scalable display treatment. */
 export const BrandTagline = React.memo(function BrandTagline(props: BrandTaglineProps) {
     const tokens = useBrandPaneTokens();
     const baseSize = props.mobile ? 44 : 48;
     const baseStyle = {
         ...Typography.default('semiBold'),
         fontSize: baseSize,
-        lineHeight: baseSize,
+        lineHeight: baseSize * 1.22,
     } as const;
     return (
         <View testID="brand-tagline" accessibilityRole="header">
             <Text style={[baseStyle, { color: tokens.foreground }]}>
                 {t('welcome.brandTaglineLine1')}
             </Text>
-            <Text style={[baseStyle, { color: tokens.foregroundMuted }]}>
+            <Text style={[baseStyle, { color: tokens.accent }]}>
                 {t('welcome.brandTaglineLine2')}
             </Text>
         </View>

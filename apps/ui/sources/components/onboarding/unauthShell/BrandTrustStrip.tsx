@@ -30,8 +30,6 @@ export const BrandTrustStrip = React.memo(function BrandTrustStrip(props: BrandT
         <Text
             testID="brand-trust-strip"
             style={style}
-            numberOfLines={props.mobile ? 2 : 1}
-            adjustsFontSizeToFit={props.mobile}
         >
             {t('welcome.brandTrustStrip')}
         </Text>

@@ -43,31 +43,31 @@ function buildProductionConfig(overrides) {
 
 const APP_ENVIRONMENT_CONFIGS = {
     internaldev: buildRingBackedConfig('internaldev', {
-        name: 'Happier (internal dev)',
+        name: 'Dangdang Agent (internal dev)',
         iosBundleId: 'dev.happier.app.dev.internal',
         androidPackage: 'dev.happier.app.internaldev',
         enableAssociatedDomains: false,
     }),
     internalpreview: buildRingBackedConfig('internalpreview', {
-        name: 'Happier (internal preview)',
+        name: 'Dangdang Agent (internal preview)',
         iosBundleId: 'dev.happier.app.internalpreview',
         androidPackage: 'dev.happier.app.internalpreview',
         enableAssociatedDomains: false,
     }),
     publicdev: buildRingBackedConfig('publicdev', {
-        name: 'Happier (dev)',
+        name: 'Dangdang Agent (dev)',
         iosBundleId: 'dev.happier.app.publicdev',
         androidPackage: 'dev.happier.app.publicdev',
         enableAssociatedDomains: false,
     }),
     preview: buildRingBackedConfig('preview', {
-        name: 'Happier (preview)',
+        name: 'Dangdang Agent (preview)',
         iosBundleId: 'dev.happier.app.preview',
         androidPackage: 'dev.happier.app.preview',
         enableAssociatedDomains: false,
     }),
     production: buildProductionConfig({
-        name: 'Happier',
+        name: 'Dangdang Agent',
         iosBundleId: 'dev.happier.app',
         androidPackage: 'dev.happier.app',
         enableAssociatedDomains: true,

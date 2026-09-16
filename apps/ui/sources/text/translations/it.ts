@@ -589,6 +589,48 @@ function plural({
  * Must match the exact structure of the English translations
  */
 export const it: TranslationStructure = {
+    sourceSetup: {
+        title: "Collega un host dai sorgenti",
+        body: "Dangdang Agent non ha ancora un installer dedicato. Usa questo repository; gli installer originali non includono gli spazi condivisi.",
+        openGuide: "Apri la guida di configurazione dai sorgenti",
+        cloneTitle: "Clona e compila questo repository",
+        cloneBody: "Prepara Node.js 22, Yarn Classic 1.22 e Codex sull’host.",
+        connectTitle: "Collega il server selezionato",
+        connectBody: "Segui la guida per configurare questo server e una cartella dati separata, poi esegui auth login e daemon start.",
+        runBody: "Esegui dal repository con lo stesso server e cartella dati configurati, oppure crea una sessione nell’app.",
+    },
+    brand: { name: 'Dangdang Agent' },
+    sharedEntry: {
+        title: "Accesso al progetto condiviso",
+        description: "Ogni utente Google invitato inizia una conversazione vuota personale. Tutti usano gli stessi file del progetto sull’host. L’host paga l’utilizzo del modello.",
+        create: "Crea invito",
+        name: "Nome dell’accesso",
+        members: "Membri",
+        noMembers: "Nessuno ha ancora accettato",
+        copy: "Copia link di invito",
+        copied: "Link di invito copiato",
+        rotate: "Sostituisci link di invito",
+        rotateDetail: "Il link precedente non accetterà più nuovi membri.",
+        canUse: "Può usare",
+        disabled: "Nessun accesso",
+        enable: "Consenti accesso",
+        disable: "Disabilita accesso",
+        preparing: "Preparazione della conversazione",
+        preparingDetail: "L’host sta creando la tua conversazione e preparando l’accesso crittografato.",
+        preparationFailed: "Preparazione non riuscita. Riprova quando l’host è disponibile.",
+        hostOffline: "Host offline. La bozza viene conservata; inviala manualmente quando l’host torna online.",
+        accessDisabled: "L’accesso è stato disabilitato. Contatta l’host.",
+        googleRequired: "Usa un account collegato a Google per accettare questo invito.",
+        keysRequired: "L’accesso crittografato non è pronto. Ripristina o collega le chiavi dell’account e riprova.",
+        inviteInvalid: "Questo invito non è valido o non è più disponibile.",
+        accept: "Accetta invito",
+        signIn: "Accedi con Google per continuare",
+        connectServer: "Continua sul server dell’invito",
+        checking: "Verifica della disponibilità dell’host",
+        refresh: "Aggiorna stato",
+        loadingFailed: "Impossibile verificare l’accesso. Aggiorna prima di inviare.",
+        unavailable: "Gli accessi condivisi non sono disponibili per questa sessione.",
+    },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
         entrySubtitle: 'Discover and control app shortcuts',
@@ -2381,7 +2423,7 @@ export const it: TranslationStructure = {
     actionsSettingsAboutSubtitle:
       "Abilita o disabilita le azioni globalmente, per superficie (UI/voce/MCP) e per posizionamento (dove compaiono nell’interfaccia). Le azioni disabilitate vengono bloccate in modo sicuro a runtime.",
     aboutFooter:
-      "Happier Coder è un client mobile per Codex e Claude Code. Usa la crittografia end-to-end per impostazione predefinita, con ripristino dell'account sugli altri tuoi dispositivi. Non affiliato con Anthropic.",
+      "Dangdang Agent è uno spazio di programmazione condiviso basato su Happier. I file del progetto sono condivisi e le conversazioni restano separate.",
     whatsNew: "Novità",
     whatsNewSubtitle: "Scopri gli ultimi aggiornamenti e miglioramenti",
     reportIssue: "Segnala un problema",
@@ -10210,22 +10252,28 @@ settingsSession: {
       `Il Relay su ${serverUrl} ha restituito una risposta inattesa. Aggiorna quel Relay o scegli un altro Relay per continuare.`,
 
     // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
-    brandTaglineLine1: "Inizia ovunque.",
-    brandTaglineLine2: "Continua dappertutto.",
-    brandSubTagline: "Un centro di controllo per ogni agente di codifica — su ogni dispositivo che possiedi.",
-    brandTrustStrip: "CRITTOGRAFIA END-TO-END · OPEN SOURCE · SELF-HOSTABLE",
+    brandTaglineLine1: "Un progetto condiviso.",
+    brandTaglineLine2: "La tua conversazione con l’IA.",
+    brandSubTagline: "Usate Codex nella stessa cartella di progetto. Ognuno inizia una nuova conversazione; le modifiche ai file sono condivise.",
+    brandTrustStrip: "FILE CONDIVISI · CONVERSAZIONI SEPARATE · SELF-HOSTING",
+    frontDoorSelectedServer: "Server selezionato",
+    frontDoorHostRequirement: "Le attività vengono eseguite con l’host online. Le richieste offline vengono rifiutate, non accodate.",
+    frontDoorOtherConversation: "Conversazione di un collaboratore",
+    frontDoorYourConversation: "La tua conversazione",
+    frontDoorProject: "Una cartella di progetto",
+    frontDoorEyebrow: "Spazio Codex condiviso",
     providerMarkRowAccessibilityLabel: "Agenti di codifica IA supportati",
 
     // Unified onboarding redesign — welcome decision (right pane)
-    welcomeQuestionTitle: "Benvenuto.",
-    welcomeQuestionSubtitle: "È la prima volta qui?",
-    welcomeQuestionBody: "Happier è il centro di controllo dei tuoi agenti di codifica IA. Nessuna email richiesta. Il tuo account è una chiave privata, generata su questo dispositivo.",
+    welcomeQuestionTitle: "Entra nel tuo spazio.",
+    welcomeQuestionSubtitle: "Inizia dal tuo account.",
+    welcomeQuestionBody: "Crea un account o ripristina quello che usi già. Gli inviti continuano dopo l’accesso.",
 
-    welcomePrimaryButton: "Prima volta qui — iniziamo",
-    welcomePrimarySubtitle: "Un tocco. Niente moduli. La tua chiave vive qui.",
+    welcomePrimaryButton: "Crea un account",
+    welcomePrimarySubtitle: "Inizia su questo dispositivo.",
 
-    welcomeSecondaryButton: "Accedi — uso già Happier",
-    welcomeSecondarySubtitle: "Scansiona un codice QR o inserisci la tua chiave segreta",
+    welcomeSecondaryButton: "Accedi a un account esistente",
+    welcomeSecondarySubtitle: "Usa un codice QR o la chiave di recupero.",
 
     // Unified onboarding redesign — returning-user copy variants.
     // Shown when localSettings.hasCompletedAuthOnce === true, i.e. the

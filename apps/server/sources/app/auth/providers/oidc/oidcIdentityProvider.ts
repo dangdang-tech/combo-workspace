@@ -98,6 +98,13 @@ function isEligible(params: {
     const claims = params.instance.claims;
     const login = extractLogin(params.profile, claims);
 
+    if (allow.requireVerifiedEmail && (
+        (params.profile as Record<string, unknown> | null)?.email_verified !== true ||
+        !extractEmail(params.profile, claims)
+    )) {
+        return { ok: false };
+    }
+
     if (allow.usersAllowlist.length > 0) {
         if (!login || !allow.usersAllowlist.includes(login)) return { ok: false };
     }
@@ -244,6 +251,7 @@ export function createOidcIdentityProvider(instance: OidcAuthProviderInstanceCon
             if (!currentEligibility.ok) return { ok: false, statusCode: 403, error: "not-eligible" };
 
             const restrictionsConfigured =
+                Boolean(instance.allow.requireVerifiedEmail) ||
                 instance.allow.usersAllowlist.length > 0 ||
                 instance.allow.emailDomains.length > 0 ||
                 instance.allow.groupsAny.length > 0 ||

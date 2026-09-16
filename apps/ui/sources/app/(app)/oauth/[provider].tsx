@@ -1,3 +1,4 @@
+import { normalizeInternalReturnTo } from '@/auth/routing/resolveAuthReturnToRoute';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -91,14 +92,6 @@ function buildRestoreRedirectUrl(params: { providerId: string; reason: 'provider
     const provider = encodeURIComponent(params.providerId);
     const reason = encodeURIComponent(params.reason);
     return `/restore?provider=${provider}&reason=${reason}`;
-}
-
-function normalizeInternalReturnTo(value: unknown): string | null {
-    if (typeof value !== 'string') return null;
-    const trimmed = value.trim();
-    if (!trimmed.startsWith('/')) return null;
-    if (trimmed.startsWith('//')) return null;
-    return trimmed;
 }
 
 function normalizeComparableServerUrl(value: unknown): string {

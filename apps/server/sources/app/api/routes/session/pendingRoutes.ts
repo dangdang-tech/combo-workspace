@@ -209,6 +209,8 @@ export function sessionPendingRoutes(app: Fastify) {
                   }));
 
             if (!res.ok) {
+                if (res.error === "host_offline") return reply.code(409).send({ error: res.error });
+                if (res.error === "shared_session_access_revoked") return reply.code(403).send({ error: res.error });
                 if (res.error === "invalid-params") {
                     const payload: { error: string; code?: string } = { error: res.error };
                     const code = getOptionalErrorCode(res);
@@ -413,6 +415,8 @@ export function sessionPendingRoutes(app: Fastify) {
                     : {}),
             });
             if (!res.ok) {
+                if (res.error === "host_offline") return reply.code(409).send({ error: res.error });
+                if (res.error === "shared_session_access_revoked") return reply.code(403).send({ error: res.error });
                 if (res.error === "invalid-params") return reply.code(400).send({ error: res.error });
                 if (res.error === "forbidden") return reply.code(403).send({ error: res.error });
                 if (res.error === "session-not-found" || res.error === "not-found") return reply.code(404).send({ error: res.error });
@@ -665,6 +669,8 @@ export function sessionPendingRoutes(app: Fastify) {
                 localId,
             });
             if (!res.ok) {
+                if (res.error === "host_offline") return reply.code(409).send({ error: res.error });
+                if (res.error === "shared_session_access_revoked") return reply.code(403).send({ error: res.error });
                 if (res.error === "invalid-params") return reply.code(400).send({ error: res.error });
                 if (res.error === "forbidden") return reply.code(403).send({ error: res.error });
                 if (res.error === "session-not-found" || res.error === "not-found") return reply.code(404).send({ error: res.error });
@@ -741,6 +747,8 @@ export function sessionPendingRoutes(app: Fastify) {
             const { sessionId, localId } = request.params;
             const res = await restorePendingMessage({ actorUserId: request.userId, sessionId, localId });
             if (!res.ok) {
+                if (res.error === "host_offline") return reply.code(409).send({ error: res.error });
+                if (res.error === "shared_session_access_revoked") return reply.code(403).send({ error: res.error });
                 if (res.error === "invalid-params") return reply.code(400).send({ error: res.error });
                 if (res.error === "forbidden") return reply.code(403).send({ error: res.error });
                 if (res.error === "session-not-found" || res.error === "not-found") return reply.code(404).send({ error: res.error });

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { View } from 'react-native';
-import { Image } from 'expo-image';
 import { useUnistyles } from 'react-native-unistyles';
+import { BrandMark } from '@/components/ui/icons/BrandMark';
 
 /**
  * Shared header logo component used across all main tabs.
@@ -9,10 +9,7 @@ import { useUnistyles } from 'react-native-unistyles';
  * had its own HeaderLeft, the component would unmount/remount.
  */
 export const HeaderLogo = React.memo(() => {
-    const { rt } = useUnistyles();
-    const source = rt.themeName === 'dark'
-        ? require('@/assets/images/logo-white.png')
-        : require('@/assets/images/logo-black.png');
+    const { theme } = useUnistyles();
     return (
         <View style={{
             width: 32,
@@ -20,11 +17,7 @@ export const HeaderLogo = React.memo(() => {
             alignItems: 'center',
             justifyContent: 'center',
         }}>
-            <Image
-                source={source}
-                contentFit="contain"
-                style={{ width: 24, height: 24 }}
-            />
+            <BrandMark color={theme.colors.accent.blue} />
         </View>
     );
 });

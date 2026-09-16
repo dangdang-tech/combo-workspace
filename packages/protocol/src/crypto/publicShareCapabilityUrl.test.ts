@@ -19,6 +19,8 @@ describe('public share capability URL redaction', () => {
     expect(redactPublicShareCapabilityUrl(`https://app.example.test/share/${secret}`)).toBe(
       'https://app.example.test/share/:token',
     );
+    expect(redactPublicShareCapabilityUrl(`/invite/${secret}?server=https%3A%2F%2Frelay.example`)).toBe('/invite/:token?server=https%3A%2F%2Frelay.example');
+    expect(redactPublicShareCapabilityUrl(`/?returnTo=%2Finvite%2F${secret}%3Fserver%3Drelay`)).not.toContain(secret);
     expect(redactPublicShareCapabilityUrl('/v1/sessions/session-1/public-share')).toBe(
       '/v1/sessions/session-1/public-share',
     );

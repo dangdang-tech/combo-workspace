@@ -9,6 +9,10 @@ import {
 import { FEATURE_ENV_KEYS } from './featureEnvSchema';
 import { resolveEffectiveWebappBaseUrl } from '../../serverUrls/effectiveServerUrls';
 
+export function readSharingSessionEntriesFeatureEnv(env: NodeJS.ProcessEnv): Readonly<{ enabled: boolean }> {
+  return { enabled: parseBooleanEnv(env[FEATURE_ENV_KEYS.sharingSessionEntriesEnabled], false) };
+}
+
 export type AutomationsFeatureEnv = Readonly<{
   enabled: boolean;
 }>;

@@ -1,5 +1,4 @@
 import { db } from "@/storage/db";
-import { parseIntEnv } from "@/config/env";
 import { delay } from "@/utils/runtime/delay";
 import { forever } from "@/utils/runtime/forever";
 import { shutdownSignal } from "@/utils/process/shutdown";
@@ -10,23 +9,8 @@ import { expireSessionPublisherCandidates } from "./sessionPublisherPresenceTime
 import { publishSessionPublisherLifecycleUpdate } from "@/app/session/runtimeActivity/publishPublisherLifecycleUpdate";
 import { emitPendingActivationHint } from "@/app/session/pending/publishPendingMutation";
 
-export interface PresenceTimeoutConfig {
-    sessionTimeoutMs: number;
-    machineTimeoutMs: number;
-    tickMs: number;
-}
-
-const DEFAULT_PRESENCE_SESSION_TIMEOUT_MS = 10 * 60 * 1000;
-const DEFAULT_PRESENCE_MACHINE_TIMEOUT_MS = 10 * 60 * 1000;
-const DEFAULT_PRESENCE_TIMEOUT_TICK_MS = 60 * 1000;
-
-export function resolvePresenceTimeoutConfig(env: NodeJS.ProcessEnv = process.env): PresenceTimeoutConfig {
-    return {
-        sessionTimeoutMs: parseIntEnv(env.HAPPIER_PRESENCE_SESSION_TIMEOUT_MS, DEFAULT_PRESENCE_SESSION_TIMEOUT_MS, { min: 1 }),
-        machineTimeoutMs: parseIntEnv(env.HAPPIER_PRESENCE_MACHINE_TIMEOUT_MS, DEFAULT_PRESENCE_MACHINE_TIMEOUT_MS, { min: 1 }),
-        tickMs: parseIntEnv(env.HAPPIER_PRESENCE_TIMEOUT_TICK_MS, DEFAULT_PRESENCE_TIMEOUT_TICK_MS, { min: 1 }),
-    };
-}
+export { resolvePresenceTimeoutConfig, type PresenceTimeoutConfig } from "./presenceTimeoutConfig";
+import { resolvePresenceTimeoutConfig, type PresenceTimeoutConfig } from "./presenceTimeoutConfig";
 
 type TimedOutMachineCandidate = {
     id: string;

@@ -135,6 +135,12 @@ const FEATURE_CATALOG_DEFINITION = {
     dependencies: [],
     representation: 'server',
   },
+  'sharing.sessionEntries': {
+    description: 'Invite-based entries allocating a private conversation per account on the owner machine.',
+    defaultFailMode: 'fail_closed',
+    dependencies: ['sharing.session', 'sharing.contentKeys'],
+    representation: 'server',
+  },
   'sharing.public': {
     description: 'Public sharing link support for session content.',
     defaultFailMode: 'fail_closed',

@@ -46,14 +46,14 @@ function createInput(): RemoteAuthEntryOptionsInput {
     };
 }
 
-function renderPanel() {
+function renderPanel(onChangeRelay = noop) {
     return renderScreen(
         <RemoteWelcomeDecisionPanel
             options={deriveRemoteAuthEntryOptions(createInput())}
             isDesktopShell={false}
             layout="portrait"
             onAnonymousSignup={noop}
-            onChangeRelay={noop}
+            onChangeRelay={onChangeRelay}
             onKeylessProviderLogin={noop}
             onMtlsLogin={noop}
             onOpenSetup={noop}
@@ -82,5 +82,14 @@ describe('RemoteWelcomeDecisionPanel mobile wordmark', () => {
         const screen = await renderPanel();
 
         expect(screen.findAllByTestId('welcome-mobile-wordmark')).toHaveLength(0);
+    });
+
+    it('shows the selected relay before sign-in and opens the real server selector', async () => {
+        const onChangeRelay = vi.fn();
+        const screen = await renderPanel(onChangeRelay);
+
+        expect(screen.getTextContent()).toContain('https://relay.example.test');
+        screen.pressByTestId('welcome-selected-server');
+        expect(onChangeRelay).toHaveBeenCalledTimes(1);
     });
 });

@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Happier",
+  "productName": "Dangdang Agent",
   "version": "0.2.12",
   "identifier": "dev.happier.app",
   "build": {
@@ -20,7 +20,7 @@
     },
     "windows": [
       {
-        "title": "Happier",
+        "title": "Dangdang Agent",
         "width": 800,
         "height": 600,
         "visible": false,

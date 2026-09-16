@@ -10,9 +10,8 @@ import { createServerUrlComparableKey } from '@/sync/domains/server/url/serverUr
 import { t } from '@/text';
 import { Icon } from '@/components/ui/icons/Icon';
 
-const DOCS_URL = 'https://docs.happier.dev';
-const GITHUB_URL = 'https://github.com/happier-dev/happier';
-const DISCORD_URL = 'https://discord.gg/W6Pb8KuHfg';
+const DOCS_URL = 'https://github.com/dangdang-tech/dangdang-agent#readme';
+const GITHUB_URL = 'https://github.com/dangdang-tech/dangdang-agent';
 
 const HAPPIER_CLOUD_COMPARABLE_KEY = createServerUrlComparableKey(HAPPIER_CLOUD_SERVER_URL);
 
@@ -47,11 +46,10 @@ export type WelcomeFooterLinksProps = Readonly<{
  * Two stacked groups (each: label on one line, action on the next line):
  *
  *   Self-hosting?               Need help?
- *   Use your own Relay          Docs · GH · Discord
+ *   Use your own Relay          Docs · GH
  *
  * Desktop arranges the two groups side-by-side with space-between. Mobile
- * stacks them centred. The `Docs` action is followed by GitHub and Discord
- * brand icons that link to the public repo and the community Discord.
+ * stacks them centred. The actions link to this fork's source and documentation.
  */
 export const WelcomeFooterLinks = React.memo(function WelcomeFooterLinks(props: WelcomeFooterLinksProps) {
     const { theme } = useUnistyles();
@@ -59,7 +57,6 @@ export const WelcomeFooterLinks = React.memo(function WelcomeFooterLinks(props: 
 
     const openDocs = React.useCallback(() => { void Linking.openURL(DOCS_URL); }, []);
     const openGithub = React.useCallback(() => { void Linking.openURL(GITHUB_URL); }, []);
-    const openDiscord = React.useCallback(() => { void Linking.openURL(DISCORD_URL); }, []);
 
     const labelColor = { color: theme.colors.text.secondary };
     const actionColor = { color: theme.colors.text.primary };
@@ -154,16 +151,6 @@ export const WelcomeFooterLinks = React.memo(function WelcomeFooterLinks(props: 
                             style={({ pressed }) => [styles.iconButton, pressed ? actionPressedStyle : null]}
                         >
                             <Icon name="github-logo" size={16} color={iconColor} />
-                        </Pressable>
-                        <Pressable
-                            onPress={openDiscord}
-                            accessibilityRole="link"
-                            accessibilityLabel={t('welcome.welcomeFooterDiscordLabel')}
-                            testID="welcome-footer-discord-action"
-                            hitSlop={6}
-                            style={({ pressed }) => [styles.iconButton, pressed ? actionPressedStyle : null]}
-                        >
-                            <Icon name="discord-logo" size={16} color={iconColor} />
                         </Pressable>
                         <Pressable
                             onPress={openDocs}

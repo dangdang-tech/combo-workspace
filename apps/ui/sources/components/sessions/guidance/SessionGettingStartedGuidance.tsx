@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Platform, Pressable, ScrollView, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Typography } from '@/constants/Typography';
 import { RoundButton } from '@/components/ui/buttons/RoundButton';
@@ -7,7 +7,7 @@ import { CenteredInfoTile } from '@/components/ui/lists/CenteredInfoTile';
 import { t } from '@/text';
 import { router } from 'expo-router';
 import { Modal } from '@/modal';
-import { Image } from 'expo-image';
+import { BrandMark } from '@/components/ui/icons/BrandMark';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { useVisibleSessionListSessionSummary } from '@/hooks/session/useVisibleSessionListViewData';
@@ -42,6 +42,7 @@ export type SessionGettingStartedGuidanceVariant = 'phone' | 'sidebar' | 'primar
 
 const SESSION_GETTING_STARTED_GUIDANCE_FEATURE_ID = 'app.ui.sessionGettingStartedGuidance' as const satisfies FeatureId;
 const DEFER_CLI_FOLLOW_UP_VARIANTS = new Set<SessionGettingStartedGuidanceVariant>(['phone', 'newSessionBlocking']);
+const SOURCE_SETUP_URL = 'https://github.com/dangdang-tech/dangdang-agent#从源码启动';
 
 type DeferredCliFollowUpState = Readonly<{
     key: string;
@@ -280,6 +281,35 @@ function buildDeferredCliFollowUpKey(params: Readonly<{
 }
 
 function buildSteps(model: SessionGettingStartedGuidanceViewModel): SessionGettingStartedGuidanceStep[] {
+    if (Platform.OS === 'web' && !isTauriDesktop()) {
+        const connectStep: SessionGettingStartedGuidanceStep = {
+            id: 'auth_login',
+            title: t('sourceSetup.connectTitle'),
+            description: t('sourceSetup.connectBody'),
+        };
+        switch (model.kind) {
+            case 'connect_machine':
+                return [{
+                    id: 'install_cli',
+                    title: t('sourceSetup.cloneTitle'),
+                    description: t('sourceSetup.cloneBody'),
+                    command: 'git clone https://github.com/dangdang-tech/dangdang-agent.git\ncd dangdang-agent\nHAPPIER_INSTALL_SCOPE=server,cli,ui yarn install --frozen-lockfile\nyarn build:packages',
+                    copyLabel: t('sourceSetup.cloneTitle'),
+                }, connectStep];
+            case 'start_daemon':
+                return [connectStep];
+            case 'create_session':
+                return [{
+                    id: 'start_session',
+                    title: t('sessionGettingStarted.steps.startSession.title'),
+                    description: t('sourceSetup.runBody'),
+                    command: 'yarn --cwd apps/cli dev codex',
+                    copyLabel: t('sessionGettingStarted.steps.startSession.copyLabel'),
+                }];
+            default:
+                return [];
+        }
+    }
     switch (model.kind) {
         case 'connect_machine': {
             const steps: SessionGettingStartedGuidanceStep[] = [];
@@ -358,8 +388,10 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
     const { model } = props;
     const copyFeedback = useTemporaryCopyFeedback();
 
-    const title = titleForKind(model.kind);
-    const subtitle = subtitleForKind(model.kind, model.targetLabel);
+    const isSourceBrowser = Platform.OS === 'web' && !isTauriDesktop();
+    const needsHost = model.kind === 'connect_machine' || model.kind === 'start_daemon';
+    const title = isSourceBrowser && needsHost ? t('sourceSetup.title') : titleForKind(model.kind);
+    const subtitle = isSourceBrowser && needsHost ? t('sourceSetup.body') : subtitleForKind(model.kind, model.targetLabel);
     const steps = React.useMemo(() => buildSteps(model), [
         model.kind,
         model.serverName,
@@ -367,7 +399,7 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
         model.showServerSetup,
     ]);
     const showLogo = props.variant === 'primaryPane' || props.variant === 'newSessionBlocking';
-    const showSetupPrimaryCard = (model.kind === 'connect_machine' || model.kind === 'start_daemon') && Boolean(model.onOpenSetup);
+    const showSetupPrimaryCard = !isSourceBrowser && needsHost && Boolean(model.onOpenSetup);
     const [showManualSteps, setShowManualSteps] = React.useState(!showSetupPrimaryCard);
     const shouldCenterContent = props.variant === 'primaryPane' && model.kind === 'select_session';
     const shouldDeferCliFollowUp = DEFER_CLI_FOLLOW_UP_VARIANTS.has(props.variant) && !showSetupPrimaryCard;
@@ -451,12 +483,9 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
             ) : null}
 
             {showLogo && model.kind !== 'select_session' ? (
-                <Image
-                    testID="session-getting-started-logo"
-                    source={theme.dark ? require('@/assets/images/logo-white.png') : require('@/assets/images/logo-black.png')}
-                    contentFit="contain"
-                    style={styles.logo}
-                />
+                <View testID="session-getting-started-logo" style={styles.logo}>
+                    <BrandMark size={44} color={theme.colors.accent.blue} />
+                </View>
             ) : null}
 
             {model.kind !== 'select_session' && showSetupPrimaryCard ? (
@@ -492,6 +521,19 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
                     <Text style={styles.title}>{title}</Text>
                     <Text style={styles.subtitle}>{subtitle}</Text>
                 </>
+            ) : null}
+
+            {isSourceBrowser && steps.length > 0 ? (
+                <View style={styles.primaryCard}>
+                    <Text style={styles.stepTitle}>{t('welcome.frontDoorSelectedServer')}</Text>
+                    <Text selectable style={styles.stepDescription}>{model.serverUrl}</Text>
+                    <RoundButton
+                        testID="session-getting-started-source-guide"
+                        title={t('sourceSetup.openGuide')}
+                        onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
+                        size="normal"
+                    />
+                </View>
             ) : null}
 
             {model.kind !== 'select_session' && showCliFollowUp ? (

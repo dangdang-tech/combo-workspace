@@ -1,9 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Happier docs
-    url: https://happier.dev
-    about: Product docs and guides.
-  - name: Security issue
+  - name: 当当 Agent 使用与开发说明
+    url: https://github.com/dangdang-tech/dangdang-agent#readme
+    about: 本 fork 的启动方式、共享规则与开发范围。
+  - name: Upstream Happier security policy
     url: https://github.com/happier-dev/happier/security/policy
-    about: Please report security vulnerabilities privately.
-
+    about: Security policy for the upstream Happier project.

@@ -150,7 +150,15 @@ export type V2SessionListRowCompat = V2SessionListRow | V2SessionListLegacyRow;
  * different sides, so they must never be spelled out twice.
  */
 export function createSessionSharedWithUserWhere(userId: string): Prisma.SessionShareWhereInput {
-    return { sharedWithUserId: userId };
+    return {
+        sharedWithUserId: userId,
+        session: {
+            OR: [
+                { sharedSessionEntryMember: { is: null } },
+                { sharedSessionEntryMember: { is: { userId, enabled: true, status: "ready" } } },
+            ],
+        },
+    };
 }
 
 /**
@@ -166,7 +174,7 @@ export function createSessionSharedWithUserWhere(userId: string): Prisma.Session
  * (SQLite, MySQL) or a bitmap over every row of the table with the account membership re-checked as
  * a filter (PostgreSQL). Those reads ask each visibility arm separately instead — see
  * `resolveV2SessionListVisibilityWhereArms` in `v2SessionListPage.ts`, which also explains why the
- * shared arm cannot be a `shares` relation filter either.
+ * shared arm cannot be driven by a `shares` relation filter alone.
  */
 export function createV2SessionListVisibilityWhere(params: Readonly<{ userId: string }>): Prisma.SessionWhereInput {
     return {
@@ -181,7 +189,7 @@ export function createV2SessionListRowSelect(params: Readonly<{ userId: string }
     return {
         ...V2_SESSION_LIST_ROW_BASE_SELECT,
         shares: {
-            where: { sharedWithUserId: params.userId },
+            where: createSessionSharedWithUserWhere(params.userId),
             select: V2_SESSION_LIST_SHARE_SELECT,
         },
     } as const satisfies Prisma.SessionSelect;
@@ -191,7 +199,7 @@ export function createV2SessionListLegacyRowSelect(params: Readonly<{ userId: st
     return {
         ...V2_SESSION_LIST_ROW_LEGACY_SELECT,
         shares: {
-            where: { sharedWithUserId: params.userId },
+            where: createSessionSharedWithUserWhere(params.userId),
             select: V2_SESSION_LIST_SHARE_SELECT,
         },
     } as const satisfies Prisma.SessionSelect;

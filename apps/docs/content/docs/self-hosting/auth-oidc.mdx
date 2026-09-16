@@ -1,6 +1,6 @@
 ---
 title: OIDC auth
-description: Configure generic OIDC providers (Okta/Auth0/Azure AD/Keycloak, etc.) for a self-hosted server.
+description: Configure Google and generic OIDC providers (Okta/Auth0/Azure AD/Keycloak, etc.) for a self-hosted server.
 ---
 
 Happier can be configured with **one or more** OIDC provider instances. This is intended for enterprise/self-hosting deployments where GitHub isn’t the desired identity provider.
@@ -67,7 +67,8 @@ Notes:
 - `scopes` defaults to `openid profile email` and **must include `openid`**.
 - `httpTimeoutSeconds` (default `30`, clamp 1–120): timeout (seconds) for OIDC discovery and subsequent HTTP requests made by the OIDC client configuration.
 - `claims` lets you map where to read the provider login/email/groups from (defaults shown above).
-- `allow` restricts eligibility (all comparisons are lowercased):
+- `allow` restricts eligibility (all string comparisons are lowercased):
+  - `requireVerifiedEmail` (default `false`): requires an email claim and the standard `email_verified` claim to be the boolean `true`. Missing, false, or string-valued verification claims are rejected on linking and login.
   - `usersAllowlist`: matches against the provider login claim.
   - `emailDomains`: allows `user@domain` only if `domain` matches.
   - `groupsAny`: user must be in *at least one* group.
@@ -75,6 +76,49 @@ Notes:
 - `fetchUserInfo` (default `false`): if enabled, the server fetches `/userinfo` and merges it into the identity profile.
 - `storeRefreshToken` (default `false`): if enabled, the server stores an **encrypted refresh token** and uses refresh flows for periodic eligibility re-checks (offboarding) without requiring users to reconnect.
 - `ui` provides optional UI hints only (no security impact).
+
+## Google: keyed accounts with E2EE
+
+Create a Google OAuth **Web application** client and register the exact server callback URI, for example `https://YOUR_SERVER/v1/oauth/google/callback`. Configure the consent screen and any Google test users before attempting a live login. Use the existing OIDC provider with id `google`:
+
+```json
+[
+  {
+    "id": "google",
+    "type": "oidc",
+    "displayName": "Google",
+    "issuer": "https://accounts.google.com",
+    "clientId": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+    "clientSecret": "YOUR_CLIENT_SECRET",
+    "redirectUrl": "https://YOUR_SERVER/v1/oauth/google/callback",
+    "scopes": "openid profile email",
+    "allow": { "requireVerifiedEmail": true },
+    "fetchUserInfo": false,
+    "storeRefreshToken": false
+  }
+]
+```
+
+Store this JSON in the server's private configuration file, then configure:
+
+```bash
+AUTH_PROVIDERS_CONFIG_PATH=/etc/happier/auth-providers.json
+AUTH_SIGNUP_PROVIDERS=google
+AUTH_REQUIRED_LOGIN_PROVIDERS=google
+AUTH_ANONYMOUS_SIGNUP_ENABLED=false
+HAPPIER_WEBAPP_URL=https://YOUR_WEB_APP
+HAPPIER_FEATURE_ENCRYPTION__STORAGE_POLICY=required_e2ee
+HAPPIER_FEATURE_E2EE__KEYLESS_ACCOUNTS_ENABLED=0
+HAPPIER_FEATURE_AUTH_OAUTH__KEYLESS_ENABLED=0
+```
+
+This uses keyed signup: the client creates its own keys and proves possession during finalization. For encrypted sharing recipients, verify that `GET /v1/features` exposes `sharing.session.enabled: true`; the client then registers its signed content public key during signup. Keep the provider id exactly `google` for Google-specific sharing eligibility.
+
+Google's `sub` is the stable account identity; an email change does not create a different identity. Google does not supply `preferred_username`, so Happier uses the verified email as the provider login and asks a new user to choose a Happier username. The configured display name appears on the sign-in option; icon hints do not guarantee a Google-branded button.
+
+`emailDomains` checks only the email suffix. It is not a Google Workspace membership check: Google's `hd` claim represents hosted-domain membership, and this configuration does not enforce that claim. See [Google's OpenID Connect documentation](https://developers.google.com/identity/openid-connect/openid-connect) for client setup and claim semantics.
+
+Local signed OIDC integration tests validate Google-shaped claims, rejection of unverified email, and keyed E2EE finalization. A real Google consent/redirect flow still requires your registered client, secret, deployed URLs, and a live browser login.
 
 ## Group overage / external claims
 

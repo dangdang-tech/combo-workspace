@@ -1,3 +1,4 @@
+import { resolveSessionEntryTaskRejection, type SessionEntryTaskRejection } from "@/app/share/sessionEntryAdmission";
 import type { SessionParticipantCursor } from "@/app/session/changeTracking/markSessionParticipantsChanged";
 import { applyPendingSessionStateChange } from "@/app/session/pending/applyPendingSessionStateChange";
 import { markPendingStateChangedParticipants } from "@/app/session/pending/markPendingStateChangedParticipants";
@@ -300,7 +301,7 @@ export type EnqueuePendingMessageResult =
         badgeAttentionChanged: false;
         participantCursors: [];
       }
-    | { ok: false; error: "session-not-found" | "forbidden" | "invalid-params" | "requested-action-conflict" | "internal"; code?: EncryptionPolicyRejectionCode };
+    | { ok: false; error: SessionEntryTaskRejection | "session-not-found" | "forbidden" | "invalid-params" | "requested-action-conflict" | "internal"; code?: EncryptionPolicyRejectionCode };
 
 export async function enqueuePendingMessage(params: {
     actorUserId: string;
@@ -350,11 +351,16 @@ export async function enqueuePendingMessage(params: {
         return { ok: false, error: "invalid-params" };
     }
 
+    const entryRejection = await resolveSessionEntryTaskRejection({ actorUserId, sessionId });
+    if (entryRejection) return { ok: false, error: entryRejection };
+
     const access = await resolveSessionPendingEditAccess(actorUserId, sessionId);
     if (!access.ok) return { ok: false, error: access.error };
 
     try {
         return await inTx(async (tx) => {
+            const entryRejection = await resolveSessionEntryTaskRejection({ tx, actorUserId, sessionId });
+            if (entryRejection) return { ok: false, error: entryRejection } as const;
             const session = await tx.session.findUnique({
                 where: { id: sessionId },
                 select: {
@@ -700,7 +706,7 @@ export async function updatePendingMessage(params: {
 
 export type UpdatePendingRequestedActionResult =
     | { ok: true; didUpdate: boolean; pendingVersion: number; pendingCount: number; pendingBlockedCount: number; participantCursors: ParticipantCursor[]; badgeAttentionChanged: boolean; activationTarget?: PendingActivationTarget }
-    | { ok: false; error: "session-not-found" | "forbidden" | "invalid-params" | "not-found" | "action-conflict" | "internal" };
+    | { ok: false; error: SessionEntryTaskRejection | "session-not-found" | "forbidden" | "invalid-params" | "not-found" | "action-conflict" | "internal" };
 
 export async function updatePendingRequestedAction(params: {
     actorUserId: string;
@@ -717,6 +723,9 @@ export async function updatePendingRequestedAction(params: {
     if (!actorUserId || !sessionId || !localId || !requestedActionResult.success) {
         return { ok: false, error: "invalid-params" };
     }
+
+    const entryRejection = await resolveSessionEntryTaskRejection({ actorUserId, sessionId });
+    if (entryRejection) return { ok: false, error: entryRejection };
 
     const access = await resolveSessionPendingEditAccess(actorUserId, sessionId);
     if (!access.ok) return { ok: false, error: access.error };
@@ -749,6 +758,8 @@ export async function updatePendingRequestedAction(params: {
         const nextUpdatedAt = new Date(Math.max(Date.now(), existing.updatedAt.getTime() + 1));
 
         return await inTx(async (tx) => {
+            const entryRejection = await resolveSessionEntryTaskRejection({ tx, actorUserId, sessionId });
+            if (entryRejection) return { ok: false, error: entryRejection } as const;
             const retriesProvenPreEffectBlock =
                 existing.deliveryState === "blocked"
                 && !isPendingDeliveryProviderEffectPossibleV1(normalizePendingDeliveryStatusV1({
@@ -1688,7 +1699,7 @@ function derivePendingSendAsNewLocalId(sessionId: string, localId: string): stri
 
 export type SendPendingDeliveryAsNewResult =
     | { ok: true; didWrite: boolean; pendingVersion: number; pendingCount: number; pendingBlockedCount: number; participantCursors: ParticipantCursor[]; badgeAttentionChanged: boolean }
-    | { ok: false; error: "session-not-found" | "forbidden" | "invalid-params" | "not-found" | "delivery-settlement-conflict" | "identity-conflict" | "internal" };
+    | { ok: false; error: SessionEntryTaskRejection | "session-not-found" | "forbidden" | "invalid-params" | "not-found" | "delivery-settlement-conflict" | "identity-conflict" | "internal" };
 
 export async function sendPendingDeliveryAsNew(params: {
     actorUserId: string;
@@ -1703,11 +1714,16 @@ export async function sendPendingDeliveryAsNew(params: {
     if (!actorUserId || !sessionId || !localId) return { ok: false, error: "invalid-params" };
     const replacementLocalId = derivePendingSendAsNewLocalId(sessionId, localId);
 
+    const entryRejection = await resolveSessionEntryTaskRejection({ actorUserId, sessionId });
+    if (entryRejection) return { ok: false, error: entryRejection };
+
     const access = await resolveSessionPendingEditAccess(actorUserId, sessionId);
     if (!access.ok) return { ok: false, error: access.error };
 
     try {
         return await retryPendingDeliveryResolutionRace(() => inTx(async (tx) => {
+            const entryRejection = await resolveSessionEntryTaskRejection({ tx, actorUserId, sessionId });
+            if (entryRejection) return { ok: false, error: entryRejection } as const;
             const existing = await tx.sessionPendingMessage.findUnique({
                 where: { sessionId_localId: { sessionId, localId } },
                 select: {
@@ -1871,7 +1887,7 @@ export async function discardPendingMessage(params: {
 
 export type RestorePendingMessageResult =
     | { ok: true; pendingVersion: number; pendingCount: number; pendingBlockedCount: number; participantCursors: ParticipantCursor[]; badgeAttentionChanged: boolean }
-    | { ok: false; error: "session-not-found" | "forbidden" | "invalid-params" | "not-found" | "delivery-settlement-conflict" | "internal" };
+    | { ok: false; error: SessionEntryTaskRejection | "session-not-found" | "forbidden" | "invalid-params" | "not-found" | "delivery-settlement-conflict" | "internal" };
 
 export async function restorePendingMessage(params: {
     actorUserId: string;
@@ -1884,11 +1900,16 @@ export async function restorePendingMessage(params: {
 
     if (!actorUserId || !sessionId || !localId) return { ok: false, error: "invalid-params" };
 
+    const entryRejection = await resolveSessionEntryTaskRejection({ actorUserId, sessionId });
+    if (entryRejection) return { ok: false, error: entryRejection };
+
     const access = await resolveSessionPendingEditAccess(actorUserId, sessionId);
     if (!access.ok) return { ok: false, error: access.error };
 
     try {
         return await inTx(async (tx) => {
+            const entryRejection = await resolveSessionEntryTaskRejection({ tx, actorUserId, sessionId });
+            if (entryRejection) return { ok: false, error: entryRejection } as const;
             const existing = await tx.sessionPendingMessage.findUnique({
                 where: { sessionId_localId: { sessionId, localId } },
                 select: { status: true, deliveryState: true, deliveryBlockedReason: true, discardedReason: true },

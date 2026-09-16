@@ -13,6 +13,7 @@ export async function getSessionParticipantUserIds(params: {
         where: { id: sessionId },
         select: {
             accountId: true,
+            sharedSessionEntryMember: { select: { userId: true, enabled: true, status: true } },
             shares: {
                 select: {
                     sharedWithUserId: true,
@@ -27,9 +28,13 @@ export async function getSessionParticipantUserIds(params: {
 
     const ids = new Set<string>();
     ids.add(session.accountId);
+    const entryMember = session.sharedSessionEntryMember;
     for (const share of session.shares) {
+        // Live payload fan-out must enforce the same private-child boundary as
+        // reads, including when an older share writer leaves an unrelated grant.
+        if (entryMember && (!entryMember.enabled || entryMember.status !== 'ready'
+            || share.sharedWithUserId !== entryMember.userId)) continue;
         ids.add(share.sharedWithUserId);
     }
     return Array.from(ids);
 }
-

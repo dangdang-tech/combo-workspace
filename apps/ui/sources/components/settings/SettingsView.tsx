@@ -1,5 +1,5 @@
 import { View, Pressable, Platform, Linking, useWindowDimensions } from 'react-native';
-import { Image } from 'expo-image';
+import { BrandWordmark } from '@/components/onboarding/unauthShell/BrandWordmark';
 import * as React from 'react';
 import { Text } from '@/components/ui/text/Text';
 import { useRouter } from 'expo-router';
@@ -155,7 +155,7 @@ export const SettingsView = React.memo(function SettingsView() {
     }, []);
 
     const handleGitHub = async () => {
-        const url = 'https://github.com/happier-dev/happier';
+        const url = 'https://github.com/dangdang-tech/dangdang-agent';
         const supported = await Linking.canOpenURL(url);
         if (supported) {
             await Linking.openURL(url);
@@ -172,7 +172,7 @@ export const SettingsView = React.memo(function SettingsView() {
                 return;
             }
         }
-        pushRoute('/settings/report-issue');
+        await Linking.openURL('https://github.com/dangdang-tech/dangdang-agent/issues/new/choose');
     };
 
     const handleSubscribe = async () => {
@@ -326,11 +326,7 @@ export const SettingsView = React.memo(function SettingsView() {
                     ) : (
                         // Logo view: Original logo + version
                         <>
-                            <Image
-                                source={theme.dark ? require('@/assets/images/logotype-light.png') : require('@/assets/images/logotype-dark.png')}
-                                contentFit="contain"
-                                style={{ width: 300, height: 90 }}
-                            />
+                            <BrandWordmark height={40} />
                         </>
                     )}
                 </View>

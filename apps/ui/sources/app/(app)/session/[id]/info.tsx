@@ -514,6 +514,7 @@ function SessionInfoContent({ session, sessionServerId, sourceMachineIdForHandof
     const hideInactiveSessions = useSetting('hideInactiveSessions') === true;
     const { openMoveSheet } = useSessionListMoveSheet();
     const sharingSupported = useSessionSharingSupport();
+    const sharedEntriesEnabled = useFeatureEnabled('sharing.sessionEntries', { scopeKind: 'spawn', serverId: sessionServerId });
     const automationsSupport = useAutomationsSupport();
     const showAutomations = automationsSupport?.enabled !== false;
     const [expandedRawJsonSection, setExpandedRawJsonSection] = React.useState<RawJsonSectionId | null>(null);
@@ -1223,6 +1224,15 @@ function SessionInfoContent({ session, sessionServerId, sourceMachineIdForHandof
                             }
                             icon={<Icon name="hard-drives" size={29} color={theme.colors.accent.blue} />}
                             onPress={() => router.push(`/machine/${displayMachineId}`)}
+                        />
+                    )}
+                    {!session.accessLevel && !session.metadata?.sharedSessionEntryId && sharedEntriesEnabled && (
+                        <Item
+                            testID="session-shared-entry-management"
+                            title={t('sharedEntry.title')}
+                            subtitle={t('sharedEntry.description')}
+                            icon={<Icon name="users" size={29} color={theme.colors.accent.blue} />}
+                            onPress={() => router.push(routeScope.buildHref(session.id, { suffix: '/entry-sharing' }))}
                         />
                     )}
                     {canManageSharing && sharingSupported && (

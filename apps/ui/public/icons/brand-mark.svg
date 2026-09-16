@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 32 32">
+  <title>Dangdang Agent</title>
+  <rect width="32" height="32" rx="7" fill="#2457EA"/>
+  <g transform="translate(4.48 4.48) scale(.72)">
+    <path d="M4 6h5a10 10 0 0 1 0 20H4V6Z M19 6h1a10 10 0 0 1 0 20h-1V6Z" fill="none" stroke="#FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -1,12 +1,14 @@
 import type { FeaturesPayloadDelta } from "./types";
+import { readSharingSessionEntriesFeatureEnv } from "./catalog/readFeatureEnv";
 
 export function resolveSharingFeature(
-    _env: NodeJS.ProcessEnv = {},
+    env: NodeJS.ProcessEnv = {},
 ): FeaturesPayloadDelta {
     return {
         features: {
             sharing: {
                 session: { enabled: true },
+                sessionEntries: { enabled: readSharingSessionEntriesFeatureEnv(env).enabled },
                 public: { enabled: true },
                 contentKeys: { enabled: true },
                 pendingQueueV2: { enabled: true },

@@ -21,7 +21,7 @@ const stylesheet = StyleSheet.create((theme) => ({
 }));
 
 const tabs: ReadonlyArray<SegmentedTab<SessionStorageKind>> = [
-    { id: 'persisted', label: t('sessionsList.storagePersistedTab') },
+    { id: 'persisted', label: t('brand.name') },
     { id: 'direct', label: t('sessionsList.storageDirectTab') },
 ];
 

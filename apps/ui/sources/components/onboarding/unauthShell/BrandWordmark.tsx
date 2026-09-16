@@ -1,42 +1,45 @@
 import * as React from 'react';
-import { Image } from 'expo-image';
+import { View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { BrandMark } from '@/components/ui/icons/BrandMark';
+import { Text } from '@/components/ui/text/Text';
+import { Typography } from '@/constants/Typography';
+import { t } from '@/text';
 
 export type BrandWordmarkProps = Readonly<{
-    /** Height in px; width scales 5x like the existing wizard logotype. Default 32. */
+    /** Mark height in px. The localized wordmark can wrap at larger text sizes. */
     height?: number;
     testID?: string;
 }>;
 
-/**
- * The Happier wordmark for the unauth brand pane. Theme-aware: in dark mode
- * we render the light (white) logotype against the dark canvas + dark planet;
- * in light mode we render the dark (black) logotype against the cream canvas
- * + warm planet. Mirrors `WizardLogotype`'s asset-swap pattern so the brand
- * pane reads clearly in both themes.
- */
+/** Shared, localized product wordmark for welcome and account surfaces. */
 export const BrandWordmark = React.memo(function BrandWordmark(props: BrandWordmarkProps) {
     const { theme } = useUnistyles();
     const height = props.height ?? 32;
-    const width = Math.round(height * 5);
     const styles = stylesheet;
     return (
-        <Image
+        <View
             testID={props.testID ?? 'brand-wordmark'}
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            source={theme.dark
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                ? require('@/assets/images/logotype-light.png')
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                : require('@/assets/images/logotype-dark.png')}
-            contentFit="contain"
-            style={[styles.image, { height, width }]}
-        />
+            style={styles.wordmark}
+        >
+            <BrandMark size={height} color={theme.colors.accent.blue} />
+            <Text style={[styles.name, { fontSize: Math.round(height * 0.75), lineHeight: height }]}>
+                {t('brand.name')}
+            </Text>
+        </View>
     );
 });
 
-const stylesheet = StyleSheet.create(() => ({
-    image: {
-        // intentionally empty; size is driven by height/width props.
+const stylesheet = StyleSheet.create((theme) => ({
+    wordmark: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        maxWidth: '100%',
+    },
+    name: {
+        ...Typography.logo(),
+        color: theme.colors.text.primary,
+        flexShrink: 1,
     },
 }));

@@ -133,6 +133,7 @@ export const UI_FEATURE_REGISTRY = {
     'updates.ota': {
         settingsToggle: undefined,
     },
+    'sharing.sessionEntries': { settingsToggle: undefined },
     'sharing.session': {
         settingsToggle: undefined,
     },

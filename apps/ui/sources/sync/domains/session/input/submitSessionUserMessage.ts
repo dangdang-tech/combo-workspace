@@ -532,10 +532,12 @@ async function enqueuePending(
             localId,
         };
     } catch (error) {
+        const errorCode = getErrorCode(error);
         return {
             type: 'send_failed',
             persistence: 'none',
             wake: { attempted: false, state: 'not_needed' },
+            ...(errorCode ? { errorCode } : {}),
             errorMessage: getErrorMessage(error, 'Failed to enqueue message'),
         };
     }

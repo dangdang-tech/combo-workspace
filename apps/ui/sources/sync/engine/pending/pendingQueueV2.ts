@@ -1,4 +1,5 @@
 import { storage } from '@/sync/domains/state/storage';
+import { getSessionDraftSnapshot, writeExistingSessionDraft } from '@/sync/ops/sessionDrafts/sessionDraftRepository';
 import {
     assertSafePendingIdPathSegment,
     findPendingOutboxMessage,
@@ -120,6 +121,50 @@ function assertPendingResponseOk(response: Response, message: string): void {
     if (response.ok) return;
     throwAuthenticationResponseErrorIfNeeded(response.status);
     throw new Error(`${message} (${response.status})`);
+}
+
+
+function isSharedSessionAdmissionRefusal(error: unknown): boolean {
+    if (!(error instanceof Error) || !('code' in error)) return false;
+    return error.code === 'host_offline' || error.code === 'shared_session_access_revoked';
+}
+
+async function assertPendingEnqueueResponseOk(response: Response): Promise<void> {
+    if (response.ok) return;
+    if (response.status === 409 || response.status === 403) {
+        const body = await response.json().catch(() => null) as unknown;
+        const code = isPlainObject(body) ? body.error : undefined;
+        if ((response.status === 409 && code === 'host_offline')
+            || (response.status === 403 && code === 'shared_session_access_revoked')) {
+            throw Object.assign(new Error(`Failed to enqueue pending message (${response.status})`), { code });
+        }
+    }
+    assertPendingResponseOk(response, 'Failed to enqueue pending message');
+}
+
+async function retireRefusedPendingEnqueue(params: Readonly<{
+    sessionId: string;
+    localId: string;
+    outboxScope: ServerAccountScope;
+    draft?: PersistedPendingOutboxMessage | null;
+}>): Promise<void> {
+    // Replay no longer has the composer's original send snapshot. Restore its text to the
+    // canonical draft owner, preserving anything the user has typed since the first attempt.
+    if (params.draft) {
+        const recoveredText = params.draft.displayText ?? params.draft.text;
+        const current = getSessionDraftSnapshot(params.outboxScope, { kind: 'session', sessionId: params.sessionId });
+        const currentText = current?.document.composer.text.value ?? '';
+        if (recoveredText && currentText !== recoveredText) {
+            writeExistingSessionDraft({
+                scope: params.outboxScope,
+                sessionId: params.sessionId,
+                patch: { text: currentText ? `${currentText}\n\n${recoveredText}` : recoveredText },
+            });
+        }
+    }
+    await removePendingOutboxMessage(params.sessionId, params.localId, params.outboxScope, 'enqueue');
+    removePendingOutboxProjectionIfOwned(params.sessionId, params.localId, params.outboxScope);
+    storage.getState().clearSessionOptimisticThinking(params.sessionId);
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -1932,7 +1977,7 @@ async function enqueuePendingMessageV2Owned(params: {
             });
             if (!response.ok) {
                 serverCommitMayExist = false;
-                assertPendingResponseOk(response, 'Failed to enqueue pending message');
+                await assertPendingEnqueueResponseOk(response);
             }
             const payload = await response.json().catch(() => null) as unknown;
             assertPendingEnqueueAcknowledgedAndRefreshOnMismatch({
@@ -2034,6 +2079,10 @@ async function enqueuePendingMessageV2Owned(params: {
         if (!hasDurableOutboxCustody) {
             removePendingOutboxProjectionIfOwned(sessionId, localId, outboxScope);
             storage.getState().clearSessionOptimisticThinking(sessionId);
+            throw e;
+        }
+        if (!serverCommitMayExist && isSharedSessionAdmissionRefusal(e)) {
+            await retireRefusedPendingEnqueue({ sessionId, localId, outboxScope, draft: existingOutboxRow });
             throw e;
         }
         if (isTransientConnectivityError(e)) {
@@ -2219,7 +2268,7 @@ export async function retryPendingOutboxOperationV2(params: {
             });
             if (!response.ok) {
                 serverCommitMayExist = false;
-                assertPendingResponseOk(response, 'Failed to enqueue pending message');
+                await assertPendingEnqueueResponseOk(response);
             }
             const payload = await response.json().catch(() => null) as unknown;
             assertPendingEnqueueAcknowledgedAndRefreshOnMismatch({
@@ -2319,6 +2368,10 @@ export async function retryPendingOutboxOperationV2(params: {
 
         return { accepted: true };
     } catch (e) {
+        if (!serverCommitMayExist && isSharedSessionAdmissionRefusal(e)) {
+            await retireRefusedPendingEnqueue({ sessionId, localId: pendingLocalId, outboxScope, draft: persisted });
+            throw e;
+        }
         if (isTransientConnectivityError(e)) {
             (await setPendingMessageSendState(sessionId, pendingLocalId, 'unconfirmed', outboxScope));
             if (existing) storage.getState().clearSessionOptimisticThinking(sessionId);

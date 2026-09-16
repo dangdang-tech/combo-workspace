@@ -526,6 +526,7 @@ describe("sessionWriteService", () => {
         it("creates a message, marks changes for all participants, and returns per-recipient cursors", async () => {
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -607,6 +608,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -672,6 +674,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1", encryptionMode: "e2ee" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -741,6 +744,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1", encryptionMode: "plain" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -796,6 +800,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1", encryptionMode: "e2ee" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -844,6 +849,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -892,6 +898,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -943,7 +950,7 @@ describe("sessionWriteService", () => {
                 },
                 data: { lastViewedSessionSeq: 10 },
             });
-            expect(currentTx.session.findUnique).toHaveBeenNthCalledWith(3, {
+            expect(currentTx.session.findUnique).toHaveBeenNthCalledWith(4, {
                 where: { id: "s1" },
                 select: { lastViewedSessionSeq: true },
             });
@@ -954,6 +961,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -1023,6 +1031,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -1094,6 +1103,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -1168,6 +1178,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1", encryptionMode: "plain" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -1236,6 +1247,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "owner-1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "owner-1" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -1291,6 +1303,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1" })
                 .mockResolvedValueOnce({
                     seq: 9,
@@ -1825,6 +1838,7 @@ describe("sessionWriteService", () => {
 
             currentTx.sessionMessage.findUnique.mockResolvedValue(null);
             currentTx.session.findUnique
+                .mockResolvedValueOnce({ accountId: "u1", sharedSessionEntryMember: null })
                 .mockResolvedValueOnce({ accountId: "u1" })
                 .mockResolvedValueOnce({
                     seq: 9,

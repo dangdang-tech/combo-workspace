@@ -23,7 +23,7 @@ export const BrandSubTagline = React.memo(function BrandSubTagline(props: BrandS
         fontSize: 16,
         lineHeight: 24,
         color: tokens.foregroundSoft,
-        maxWidth: props.mobile ? undefined : 380,
+        maxWidth: props.mobile ? undefined : 520,
     } as const;
     return (
         <Text testID="brand-sub-tagline" style={style}>

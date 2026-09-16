@@ -18,8 +18,8 @@ clear answer about whether a feature is available, it treats it as unavailable.
 That is why a feature can seem to vanish when a server is unreachable, and why
 a misconfigured self-hosted server hides features rather than half-enabling them.
 
-There are 76 features in the catalog. 22 of them have a switch you can
-reach; the other 54 are decided before you get there.
+There are 77 features in the catalog. 22 of them have a switch you can
+reach; the other 55 are decided before you get there.
 
 ## Features you can turn on yourself
 
@@ -118,6 +118,7 @@ behaviour but still needs the server to advertise the capability.
 | `sharing.pendingQueueV2` | Pending queue v2 sharing/bridging surfaces and runtime. | server | — |
 | `sharing.public` | Public sharing link support for session content. | server | — |
 | `sharing.session` | Session sharing capability (share session with other users/devices). | server | — |
+| `sharing.sessionEntries` | Invite-based entries allocating a private conversation per account on the owner machine. | server | `sharing.session`, `sharing.contentKeys` |
 | `updates.ota` | Expo over-the-air update checks and apply flows. | server | — |
 | `voice.happierVoice` | Happier-hosted voice backend availability (server-configured voice). | server | `voice` |
 

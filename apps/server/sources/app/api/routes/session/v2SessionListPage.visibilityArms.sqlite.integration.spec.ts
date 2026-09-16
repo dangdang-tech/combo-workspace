@@ -239,7 +239,7 @@ describe("session list visibility arms (SQLite integration)", () => {
         expect(captured.some((query) => readsSessionsByKey(query.where))).toBe(true);
     });
 
-    it("reaches Session by key for the shared arm instead of testing share membership per row", async () => {
+    it("reaches Session by key before rechecking the shared arm membership", async () => {
         const { viewerId } = await seedVisibilityFixture();
         captureSessionQueries();
 
@@ -250,11 +250,11 @@ describe("session list visibility arms (SQLite integration)", () => {
             take: 5,
         });
 
-        // A `shares` relation filter binds no `Session` key, so the engine has to read every row of
-        // the table and test each one. Every statement must instead be seekable: bound either by the
-        // viewer's account or by the session ids the share table already resolved.
+        // A relation filter alone cannot bind a Session key. A shared statement must
+        // first bind the resolved ids, then recheck authorization in case the cached
+        // visibility arms predate a grant or managed-member revocation.
         for (const query of captured) {
-            expect(filtersShareMembership(query.where)).toBe(false);
+            if (filtersShareMembership(query.where)) expect(readsSessionsByKey(query.where)).toBe(true);
             expect(bindsViewerAccount(query.where, viewerId) || readsSessionsByKey(query.where)).toBe(true);
         }
     });

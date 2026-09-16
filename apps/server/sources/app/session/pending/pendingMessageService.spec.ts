@@ -4,9 +4,14 @@ import { buildSessionAgentTransitionDividerLocalId } from "@happier-dev/protocol
 
 let currentTx: any;
 
-const { inTxMock, warn } = vi.hoisted(() => ({
+const { inTxMock, warn, dbSessionFindUnique } = vi.hoisted(() => ({
     inTxMock: vi.fn(),
     warn: vi.fn(),
+    dbSessionFindUnique: vi.fn(),
+}));
+vi.mock("@/storage/db", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/storage/db")>()),
+    db: { session: { findUnique: dbSessionFindUnique } },
 }));
 vi.mock("@/storage/inTx", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/storage/inTx")>()),
@@ -66,6 +71,8 @@ describe("pendingMessageService", () => {
     ]);
 
     beforeEach(() => {
+        dbSessionFindUnique.mockReset();
+        dbSessionFindUnique.mockResolvedValue({ accountId: "u1", sharedSessionEntryMember: null });
         inTxMock.mockReset();
         inTxMock.mockImplementation(async (fn: any) => await fn(currentTx));
         warn.mockReset();

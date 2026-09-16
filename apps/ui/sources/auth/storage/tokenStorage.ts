@@ -1,3 +1,4 @@
+import { normalizeInternalReturnTo } from '@/auth/routing/resolveAuthReturnToRoute';
 import { Platform } from 'react-native';
 import { readStorageScopeFromEnv, scopedStorageId } from '@/utils/system/storageScope';
 import {
@@ -354,15 +355,6 @@ function isNonEmptyString(value: unknown): value is string {
     return typeof value === 'string' && value.trim().length > 0;
 }
 
-function isInternalReturnTo(value: unknown): value is string {
-    if (!isNonEmptyString(value)) return false;
-    const trimmed = value.trim();
-    if (!trimmed.startsWith('/')) return false;
-    // Prevent protocol-relative URLs.
-    if (trimmed.startsWith('//')) return false;
-    return true;
-}
-
 function isPendingExternalAuthRecord(value: unknown): value is PendingExternalAuth {
     if (!value || typeof value !== 'object') return false;
     const maybe = value as Record<string, unknown>;
@@ -377,7 +369,7 @@ function isPendingExternalAuthRecord(value: unknown): value is PendingExternalAu
     if (mode !== undefined && mode !== 'keyed' && mode !== 'keyless') return false;
     if (maybe.serverId !== undefined && !isNonEmptyString(maybe.serverId)) return false;
     if (maybe.serverUrl !== undefined && !isNonEmptyString(maybe.serverUrl)) return false;
-    if (maybe.returnTo !== undefined && !isInternalReturnTo(maybe.returnTo)) return false;
+    if (maybe.returnTo !== undefined && normalizeInternalReturnTo(maybe.returnTo) === null) return false;
     if (maybe.intent === undefined) return true;
     return maybe.intent === 'signup' || maybe.intent === 'reset';
 }

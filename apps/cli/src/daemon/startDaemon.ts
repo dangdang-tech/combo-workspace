@@ -249,6 +249,7 @@ import { computeDaemonSpawnRequestKey, createSpawnRequestCoalescer } from './spa
 import { createDaemonSpawnAttemptRegistry } from './spawn/daemonSpawnAttemptRegistry';
 import { normalizeSpawnSessionDirectory } from '@/rpc/handlers/spawnSessionOptionsContract';
 import { startAutomationWorker, type AutomationWorkerHandle } from './automation/automationWorker';
+import { startSharedSessionEntryWorker } from './sharing/sharedSessionEntryWorker';
 import { startMemoryWorker, type MemoryWorkerHandle } from './memory/memoryWorker';
 import { createDaemonConnectivityCoordinator } from './connection/createDaemonConnectivityCoordinator';
 import {
@@ -2046,6 +2047,7 @@ export async function startDaemon(options: Readonly<{ takeover?: boolean }> = {}
       });
       let apiMachineForSessions: ApiMachineClient | null = null;
       let automationWorker: AutomationWorkerHandle | null = null;
+      let sharedSessionEntryWorker: ReturnType<typeof startSharedSessionEntryWorker> | null = null;
       let memoryWorker: MemoryWorkerHandle | null = null;
       let apiMachine: ApiMachineClient | null = null;
       const eventLoopStallMonitor = createDaemonEventLoopStallMonitor({
@@ -2149,6 +2151,7 @@ export async function startDaemon(options: Readonly<{ takeover?: boolean }> = {}
         const beforeShutdown = async (): Promise<void> => {
 	          if (beforeShutdownOnce) return await beforeShutdownOnce;
 	          beforeShutdownOnce = (async () => {
+            sharedSessionEntryWorker?.stop();
 	            await quiesceConnectedServiceQuotaProducersForShutdown();
 	            await flushConnectedServiceQuotaPersistenceForShutdown();
             await flushProviderAccountUsagePersistenceForShutdown();
@@ -8137,6 +8140,25 @@ export async function startDaemon(options: Readonly<{ takeover?: boolean }> = {}
             apiMachineForSessions = connectedApiMachine;
             await reconcileSessionMachineAccessBindings();
 
+            sharedSessionEntryWorker = startSharedSessionEntryWorker({
+              credentials,
+              machineId,
+              isOnline: () => daemonServerWorkOnline && !shutdownInitiated,
+              directTransport: {
+                spawn: async (request) => {
+                  const result = await spawnSession(request);
+                  if (result.type === 'success') {
+                    return { ...result, success: true };
+                  }
+                  if (result.type === 'requestToApproveDirectoryCreation') {
+                    return { success: false, requiresUserApproval: true };
+                  }
+                  return { success: false, errorCode: result.errorCode, error: result.errorMessage };
+                },
+                resolveSpawnSessionByNonce: async (spawnNonce) => daemonSpawnAttemptRegistry.resolve(spawnNonce),
+              },
+            });
+
             // Set RPC handlers
             if (diagnosticSubsystemGates.disableAutomationWorker) {
               logger.warn('[DAEMON RUN] Diagnostic gate enabled: automation worker disabled');
@@ -8430,6 +8452,13 @@ export async function startDaemon(options: Readonly<{ takeover?: boolean }> = {}
 
               daemonConnectivityCoordinator = createDaemonConnectivityCoordinator({
                 resources: [
+                  ...(sharedSessionEntryWorker
+                    ? [{
+                      name: 'sharedSessionEntryWorker',
+                      pause: () => sharedSessionEntryWorker!.pause(),
+                      resume: () => sharedSessionEntryWorker!.resume(),
+                    }]
+                    : []),
                   ...(automationWorker
                     ? [{
                       name: 'automationWorker',

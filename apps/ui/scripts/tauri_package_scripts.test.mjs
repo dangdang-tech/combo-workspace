@@ -66,14 +66,14 @@ test('apps/ui Tauri channel configs use the expected desktop product names', asy
   const preview = JSON.parse(previewRaw);
   const publicDev = JSON.parse(publicDevRaw);
 
-  assert.equal(stable?.productName, 'Happier');
-  assert.equal(stable?.app?.windows?.[0]?.title, 'Happier');
+  assert.equal(stable?.productName, 'Dangdang Agent');
+  assert.equal(stable?.app?.windows?.[0]?.title, 'Dangdang Agent');
 
-  assert.equal(preview?.productName, 'Happier (preview)');
-  assert.equal(preview?.app?.windows?.[0]?.title, 'Happier (preview)');
+  assert.equal(preview?.productName, 'Dangdang Agent (preview)');
+  assert.equal(preview?.app?.windows?.[0]?.title, 'Dangdang Agent (preview)');
 
-  assert.equal(publicDev?.productName, 'Happier (dev)');
-  assert.equal(publicDev?.app?.windows?.[0]?.title, 'Happier (dev)');
+  assert.equal(publicDev?.productName, 'Dangdang Agent (dev)');
+  assert.equal(publicDev?.app?.windows?.[0]?.title, 'Dangdang Agent (dev)');
 });
 
 test('apps/ui Tauri channel configs leave HTML5 file drag-and-drop available to the frontend', async () => {

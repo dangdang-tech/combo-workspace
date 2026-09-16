@@ -574,6 +574,48 @@ const settingsSessionHandoffTranslationExtensions = {
 } as const;
 
 export const ja: TranslationStructure = {
+    sourceSetup: {
+        title: "ソースからホストを接続",
+        body: "Dangdang Agent の専用インストーラーは未公開です。このリポジトリを使用してください。上流版には共有ワークスペース機能が含まれません。",
+        openGuide: "ソース設定ガイドを開く",
+        cloneTitle: "このリポジトリを取得してビルド",
+        cloneBody: "ホストに Node.js 22、Yarn Classic 1.22、Codex を準備してください。",
+        connectTitle: "選択したサーバーに接続",
+        connectBody: "ガイドに従って表示中のサーバーと専用データディレクトリを設定し、auth login と daemon start を実行します。",
+        runBody: "同じサーバーとホストデータディレクトリを設定した端末でリポジトリから実行するか、アプリでセッションを作成します。",
+    },
+    brand: { name: 'Dangdang Agent' },
+    sharedEntry: {
+        title: "共有プロジェクトの入口",
+        description: "招待された Google ユーザーはそれぞれ空の専用会話を開始します。プロジェクトのファイルはホスト上で共有され、モデルの利用料金はホストが負担します。",
+        create: "招待を作成",
+        name: "入口の名前",
+        members: "メンバー",
+        noMembers: "まだ誰も参加していません",
+        copy: "招待リンクをコピー",
+        copied: "招待リンクをコピーしました",
+        rotate: "招待リンクを更新",
+        rotateDetail: "以前のリンクでは新しいメンバーを招待できなくなります。",
+        canUse: "利用可能",
+        disabled: "アクセス不可",
+        enable: "アクセスを許可",
+        disable: "アクセスを停止",
+        preparing: "専用会話を準備中",
+        preparingDetail: "ホストが専用会話を作成し、暗号化されたアクセスを準備しています。",
+        preparationFailed: "会話の準備に失敗しました。ホストが利用可能になったら再試行してください。",
+        hostOffline: "ホストがオフラインです。下書きは保持されます。オンラインになったら手動で送信してください。",
+        accessDisabled: "アクセスが停止されました。ホストに連絡してください。",
+        googleRequired: "この招待を受けるには Google と連携したアカウントを使用してください。",
+        keysRequired: "暗号化されたアクセスの準備ができていません。アカウントの鍵を復元または接続して再試行してください。",
+        inviteInvalid: "この招待は無効か、利用できなくなりました。",
+        accept: "招待を受ける",
+        signIn: "Google でログインして続行",
+        connectServer: "招待元のサーバーで続行",
+        checking: "ホストの状態を確認中",
+        refresh: "状態を更新",
+        loadingFailed: "アクセスを確認できません。送信前に更新してください。",
+        unavailable: "このセッションでは共有入口を利用できません。",
+    },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
         entrySubtitle: 'Discover and control app shortcuts',
@@ -2346,7 +2388,7 @@ localTailscale: {
     actionsSettingsAboutSubtitle:
       "アクションをグローバルに、サーフェス（UI/音声/MCP）別、配置（UI 内の表示場所）別に有効/無効にできます。無効化されたアクションは実行時に安全側（フェイルクローズ）でブロックされます。",
     aboutFooter:
-      "Happier CoderはCodexとClaude Codeのモバイルクライアントです。デフォルトでエンドツーエンド暗号化され、他のデバイスでもアカウントを復元できます。Anthropicとは提携していません。",
+      "Dangdang Agent は Happier を基盤とする共有開発ワークスペースです。プロジェクトファイルを共有し、会話はメンバーごとに保存します。",
     whatsNew: "新機能",
     whatsNewSubtitle: "最新のアップデートと改善を確認",
     reportIssue: "問題を報告",
@@ -10113,22 +10155,28 @@ settingsSession: {
       `${serverUrl} の Relay から想定外の応答が返されました。その Relay を更新するか、別の Relay を選んで続行してください。`,
 
     // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
-    brandTaglineLine1: "どこからでも始められる。",
-    brandTaglineLine2: "どこででも続けられる。",
-    brandSubTagline: "あらゆるコーディングエージェントのためのコントロールルーム — お使いのすべてのデバイスで。",
-    brandTrustStrip: "エンドツーエンド暗号化 · オープンソース · セルフホスト可能",
+    brandTaglineLine1: "ひとつのプロジェクト。",
+    brandTaglineLine2: "それぞれの AI 対話。",
+    brandSubTagline: "同じプロジェクトディレクトリで Codex を使います。各メンバーは新しい会話を始め、ファイルの変更を共有します。",
+    brandTrustStrip: "ファイル共有 · 個別の会話 · セルフホスト可能",
+    frontDoorSelectedServer: "選択中のサーバー",
+    frontDoorHostRequirement: "ホストがオンラインの間にタスクを実行します。オフラインの要求は待機せず拒否されます。",
+    frontDoorOtherConversation: "共同作業者の会話",
+    frontDoorYourConversation: "あなたの会話",
+    frontDoorProject: "同じプロジェクトディレクトリ",
+    frontDoorEyebrow: "共有 Codex ワークスペース",
     providerMarkRowAccessibilityLabel: "対応している AI コーディングエージェント",
 
     // Unified onboarding redesign — welcome decision (right pane)
-    welcomeQuestionTitle: "ようこそ。",
-    welcomeQuestionSubtitle: "初めてですか?",
-    welcomeQuestionBody: "Happier は AI コーディングエージェントのコントロールルームです。メールアドレスは不要。アカウントはこのデバイスで生成される秘密鍵です。",
+    welcomeQuestionTitle: "ワークスペースへ。",
+    welcomeQuestionSubtitle: "アカウントで始めましょう。",
+    welcomeQuestionBody: "新しいアカウントを作成するか、既存のアカウントを復元してください。招待はログイン後に続行します。",
 
-    welcomePrimaryButton: "初めてですか — はじめましょう",
-    welcomePrimarySubtitle: "ワンタップ。フォーム不要。鍵はこの端末に保管されます。",
+    welcomePrimaryButton: "アカウントを作成",
+    welcomePrimarySubtitle: "このデバイスで始める。",
 
-    welcomeSecondaryButton: "ログイン — すでに Happier を使っています",
-    welcomeSecondarySubtitle: "QRコードをスキャンするか、シークレットキーを入力してください",
+    welcomeSecondaryButton: "既存のアカウントでログイン",
+    welcomeSecondarySubtitle: "QR コードまたは復元キーを使う。",
 
     // Unified onboarding redesign — returning-user copy variants.
     // Shown when localSettings.hasCompletedAuthOnce === true, i.e. the

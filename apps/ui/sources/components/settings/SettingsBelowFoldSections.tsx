@@ -1,4 +1,4 @@
-import { View, Platform, Linking } from 'react-native';
+import { View } from 'react-native';
 import * as React from 'react';
 import { useRouter } from 'expo-router';
 import { useUnistyles } from 'react-native-unistyles';
@@ -404,7 +404,7 @@ const SettingsAboutSection = React.memo(function SettingsAboutSection({
             <Item
                 title={t('settings.github')}
                 icon={<Icon name="github-logo" size={29} color={theme.colors.text.primary} />}
-                subtitle="happier-dev/happier"
+                subtitle="dangdang-tech/dangdang-agent"
                 onPress={handleGitHub}
             />
             <Item
@@ -412,41 +412,6 @@ const SettingsAboutSection = React.memo(function SettingsAboutSection({
                 icon={<Icon name="bug" size={29} color={theme.colors.state.danger.foreground} />}
                 onPress={handleReportIssue}
             />
-            <Item
-                title={t('settings.privacyPolicy')}
-                icon={<Icon name="shield-check" size={29} color={theme.colors.accent.blue} />}
-                onPress={async () => {
-                    const url = 'https://docs.happier.dev/legal/privacy';
-                    const supported = await Linking.canOpenURL(url);
-                    if (supported) {
-                        await Linking.openURL(url);
-                    }
-                }}
-            />
-            <Item
-                title={t('settings.termsOfService')}
-                icon={<Icon name="file-text" size={29} color={theme.colors.accent.blue} />}
-                onPress={async () => {
-                    const url = 'https://docs.happier.dev/legal/terms';
-                    const supported = await Linking.canOpenURL(url);
-                    if (supported) {
-                        await Linking.openURL(url);
-                    }
-                }}
-            />
-            {Platform.OS === 'ios' && (
-                <Item
-                    title={t('settings.eula')}
-                    icon={<Icon name="file-text" size={29} color={theme.colors.accent.blue} />}
-                    onPress={async () => {
-                        const url = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
-                        const supported = await Linking.canOpenURL(url);
-                        if (supported) {
-                            await Linking.openURL(url);
-                        }
-                    }}
-                />
-            )}
             <Item
                 title={t('common.version')}
                 detail={appVersion}

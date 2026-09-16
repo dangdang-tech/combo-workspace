@@ -57,6 +57,13 @@ import { hashSessionOrganizationKey } from "@/app/session/organization/hashKeys"
 
 const encryptedDisplay = { t: "encrypted" as const, c: "ciphertext" };
 const plainDisplay = { t: "plain" as const, v: { label: "Plain text" } };
+const visibleShareForUser = {
+    sharedWithUserId: "u1",
+    session: { OR: [
+        { sharedSessionEntryMember: { is: null } },
+        { sharedSessionEntryMember: { is: { userId: "u1", enabled: true, status: "ready" } } },
+    ] },
+};
 
 function organizationDate(ms: number): Date {
     return new Date(ms);
@@ -199,7 +206,7 @@ describe("session organization routes", () => {
                     archivedAt: null,
                     OR: [
                         { accountId: "u1" },
-                        { shares: { some: { sharedWithUserId: "u1" } } },
+                        { shares: { some: visibleShareForUser } },
                     ],
                 }),
             }),
@@ -211,7 +218,7 @@ describe("session organization routes", () => {
                 session: expect.objectContaining({
                     OR: [
                         { accountId: "u1" },
-                        { shares: { some: { sharedWithUserId: "u1" } } },
+                        { shares: { some: visibleShareForUser } },
                     ],
                 }),
             }),
@@ -285,7 +292,7 @@ describe("session organization routes", () => {
                 id: { in: ["visible-session", "hidden-session"] },
                 OR: [
                     { accountId: "u1" },
-                    { shares: { some: { sharedWithUserId: "u1" } } },
+                    { shares: { some: visibleShareForUser } },
                 ],
             }),
             select: { id: true },
@@ -329,7 +336,7 @@ describe("session organization routes", () => {
         const visibilityWhere = expect.objectContaining({
             OR: [
                 { accountId: "u1" },
-                { shares: { some: { sharedWithUserId: "u1" } } },
+                { shares: { some: visibleShareForUser } },
             ],
         });
         expect(sessionPinFindMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -375,7 +382,7 @@ describe("session organization routes", () => {
                 session: expect.objectContaining({
                     OR: [
                         { accountId: "u1" },
-                        { shares: { some: { sharedWithUserId: "u1" } } },
+                        { shares: { some: visibleShareForUser } },
                     ],
                 }),
             }),
@@ -410,7 +417,7 @@ describe("session organization routes", () => {
                 session: expect.objectContaining({
                     OR: [
                         { accountId: "u1" },
-                        { shares: { some: { sharedWithUserId: "u1" } } },
+                        { shares: { some: visibleShareForUser } },
                     ],
                 }),
             }),
@@ -449,7 +456,7 @@ describe("session organization routes", () => {
                 session: expect.objectContaining({
                     OR: [
                         { accountId: "u1" },
-                        { shares: { some: { sharedWithUserId: "u1" } } },
+                        { shares: { some: visibleShareForUser } },
                     ],
                 }),
             }),
@@ -559,7 +566,7 @@ describe("session organization routes", () => {
                 archivedAt: null,
                 OR: [
                     { accountId: "u1" },
-                    { shares: { some: { sharedWithUserId: "u1" } } },
+                    { shares: { some: visibleShareForUser } },
                 ],
             }),
             select: { id: true },
@@ -611,7 +618,7 @@ describe("session organization routes", () => {
                     archivedAt: null,
                     OR: [
                         { accountId: "u1" },
-                        { shares: { some: { sharedWithUserId: "u1" } } },
+                        { shares: { some: visibleShareForUser } },
                     ],
                 }),
             },
@@ -1177,7 +1184,7 @@ describe("session organization routes", () => {
                 session: expect.objectContaining({
                     OR: [
                         { accountId: "u1" },
-                        { shares: { some: { sharedWithUserId: "u1" } } },
+                        { shares: { some: visibleShareForUser } },
                     ],
                 }),
             }),
@@ -1208,7 +1215,7 @@ describe("session organization routes", () => {
                 archivedAt: null,
                 OR: [
                     { accountId: "u1" },
-                    { shares: { some: { sharedWithUserId: "u1" } } },
+                    { shares: { some: visibleShareForUser } },
                 ],
             }),
             select: { id: true },
@@ -1242,7 +1249,7 @@ describe("session organization routes", () => {
                     archivedAt: null,
                     OR: [
                         { accountId: "u1" },
-                        { shares: { some: { sharedWithUserId: "u1" } } },
+                        { shares: { some: visibleShareForUser } },
                     ],
                 }),
             },
@@ -1704,7 +1711,7 @@ describe("session organization routes", () => {
                 archivedAt: null,
                 OR: [
                     { accountId: "u1" },
-                    { shares: { some: { sharedWithUserId: "u1" } } },
+                    { shares: { some: visibleShareForUser } },
                 ],
             }),
             select: { id: true },

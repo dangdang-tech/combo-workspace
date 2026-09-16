@@ -606,6 +606,48 @@ function plural({
  * Must match the exact structure of the English translations
  */
 export const ru: TranslationStructure = {
+    sourceSetup: {
+        title: "Подключить хост из исходников",
+        body: "У Dangdang Agent пока нет отдельного установщика. Используйте этот репозиторий: установщики исходного проекта не содержат общих рабочих пространств.",
+        openGuide: "Открыть инструкцию по исходникам",
+        cloneTitle: "Клонировать и собрать репозиторий",
+        cloneBody: "Подготовьте на хосте Node.js 22, Yarn Classic 1.22 и Codex.",
+        connectTitle: "Подключить выбранный сервер",
+        connectBody: "По инструкции настройте этот адрес сервера и отдельную папку данных, затем выполните auth login и daemon start.",
+        runBody: "Запускайте из репозитория с тем же сервером и папкой данных либо создайте сессию в приложении.",
+    },
+    brand: { name: 'Dangdang Agent' },
+    sharedEntry: {
+        title: "Вход в общий проект",
+        description: "Каждый приглашённый пользователь Google начинает собственный пустой разговор. Все используют одни и те же файлы проекта на хосте. Хост оплачивает использование модели.",
+        create: "Создать приглашение",
+        name: "Название входа",
+        members: "Участники",
+        noMembers: "Пока никто не принял приглашение",
+        copy: "Скопировать ссылку приглашения",
+        copied: "Ссылка приглашения скопирована",
+        rotate: "Заменить ссылку приглашения",
+        rotateDetail: "Старая ссылка больше не будет принимать новых участников.",
+        canUse: "Можно использовать",
+        disabled: "Нет доступа",
+        enable: "Разрешить доступ",
+        disable: "Отключить доступ",
+        preparing: "Подготовка вашего разговора",
+        preparingDetail: "Хост создаёт ваш разговор и подготавливает зашифрованный доступ.",
+        preparationFailed: "Не удалось подготовить разговор. Повторите, когда хост станет доступен.",
+        hostOffline: "Хост не в сети. Черновик сохранён; отправьте его вручную, когда хост появится в сети.",
+        accessDisabled: "Доступ отключён. Свяжитесь с хостом.",
+        googleRequired: "Чтобы принять приглашение, используйте аккаунт, связанный с Google.",
+        keysRequired: "Зашифрованный доступ ещё не готов. Восстановите или подключите ключи аккаунта и повторите.",
+        inviteInvalid: "Приглашение недействительно или больше недоступно.",
+        accept: "Принять приглашение",
+        signIn: "Войти через Google и продолжить",
+        connectServer: "Продолжить на сервере приглашения",
+        checking: "Проверка доступности хоста",
+        refresh: "Обновить статус",
+        loadingFailed: "Не удалось проверить доступ. Обновите перед отправкой.",
+        unavailable: "Общие входы недоступны для этой сессии.",
+    },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
         entrySubtitle: 'Discover and control app shortcuts',
@@ -2010,7 +2052,7 @@ export const ru: TranslationStructure = {
     actionsSettingsAboutSubtitle:
       "Включайте или отключайте действия глобально, по поверхности (UI/голос/MCP) и по размещению (где они отображаются в интерфейсе). Отключённые действия блокируются по принципу fail‑closed во время выполнения.",
     aboutFooter:
-      "Happier Coder — мобильное приложение для работы с Codex и Claude Code. По умолчанию использует сквозное шифрование, с восстановлением аккаунта на других ваших устройствах. Не связано с Anthropic.",
+      "Dangdang Agent — совместная среда разработки на основе Happier. Файлы проекта общие, а разговоры сохраняются отдельно.",
     whatsNew: "Что нового",
     whatsNewSubtitle: "Посмотреть последние обновления и улучшения",
     reportIssue: "Сообщить о проблеме",
@@ -9846,22 +9888,28 @@ settingsSession: {
       `Relay по адресу ${serverUrl} вернул неожиданный ответ. Обновите этот Relay или выберите другой Relay, чтобы продолжить.`,
 
     // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
-    brandTaglineLine1: "Начни где угодно.",
-    brandTaglineLine2: "Продолжай где угодно.",
-    brandSubTagline: "Единый центр управления для каждого агента-программиста — на всех ваших устройствах.",
-    brandTrustStrip: "СКВОЗНОЕ ШИФРОВАНИЕ · ОТКРЫТЫЙ ИСХОДНЫЙ КОД · SELF-HOSTING",
+    brandTaglineLine1: "Один общий проект.",
+    brandTaglineLine2: "Своя беседа с ИИ.",
+    brandSubTagline: "Работайте с Codex в одной папке проекта. Каждый начинает новую беседу; изменения файлов доступны всем.",
+    brandTrustStrip: "ОБЩИЕ ФАЙЛЫ · ОТДЕЛЬНЫЕ БЕСЕДЫ · СВОЙ СЕРВЕР",
+    frontDoorSelectedServer: "Выбранный сервер",
+    frontDoorHostRequirement: "Задачи выполняются, пока хост в сети. Запросы без подключения отклоняются, а не ставятся в очередь.",
+    frontDoorOtherConversation: "Беседа коллеги",
+    frontDoorYourConversation: "Ваша беседа",
+    frontDoorProject: "Одна папка проекта",
+    frontDoorEyebrow: "Общее пространство Codex",
     providerMarkRowAccessibilityLabel: "Поддерживаемые ИИ-агенты для программирования",
 
     // Unified onboarding redesign — welcome decision (right pane)
-    welcomeQuestionTitle: "Добро пожаловать.",
-    welcomeQuestionSubtitle: "Вы здесь впервые?",
-    welcomeQuestionBody: "Happier — это центр управления вашими ИИ-агентами для программирования. Email не нужен. Ваш аккаунт — это приватный ключ, сгенерированный на этом устройстве.",
+    welcomeQuestionTitle: "Ваше рабочее пространство.",
+    welcomeQuestionSubtitle: "Начните со своего аккаунта.",
+    welcomeQuestionBody: "Создайте учётную запись или восстановите существующую. Приглашение продолжится после входа.",
 
-    welcomePrimaryButton: "Впервые здесь — начнём",
-    welcomePrimarySubtitle: "Одно касание. Без форм. Ваш ключ хранится здесь.",
+    welcomePrimaryButton: "Создать учётную запись",
+    welcomePrimarySubtitle: "Начать на этом устройстве.",
 
-    welcomeSecondaryButton: "Войти — я уже пользуюсь Happier",
-    welcomeSecondarySubtitle: "Отсканируйте QR-код или введите секретный ключ",
+    welcomeSecondaryButton: "Войти в существующую запись",
+    welcomeSecondarySubtitle: "Используйте QR-код или ключ восстановления.",
 
     // Unified onboarding redesign — returning-user copy variants.
     // Shown when localSettings.hasCompletedAuthOnce === true, i.e. the

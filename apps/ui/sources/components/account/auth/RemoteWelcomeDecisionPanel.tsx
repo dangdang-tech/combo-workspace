@@ -269,6 +269,7 @@ function DecisionActionRow(props: DecisionActionRowProps): React.ReactElement {
 
 export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProps): React.ReactElement {
     const { options } = props;
+    const { theme } = useUnistyles();
     const styles = stylesheet;
     const primarySignupAction = resolvePrimaryAction(options, props);
     // Returning users (those who have authenticated on this device before) get
@@ -323,6 +324,19 @@ export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProp
 
     return (
         <View testID="welcome-decision-panel" style={styles.decisionPanel}>
+            <Pressable
+                testID="welcome-selected-server"
+                accessibilityRole="button"
+                accessibilityLabel={`${t('welcome.frontDoorSelectedServer')}: ${options.serverUrlForCopy}`}
+                onPress={props.onChangeRelay}
+                style={styles.selectedServer}
+            >
+                <View style={styles.selectedServerText}>
+                    <Text style={styles.selectedServerLabel}>{t('welcome.frontDoorSelectedServer')}</Text>
+                    <Text style={styles.selectedServerUrl}>{options.serverUrlForCopy}</Text>
+                </View>
+                <Icon name="caret-right" size={16} color={theme.colors.text.secondary} />
+            </Pressable>
             {/*
               * The mobile wordmark is rendered by WorkflowPanel (absolutely
               * pinned to the top-left of the pane) so it stays anchored at the
@@ -334,7 +348,7 @@ export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProp
                 <Text testID="welcome-question-title" accessibilityRole="header" style={styles.questionTitle}>
                     {isReturningUser ? returningGreeting.title : t('welcome.welcomeQuestionTitle')}
                 </Text>
-                <Text testID="welcome-question-subtitle" accessibilityRole="header" style={styles.questionSubtitleTitle}>
+                <Text testID="welcome-question-subtitle" style={styles.questionSubtitleTitle}>
                     {isReturningUser ? returningGreeting.subtitle : t('welcome.welcomeQuestionSubtitle')}
                 </Text>
                 {shouldRenderFirstTimeCopy ? (
@@ -468,6 +482,21 @@ export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProp
 }
 
 const stylesheet = StyleSheet.create((theme) => ({
+    selectedServer: {
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: theme.colors.border.default,
+        borderRadius: 12,
+        backgroundColor: theme.colors.surface.base,
+    },
+    selectedServerText: { flex: 1, minWidth: 0, gap: 4 },
+    selectedServerLabel: { ...Typography.eyebrow(), color: theme.colors.text.secondary },
+    selectedServerUrl: { ...Typography.rowMeta(), color: theme.colors.text.primary },
     decisionPanel: {
         width: '100%',
         alignItems: 'center',
@@ -491,9 +520,10 @@ const stylesheet = StyleSheet.create((theme) => ({
         textAlign: 'left',
     },
     questionSubtitleTitle: {
-        ...Typography.default('semiBold'),
-        fontSize: 44,
-        lineHeight: 44,
+        ...Typography.default(),
+        fontSize: 16,
+        lineHeight: 24,
+        marginTop: 12,
         color: theme.colors.text.secondary,
         textAlign: 'left',
     },

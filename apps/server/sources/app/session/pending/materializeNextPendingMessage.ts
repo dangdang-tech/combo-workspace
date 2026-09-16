@@ -29,6 +29,7 @@ import {
     type TrustedPendingPublisherFence,
 } from "@/app/session/pending/pendingPublisherAuthority";
 import { reconcilePendingActivationAuthorizationForRemovedRequestInTx } from "@/app/session/pending/pendingActivationAuthorization";
+import { resolveSessionEntryTaskRejection, type SessionEntryTaskRejection } from "@/app/share/sessionEntryAdmission";
 
 type ParticipantCursor = SessionParticipantCursor;
 class PublisherAuthorityLostError extends Error {}
@@ -79,7 +80,7 @@ export type MaterializeNextPendingMessageResult =
         deliveryState?: PendingMaterializationDeliveryState;
       }
     | { ok: false; error: "transaction-unavailable"; retryAfterMs: number }
-    | { ok: false; error: "session-not-found" | "forbidden" | "invalid-params" | "requested-action-conflict" | "transcript-conflict" | "internal" };
+    | { ok: false; error: "session-not-found" | "forbidden" | "invalid-params" | "requested-action-conflict" | "transcript-conflict" | "internal" | SessionEntryTaskRejection };
 
 function toSessionMessageContentFromPending(content: PrismaJson.SessionPendingMessageContent): PrismaJson.SessionMessageContent {
     return content;
@@ -304,6 +305,8 @@ async function materializeNextPendingMessageInTx(
         sessionId,
         fence: params.trustedPublisherFence,
     })) return { ok: false, error: "forbidden" };
+    const entryRejection = await resolveSessionEntryTaskRejection({ tx, actorUserId, sessionId });
+    if (entryRejection) return { ok: false, error: entryRejection };
     const rejoined = await tryRejoinProviderClaimInTx({
         tx,
         actorUserId,

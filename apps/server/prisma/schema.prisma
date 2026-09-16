@@ -24,6 +24,8 @@ datasource db {
 model Account {
     id              String      @id @default(cuid())
     publicKey       String?     @unique
+    sharedSessionEntries SharedSessionEntry[]
+    sharedSessionEntryMemberships SharedSessionEntryMember[]
     /// X25519 (NaCl box) public key for encrypting session DEKs to this account
     contentPublicKey Bytes?
     /// Ed25519 signature binding contentPublicKey to publicKey
@@ -287,6 +289,8 @@ model AccountPushToken {
 
 model Session {
     id                String              @id @default(cuid())
+    sharedSessionEntries SharedSessionEntry[] @relation("SharedEntrySource")
+    sharedSessionEntryMember SharedSessionEntryMember? @relation("SharedEntryChild")
     tag               String
     accountId         String
     account           Account             @relation(fields: [accountId], references: [id])
@@ -803,6 +807,7 @@ model UsageReport {
 
 model Machine {
     id                 String      @id
+    sharedSessionEntries SharedSessionEntry[]
     accountId          String
     account            Account     @relation(fields: [accountId], references: [id])
     metadata           String // Encrypted - contains static machine info
@@ -1246,6 +1251,8 @@ enum ShareAccessLevel {
 /// Direct session share between users (friend-to-friend sharing)
 model SessionShare {
     id                String           @id @default(cuid())
+    entryMemberId     String? @unique
+    entryMember       SharedSessionEntryMember? @relation(fields: [entryMemberId], references: [id], onDelete: Cascade)
     sessionId         String
     session           Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
     sharedByUserId    String
@@ -1265,6 +1272,48 @@ model SessionShare {
     @@index([sharedWithUserId])
     @@index([sharedByUserId])
     @@index([sessionId])
+}
+
+/// An owner-published entry allocates one independent child conversation per invited account.
+/// Source metadata (including directory) remains encrypted on the owner device.
+model SharedSessionEntry {
+    id              String   @id @default(cuid())
+    ownerId         String
+    owner           Account  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+    sourceSessionId String
+    sourceSession   Session  @relation("SharedEntrySource", fields: [sourceSessionId], references: [id], onDelete: Cascade)
+    machineId       String
+    machine         Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+    title           String
+    inviteTokenHash String   @unique
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+    members         SharedSessionEntryMember[]
+
+    @@index([ownerId, createdAt])
+    @@index([machineId])
+    @@index([sourceSessionId])
+}
+
+/// Provisioning allocates a conversation only; this is never a queue for offline user tasks.
+model SharedSessionEntryMember {
+    id           String   @id @default(cuid())
+    entryId      String
+    entry        SharedSessionEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+    userId       String
+    user         Account  @relation(fields: [userId], references: [id], onDelete: Cascade)
+    enabled      Boolean  @default(true)
+    status       String   @default("pending")
+    errorCode    String?
+    sessionId    String?  @unique
+    session      Session? @relation("SharedEntryChild", fields: [sessionId], references: [id], onDelete: SetNull)
+    share        SessionShare?
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+
+    @@unique([entryId, userId])
+    @@index([entryId, status, createdAt])
+    @@index([userId])
 }
 
 /// Access log for direct session shares

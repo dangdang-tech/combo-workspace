@@ -450,6 +450,10 @@ export async function resolveV2SessionListVisibilityWhereArms(
     for (let start = 0; start < shares.length; start += SHARED_SESSION_ID_ARM_CHUNK_SIZE) {
         arms.push({
             id: { in: shares.slice(start, start + SHARED_SESSION_ID_ARM_CHUNK_SIZE).map((share) => share.sessionId) },
+            // The ids are memoized across initial-page reads. Recheck the grant
+            // and managed membership at the keyed read so revocation cannot
+            // leave a previously resolved id visible later in the request.
+            shares: { some: createSessionSharedWithUserWhere(params.userId) },
         });
     }
     return arms;

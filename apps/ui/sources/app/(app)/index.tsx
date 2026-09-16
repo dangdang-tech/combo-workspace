@@ -41,6 +41,8 @@ import {
     type RemoteSignupOptions,
 } from "@/components/account/auth/useRemoteAuthEntryOptions";
 
+import { resolveAuthReturnToRoute as resolveInternalAuthReturnToRoute } from "@/auth/routing/resolveAuthReturnToRoute";
+
 import { shouldAutoRedirectToSetupOnFirstLaunch } from "@/utils/navigation/firstLaunchSetupRedirectPolicy";
 
 const DEFAULT_WELCOME_SERVER_CHECK_TIMEOUT_MS = 6_000;
@@ -78,8 +80,10 @@ function Authenticated() {
         serverId?: string | string[];
         messageId?: string | string[];
         jumpChildId?: string | string[];
+        returnTo?: string;
     }>();
     const router = useRouter();
+    const returnTo = resolveInternalAuthReturnToRoute(params.returnTo, false);
 
     const sessionId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? (params.id[0] ?? null) : null;
     const serverId = typeof params.serverId === 'string' ? params.serverId : Array.isArray(params.serverId) ? (params.serverId[0] ?? null) : null;
@@ -87,6 +91,10 @@ function Authenticated() {
     const jumpChildId = typeof params.jumpChildId === 'string' ? params.jumpChildId : Array.isArray(params.jumpChildId) ? (params.jumpChildId[0] ?? null) : null;
 
     React.useEffect(() => {
+        if (returnTo !== '/' && isAuthenticatedRootDeepLinkRedirectAllowed()) {
+            router.replace(returnTo);
+            return;
+        }
         const sid = String(sessionId ?? '').trim();
         if (!sid) return;
         if (!isAuthenticatedRootDeepLinkRedirectAllowed()) return;
@@ -101,9 +109,10 @@ function Authenticated() {
             query: child ? { jumpChildId: child } : undefined,
         });
         router.replace(href);
-    }, [jumpChildId, messageId, router, serverId, sessionId]);
+    }, [jumpChildId, messageId, returnTo, router, serverId, sessionId]);
 
     React.useEffect(() => {
+        if (returnTo !== '/') return;
         const sid = String(sessionId ?? '').trim();
         if (sid) return;
         if (!isAuthenticatedRootDeepLinkRedirectAllowed()) return;
@@ -117,17 +126,18 @@ function Authenticated() {
             return;
         }
         router.replace('/setup');
-    }, [router, sessionId]);
+    }, [returnTo, router, sessionId]);
 
     return <MainView variant="phone" />;
 }
 
-function resolveAuthReturnToRoute(): string {
+function resolveAuthReturnToRoute(returnTo?: unknown): string {
     const pendingSetupIntent = getPendingSetupIntent();
-    return pendingSetupIntent?.phase === 'awaiting_auth' && isTauriDesktop() ? '/setup' : '/';
+    return resolveInternalAuthReturnToRoute(returnTo, pendingSetupIntent?.phase === 'awaiting_auth' && isTauriDesktop());
 }
 
 function NotAuthenticated() {
+    const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
     const auth = useAuth();
     const router = useRouter();
     const isDesktopShell = React.useMemo(() => isTauriDesktop(), []);
@@ -290,7 +300,7 @@ function NotAuthenticated() {
                 provider: providerId,
                 proof,
                 secret,
-                returnTo: resolveAuthReturnToRoute(),
+                returnTo: resolveAuthReturnToRoute(returnTo),
                 ...(serverUrl ? { serverUrl } : {}),
             });
 
@@ -337,7 +347,7 @@ function NotAuthenticated() {
             await TokenStorage.setPendingExternalAuth({
                 provider: providerId,
                 proof,
-                returnTo: resolveAuthReturnToRoute(),
+                returnTo: resolveAuthReturnToRoute(returnTo),
                 ...(serverUrl ? { serverUrl } : {}),
             });
 
@@ -450,7 +460,7 @@ function NotAuthenticated() {
         <UnauthenticatedSplitShell
             stepId="welcome"
             isWelcomeStep
-            allowMobileBrandHero
+            allowMobileBrandHero={resolveInternalAuthReturnToRoute(returnTo, false) === '/' && !hasPendingTerminalConnect}
             onOpenRelayCustomFlow={() => router.push('/setup?openCustom=1')}
             onBrandHeroGetStarted={applyBrandHeroSeen}
             retentionSummary={retentionSummary}

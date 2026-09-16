@@ -17,6 +17,7 @@ export type OidcAuthProviderInstanceConfig = Readonly<{
         groups: string;
     }>;
     allow: Readonly<{
+        requireVerifiedEmail?: boolean;
         usersAllowlist: readonly string[];
         emailDomains: readonly string[];
         groupsAny: readonly string[];
@@ -148,6 +149,7 @@ function parseEmailDomainList(raw: unknown): string[] {
 function parseAllow(raw: unknown): OidcAuthProviderInstanceConfig["allow"] {
     const record = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
     return Object.freeze({
+        requireVerifiedEmail: parseBoolean(record.requireVerifiedEmail, false),
         usersAllowlist: Object.freeze(parseLowercaseIdList(record.usersAllowlist)),
         emailDomains: Object.freeze(parseEmailDomainList(record.emailDomains)),
         groupsAny: Object.freeze(parseLowercaseIdList(record.groupsAny)),

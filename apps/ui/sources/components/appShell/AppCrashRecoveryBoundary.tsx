@@ -1,9 +1,10 @@
 import * as React from 'react';
-import { Appearance, Image, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Appearance, Platform, Pressable, ScrollView, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { StyleSheet } from 'react-native-unistyles';
 
 import { t } from '@/text';
+import { BrandMark } from '@/components/ui/icons/BrandMark';
 import { darkTheme, lightTheme } from '@/theme';
 import { loadThemeRuntimeLocalState } from '@/sync/domains/state/persistence';
 import {
@@ -126,12 +127,10 @@ export function AppBlockingScreen(props: Readonly<{
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.blockingHeader}>
-          <Image
-            testID="app-blocking-logo"
-            source={theme.dark ? require('@/assets/images/logotype-light.png') : require('@/assets/images/logotype-dark.png')}
-            resizeMode="contain"
-            style={styles.logo}
-          />
+          <View testID="app-blocking-logo" style={styles.logo}>
+            <BrandMark size={32} color={theme.colors.accent.blue} />
+            <TextBlock text={t('brand.name')} style={[styles.brandName, { color: theme.colors.text.primary }]} />
+          </View>
         </View>
         <View style={styles.header}>
           <View style={styles.titleRow}>
@@ -374,8 +373,17 @@ const styles = StyleSheet.create(() => ({
     marginBottom: 4,
   },
   logo: {
-    width: 300,
-    height: 90,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    maxWidth: '100%',
+    paddingVertical: 24,
+  },
+  brandName: {
+    ...Typography.logo(),
+    fontSize: 24,
+    flexShrink: 1,
   },
   header: {
     gap: 6,

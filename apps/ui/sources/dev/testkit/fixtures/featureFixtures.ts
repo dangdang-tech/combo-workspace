@@ -96,6 +96,7 @@ const BASE_ROOT_LAYOUT_FEATURES: RootLayoutFeatures = {
             ota: { enabled: true },
         },
         sharing: {
+            sessionEntries: { enabled: false },
             session: { enabled: true },
             public: { enabled: true },
             contentKeys: { enabled: true },

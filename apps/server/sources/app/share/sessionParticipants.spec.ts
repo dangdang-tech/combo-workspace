@@ -16,9 +16,8 @@ describe("getSessionParticipantUserIds", () => {
         const ids = await getSessionParticipantUserIds({ sessionId: "s1", tx });
         expect(tx.session.findUnique).toHaveBeenCalledWith({
             where: { id: "s1" },
-            select: { accountId: true, shares: { select: { sharedWithUserId: true } } },
+            select: { accountId: true, sharedSessionEntryMember: { select: { userId: true, enabled: true, status: true } }, shares: { select: { sharedWithUserId: true } } },
         });
         expect(new Set(ids)).toEqual(new Set(["owner", "u2", "u3"]));
     });
 });
-

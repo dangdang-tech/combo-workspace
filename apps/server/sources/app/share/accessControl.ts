@@ -22,6 +22,8 @@ export interface SessionAccess {
     sessionActive?: boolean;
     /** Cached session last-active timestamp, when available from the access lookup */
     sessionLastActiveAt?: Date | null;
+    /** Entry guests always have the binary use permission; legacy share upgrades cannot delegate admin. */
+    sharedSessionEntry?: boolean;
 }
 
 /**
@@ -42,10 +44,17 @@ export async function checkSessionAccess(
             accountId: true,
             active: true,
             lastActiveAt: true,
+            sharedSessionEntryMember: { select: { userId: true, enabled: true, status: true } },
         }
     });
 
     if (!session) {
+        return null;
+    }
+
+    const entryMember = session.sharedSessionEntryMember;
+    if (session.accountId !== userId && entryMember
+        && (entryMember.userId !== userId || !entryMember.enabled || entryMember.status !== 'ready')) {
         return null;
     }
 
@@ -75,8 +84,9 @@ export async function checkSessionAccess(
         return {
             userId,
             sessionId,
-            level: share.accessLevel,
+            level: entryMember ? 'edit' : share.accessLevel,
             isOwner: false,
+            ...(entryMember ? { sharedSessionEntry: true } : {}),
             sessionActive: session.active,
             sessionLastActiveAt: session.lastActiveAt,
         };
@@ -164,6 +174,7 @@ export async function canApprovePermissions(
     const access = await checkSessionAccess(userId, sessionId);
     if (!access) return false;
     if (access.isOwner) return true;
+    if (access.sharedSessionEntry) return false;
     if (!requireAccessLevel(access, 'edit')) return false;
 
     const share = await db.sessionShare.findUnique({
@@ -194,6 +205,7 @@ export async function canManagePermissionDelegation(
     const access = await checkSessionAccess(userId, sessionId);
     if (!access) return false;
     if (access.isOwner) return true;
+    if (access.sharedSessionEntry) return false;
     if (access.level !== 'admin') return false;
 
     const share = await db.sessionShare.findUnique({

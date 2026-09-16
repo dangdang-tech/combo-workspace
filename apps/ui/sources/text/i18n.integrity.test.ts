@@ -19,6 +19,8 @@ import {
 } from '../../tools/i18n/translationAudit';
 
 const IGNORED_UNTRANSLATED_KEYS = new Set([
+    // The English product name is shared outside Chinese locales.
+    'brand.name',
     'promptLibrary.supportingFilePathPlaceholder',
     'files.sourceControlOperations.update.remotes.namePlaceholder',
     'settingsSession.handoff.includeIgnoredMode.globsPlaceholder',

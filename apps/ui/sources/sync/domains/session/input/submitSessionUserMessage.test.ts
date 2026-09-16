@@ -83,6 +83,14 @@ const baseOptions = {
 };
 
 describe('submitSessionUserMessage', () => {
+    it.each(['host_offline', 'shared_session_access_revoked'])('preserves admission error code %s for composer recovery', async (code) => {
+        const harness = createPort();
+        harness.enqueuePendingMessage.mockRejectedValue(Object.assign(new Error('Task was refused'), { code }));
+        const result = await submitSessionUserMessage(harness.port, { ...baseOptions, session: createSession() });
+        expect(result).toMatchObject({ type: 'send_failed', persistence: 'none', errorCode: code });
+        expect(harness.ensureSessionRuntimeForPendingInput).not.toHaveBeenCalled();
+    });
+
     it('persists ordinary input with the canonical enqueue action', async () => {
         const harness = createPort();
 

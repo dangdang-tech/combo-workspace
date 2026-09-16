@@ -589,6 +589,48 @@ function plural({
 }
 
 export const zhHans: TranslationStructure = {
+    sourceSetup: {
+        title: "从源码连接主机",
+        body: "当当 Agent 尚未发布独立安装包。请使用本仓库源码；上游安装包不包含共享入口。",
+        openGuide: "打开源码连接指南",
+        cloneTitle: "获取并构建本仓库",
+        cloneBody: "在主机上准备 Node.js 22、Yarn Classic 1.22 和 Codex。",
+        connectTitle: "连接当前服务",
+        connectBody: "按指南配置这里显示的服务地址和独立的主机数据目录，再运行 auth login 与 daemon start。",
+        runBody: "在仓库目录下、已配置相同服务和主机数据目录的终端运行，或在网页中创建会话。",
+    },
+    brand: { name: '当当 Agent' },
+    sharedEntry: {
+        title: "共享工作入口",
+        description: "每位受邀 Google 用户从自己的空白对话开始。所有人使用主机上的同一份项目文件，模型费用由主机方承担。",
+        create: "创建邀请",
+        name: "入口名称",
+        members: "成员",
+        noMembers: "暂时还没有人接受邀请",
+        copy: "复制邀请链接",
+        copied: "邀请链接已复制",
+        rotate: "更换邀请链接",
+        rotateDetail: "旧链接将不能再邀请新成员。",
+        canUse: "可使用",
+        disabled: "无权访问",
+        enable: "允许访问",
+        disable: "停用访问",
+        preparing: "正在准备你的专属对话",
+        preparingDetail: "主机正在创建你的专属对话并准备加密访问。",
+        preparationFailed: "专属对话准备失败。主机可用后请重试。",
+        hostOffline: "主机离线，暂不可执行。草稿会保留，主机上线后请手动发送。",
+        accessDisabled: "访问已停用，请联系主机方。",
+        googleRequired: "请使用已关联 Google 的账号接受邀请。",
+        keysRequired: "加密访问尚未准备好。请恢复或连接账号密钥后重试。",
+        inviteInvalid: "邀请无效或已不可用。",
+        accept: "接受邀请",
+        signIn: "使用 Google 登录并继续",
+        connectServer: "连接邀请指定的服务器",
+        checking: "正在检查主机状态",
+        refresh: "刷新状态",
+        loadingFailed: "无法确认访问状态，请刷新后再发送。",
+        unavailable: "此会话暂不支持共享入口。",
+    },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
         entrySubtitle: 'Discover and control app shortcuts',
@@ -1984,7 +2026,7 @@ export const zhHans: TranslationStructure = {
     actionsSettingsAboutSubtitle:
       "可全局、按界面（UI/语音/MCP）以及按展示位置（在界面中出现的位置）启用或禁用操作。被禁用的操作在运行时会以安全方式（fail-closed）被阻止。",
     aboutFooter:
-      "Happier Coder 是一个 Codex 和 Claude Code 移动客户端。默认启用端到端加密，并可在其他设备上恢复您的账户。与 Anthropic 无关联。",
+      "当当 Agent 是基于 Happier 的共享编程工作台。项目文件共享，每位成员的对话独立保存。",
     whatsNew: "更新日志",
     whatsNewSubtitle: "查看最新更新和改进",
     reportIssue: "报告问题",
@@ -9521,22 +9563,28 @@ settingsSession: {
       `${serverUrl} 返回了意外的响应。请更新该 Relay 或选择其他 Relay 以继续。`,
 
     // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
-    brandTaglineLine1: "随处开始。",
-    brandTaglineLine2: "处处继续。",
-    brandSubTagline: "为每一位编码代理打造的控制中心 — 覆盖你拥有的每一台设备。",
-    brandTrustStrip: "端到端加密 · 开源 · 可自托管",
+    brandTaglineLine1: "同一个项目，",
+    brandTaglineLine2: "各自的 AI 对话。",
+    brandSubTagline: "在同一个项目目录里使用 Codex。每位成员从空白对话开始，共享文件改动。",
+    brandTrustStrip: "共享文件 · 独立对话 · 可自托管",
+    frontDoorSelectedServer: "当前服务",
+    frontDoorHostRequirement: "主机在线时执行任务；离线请求会被拒绝，不会排队等待。",
+    frontDoorOtherConversation: "协作者的对话",
+    frontDoorYourConversation: "你的对话",
+    frontDoorProject: "同一个项目目录",
+    frontDoorEyebrow: "共享 Codex 工作区",
     providerMarkRowAccessibilityLabel: "支持的 AI 编码代理",
 
     // Unified onboarding redesign — welcome decision (right pane)
-    welcomeQuestionTitle: "欢迎。",
-    welcomeQuestionSubtitle: "第一次使用?",
-    welcomeQuestionBody: "Happier 是你的 AI 编码代理控制中心。无需电子邮件。你的账户是一把在本设备上生成的私钥。",
+    welcomeQuestionTitle: "进入你的工作区。",
+    welcomeQuestionSubtitle: "从你的账号开始。",
+    welcomeQuestionBody: "创建新账号，或恢复已有账号。通过邀请加入项目时，登录后会返回邀请页面。",
 
-    welcomePrimaryButton: "第一次使用 — 开始吧",
-    welcomePrimarySubtitle: "一次点击。无需表单。你的密钥就在这里。",
+    welcomePrimaryButton: "创建账号",
+    welcomePrimarySubtitle: "从当前设备开始。",
 
-    welcomeSecondaryButton: "登录 — 我已在使用 Happier",
-    welcomeSecondarySubtitle: "扫描二维码，或输入你的密钥",
+    welcomeSecondaryButton: "登录已有账号",
+    welcomeSecondarySubtitle: "扫描二维码，或输入恢复密钥。",
 
     // Unified onboarding redesign — returning-user copy variants.
     // Shown when localSettings.hasCompletedAuthOnce === true, i.e. the

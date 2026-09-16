@@ -43,6 +43,7 @@ const MetadataObjectSchema = z.object({
         updatedAt: z.number()
     }).optional(),
     machineId: z.string().optional(),
+    sharedSessionEntryId: z.string().optional(),
     sessionWorkspaceLocationV1: createSessionWorkspaceLocationV1Schema(z).optional(),
     handoffV1: z.object({
         v: z.literal(1),

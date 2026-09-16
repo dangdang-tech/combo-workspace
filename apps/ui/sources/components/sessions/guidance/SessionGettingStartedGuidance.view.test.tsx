@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react-test-renderer';
 import { collectUnexpectedRawTextNodes, renderScreen } from '@/dev/testkit';
 import { installSessionGuidanceCommonModuleMocks } from './sessionGuidanceTestHelpers';
@@ -9,6 +9,9 @@ import { installSessionGuidanceCommonModuleMocks } from './sessionGuidanceTestHe
 const clipboardMocks = vi.hoisted(() => ({
   setStringAsync: vi.fn(async (_text: string) => {}),
 }));
+const openSourceGuide = vi.hoisted(() => vi.fn(async () => {}));
+const tauriState = vi.hoisted(() => ({ desktop: false }));
+vi.mock('@/utils/platform/tauri', () => ({ isTauriDesktop: () => tauriState.desktop }));
 const mockEnv = vi.hoisted(() => ({
   iconsRenderAsText: false,
 }));
@@ -55,6 +58,10 @@ vi.mock('@/constants/Typography', () => ({
 }));
 
 installSessionGuidanceCommonModuleMocks({
+  reactNative: async () => {
+    const { createReactNativeWebMock } = await import('@/dev/testkit/mocks/reactNative');
+    return createReactNativeWebMock({ Linking: { openURL: openSourceGuide } });
+  },
   modal: async () => {
     const { createModalModuleMock } = await import('@/dev/testkit/mocks/modal');
     return createModalModuleMock({
@@ -80,7 +87,25 @@ vi.mock('@/config', () => ({
 }));
 
 describe('SessionGettingStartedGuidanceView', () => {
+  beforeEach(() => { tauriState.desktop = false; });
+  it.each(['connect_machine', 'start_daemon', 'create_session'] as const)('keeps %s web guidance on the fork source workflow', async (kind) => {
+    const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
+    openSourceGuide.mockClear();
+    const screen = await renderScreen(
+      <SessionGettingStartedGuidanceView
+        variant="primaryPane"
+        model={{ kind, targetLabel: 'Company', serverUrl: 'https://api.company.example', serverName: 'company', showServerSetup: true }}
+      />,
+    );
+    const content = screen.getTextContent();
+    expect(content).not.toContain('happier.dev/install');
+    expect(content).not.toMatch(/\b(?:happier|hprev) (?:setup|service|codex)/);
+    await screen.pressByTestIdAsync('session-getting-started-source-guide');
+    expect(openSourceGuide).toHaveBeenCalledWith('https://github.com/dangdang-tech/dangdang-agent#从源码启动');
+  });
+
   it('uses one target-bound guided setup instead of a parallel server/auth/service recipe', async () => {
+    tauriState.desktop = true;
     const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
     const onOpenSetup = vi.fn();
     const screen = await renderScreen(
@@ -191,7 +216,7 @@ describe('SessionGettingStartedGuidanceView', () => {
 
       expect(screen.findByTestId('session-getting-started-kind-connect_machine')).not.toBeNull();
       expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
-      expect(screen.findAllByType('RoundButton' as any)).toHaveLength(1);
+      expect(screen.findAllByType('RoundButton' as any)).toHaveLength(2);
 
       act(() => {
         vi.runOnlyPendingTimers();
@@ -240,6 +265,7 @@ describe('SessionGettingStartedGuidanceView', () => {
   });
 
   it('offers the desktop setup CTA when machines exist but the daemon still needs attention', async () => {
+    tauriState.desktop = true;
     const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
     const onOpenSetup = vi.fn();
     const screen = await renderScreen(
@@ -263,6 +289,7 @@ describe('SessionGettingStartedGuidanceView', () => {
   });
 
   it('shows canonical background-service commands in the manual daemon setup flow', async () => {
+    tauriState.desktop = true;
     const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
     const screen = await renderScreen(
       <SessionGettingStartedGuidanceView

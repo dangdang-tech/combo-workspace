@@ -7,6 +7,7 @@ describe('sentry public-share telemetry redaction', () => {
         const capability = 'SENTINEL_PUBLIC_SHARE_CAPABILITY';
         const redacted = redactSentryPublicShareTelemetry({
             transaction: `GET /share/${capability}`,
+            invite: `/?returnTo=%2Finvite%2F${capability}`,
             request: {
                 url: `https://app.example.test/share/${capability}`,
             },

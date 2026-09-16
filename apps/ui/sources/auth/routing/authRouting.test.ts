@@ -16,6 +16,7 @@ describe('isPublicRouteForUnauthenticated', () => {
         { name: 'grouped settings server route', segments: ['(app)', 'settings', 'server'], expected: true },
         { name: 'restore route', segments: ['restore'], expected: true },
         { name: 'nested restore route', segments: ['(app)', 'restore', 'lost-access'], expected: true },
+        { name: 'shared entry invitation', segments: ['(app)', 'invite', 'token'], expected: true },
         { name: 'share route', segments: ['share'], expected: true },
         { name: 'nested share route', segments: ['(app)', 'share', 'abc123'], expected: true },
         { name: 'terminal route', segments: ['terminal'], expected: true },

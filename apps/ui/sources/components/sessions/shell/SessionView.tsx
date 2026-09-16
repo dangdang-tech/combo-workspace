@@ -1,3 +1,5 @@
+import { sharedEntryMessageSendError } from '@/components/sessions/sharing/sharedEntryPresentation';
+import { useSharedSessionSendAccess } from '@/hooks/session/useSharedSessionSendAccess';
 import Color from 'color';
 import { isRecoveredHistoryTranscriptObservationProvenance } from '@happier-dev/protocol';
 
@@ -2413,6 +2415,8 @@ function SessionViewLoaded({
         || resolveServerIdForSessionIdFromLocalCache(sessionId)
         || activeServerId;
     const capabilityServerId = sessionRouteServerId;
+    const isSharedEntrySession = Boolean(session.metadata?.sharedSessionEntryId);
+    const sharedEntrySendAccess = useSharedSessionSendAccess(sessionId, sessionRouteServerId, isSharedEntrySession);
     const { machineReachable: isMachineReachable, machineOnline } = useSessionMachineReachability(sessionId);
     /**
      * WHERE anything belonging to this session opens — the one decision, asked rather than repeated.
@@ -5287,6 +5291,10 @@ function SessionViewLoaded({
         [sessionId],
     );
     const handleAgentInputSend = useStableAgentInputOnSend((sendOptions) => {
+        if (sharedEntrySendAccess.blocked) {
+            Modal.alert(t('common.error'), sharedEntrySendAccess.message ?? t('sharedEntry.loadingFailed'));
+            return;
+        }
         if (!hasWriteAccess) {
             Modal.alert(t('common.error'), t('session.sharing.noEditPermission'));
             return;
@@ -5321,6 +5329,7 @@ function SessionViewLoaded({
             composerTextBeforeSend: string,
             sendIntent?: AgentInputSendOptions,
         ) => {
+            if (isSharedEntrySession && !(await sharedEntrySendAccess.refresh())) return;
             const configuredMode = storage.getState().settings.sessionMessageSendMode;
             const busySteerSendPolicy = storage.getState().settings.sessionBusySteerSendPolicy;
             const permissionModeApplyTiming = storage.getState().settings.sessionPermissionModeApplyTiming;
@@ -5814,7 +5823,7 @@ function SessionViewLoaded({
                             if (result.persistence === 'none' && canRestoreFailedAttachmentHandoffSnapshot()) {
                                 restoreAfterFailedOutboundHandoff(attachmentDraftsForRestore);
                             }
-                            Modal.alert(t('common.error'), result.errorMessage ?? t('errors.failedToSendMessage'));
+                            Modal.alert(t('common.error'), sharedEntryMessageSendError(result));
                             return;
                         }
                         if (shouldSendReviewComments) {
@@ -6051,7 +6060,7 @@ function SessionViewLoaded({
                         if (result.persistence === 'none') {
                             restoreAfterFailedOutboundHandoff();
                         }
-                        Modal.alert(t('common.error'), result.errorMessage ?? t('errors.failedToSendMessage'));
+                        Modal.alert(t('common.error'), sharedEntryMessageSendError(result));
                         return;
                     }
 
@@ -6335,6 +6344,11 @@ function SessionViewLoaded({
                     />
                 </ComposerAuxiliaryFrame>
             ) : null}
+            {isSharedEntrySession && sharedEntrySendAccess.blocked ? (
+                <ComposerAuxiliaryFrame>
+                    <Text accessibilityLiveRegion="polite">{sharedEntrySendAccess.message}</Text>
+                </ComposerAuxiliaryFrame>
+            ) : null}
             <SessionAgentInputRuntimeStatusBoundary
                 session={session}
                 sessionLatestUsage={session.latestUsage}
@@ -6384,7 +6398,7 @@ function SessionViewLoaded({
                 onActiveStatusBadgeKeyChange={setActiveStatusBadgeKey}
                 connectedServicesRestartState={sessionConnectedServicesAuthSwitch.restartState}
                 onSend={handleAgentInputSend}
-                isSendDisabled={!shouldShowInput || isResuming || isReadOnly || isUploadingAttachments}
+                isSendDisabled={!shouldShowInput || isResuming || isReadOnly || isUploadingAttachments || sharedEntrySendAccess.blocked}
                 isSending={isComposerSendPending}
                 onMicPress={micButtonState.onMicPress}
                 isMicActive={micButtonState.isMicActive}

@@ -1,4 +1,5 @@
 export const FEATURE_ENV_KEYS = Object.freeze({
+  sharingSessionEntriesEnabled: 'HAPPIER_FEATURE_SHARING_SESSION_ENTRIES__ENABLED',
   automationsEnabled: 'HAPPIER_FEATURE_AUTOMATIONS__ENABLED',
 
   bugReportsEnabled: 'HAPPIER_FEATURE_BUG_REPORTS__ENABLED',

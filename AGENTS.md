@@ -1,5 +1,14 @@
 # Agent Constitution
 
+## Dangdang Agent fork scope
+
+This checkout is **当当 Agent / Dangdang Agent**, maintained at `dangdang-tech/dangdang-agent`. The sections below retain Happier's engineering conventions and upstream terminology.
+
+- Preserve the upstream copyright and license notices. Product-facing names may change; protocol, encryption, persistence, package and CLI identities remain compatible unless a separate migration is authorized.
+- GitHub operations for this fork use the current user's configured Git/GitHub identity and the user's task authorization. Upstream-only `happier-bot`, maintainer-service and successor-branch port obligations do not apply to this fork; they still apply when explicitly working on the upstream repository.
+- Do not run inherited release, publish, deployment, issue-triage or upstream project-management automation for this fork until its targets and credentials are explicitly configured. Fork Actions are initially disabled.
+- The current product surface is the web workspace and host connector. Do not describe upstream installation packages or mobile/desktop store listings as releases of Dangdang Agent.
+
 This file is the canonical cross-tool constitution for this repository.
 
 ## What Happier is
