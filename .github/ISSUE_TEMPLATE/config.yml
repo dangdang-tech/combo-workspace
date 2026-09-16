@@ -1,7 +1,7 @@
 blank_issues_enabled: true
 contact_links:
-  - name: 当当 Agent 使用与开发说明
-    url: https://github.com/dangdang-tech/dangdang-agent#readme
+  - name: COMBO 使用与开发说明
+    url: https://github.com/dangdang-tech/combo-workspace#readme
     about: 本 fork 的启动方式、共享规则与开发范围。
   - name: Upstream Happier security policy
     url: https://github.com/happier-dev/happier/security/policy

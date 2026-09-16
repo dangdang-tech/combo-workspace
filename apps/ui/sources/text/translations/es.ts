@@ -593,7 +593,7 @@ function plural({
 export const es: TranslationStructure = {
     sourceSetup: {
         title: "Conectar un equipo desde el código fuente",
-        body: "Dangdang Agent aún no tiene instalador propio. Usa este repositorio; los instaladores originales no incluyen los espacios compartidos.",
+        body: "COMBO aún no tiene instalador propio. Usa este repositorio; los instaladores originales no incluyen los espacios compartidos.",
         openGuide: "Abrir la guía de configuración desde código",
         cloneTitle: "Clonar y compilar este repositorio",
         cloneBody: "Prepara Node.js 22, Yarn Classic 1.22 y Codex en el equipo anfitrión.",
@@ -601,7 +601,7 @@ export const es: TranslationStructure = {
         connectBody: "Configura según la guía este servidor y un directorio de datos independiente; después ejecuta auth login y daemon start.",
         runBody: "Ejecuta desde el repositorio con el mismo servidor y directorio de datos configurados, o crea una sesión en la aplicación.",
     },
-    brand: { name: 'Dangdang Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "Entrada al proyecto compartido",
         description: "Cada usuario de Google invitado empieza su propia conversación vacía. Todos usan los mismos archivos del proyecto en el anfitrión. El anfitrión paga el uso del modelo.",
@@ -2082,7 +2082,7 @@ export const es: TranslationStructure = {
     actionsSettingsAboutSubtitle:
       "Habilita o deshabilita acciones globalmente, por superficie (UI/voz/MCP) y por ubicación (dónde aparecen en la interfaz). Las acciones deshabilitadas se bloquean de forma segura en tiempo de ejecución.",
     aboutFooter:
-      "Dangdang Agent es un espacio de programación compartido basado en Happier. Los archivos del proyecto se comparten y las conversaciones se mantienen separadas.",
+      "COMBO es un espacio de programación compartido basado en Happier. Los archivos del proyecto se comparten y las conversaciones se mantienen separadas.",
     whatsNew: "Novedades",
     whatsNewSubtitle: "Ve las últimas actualizaciones y mejoras",
     reportIssue: "Reportar un problema",

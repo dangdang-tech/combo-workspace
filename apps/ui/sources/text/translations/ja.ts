@@ -576,7 +576,7 @@ const settingsSessionHandoffTranslationExtensions = {
 export const ja: TranslationStructure = {
     sourceSetup: {
         title: "ソースからホストを接続",
-        body: "Dangdang Agent の専用インストーラーは未公開です。このリポジトリを使用してください。上流版には共有ワークスペース機能が含まれません。",
+        body: "COMBO の専用インストーラーは未公開です。このリポジトリを使用してください。上流版には共有ワークスペース機能が含まれません。",
         openGuide: "ソース設定ガイドを開く",
         cloneTitle: "このリポジトリを取得してビルド",
         cloneBody: "ホストに Node.js 22、Yarn Classic 1.22、Codex を準備してください。",
@@ -584,7 +584,7 @@ export const ja: TranslationStructure = {
         connectBody: "ガイドに従って表示中のサーバーと専用データディレクトリを設定し、auth login と daemon start を実行します。",
         runBody: "同じサーバーとホストデータディレクトリを設定した端末でリポジトリから実行するか、アプリでセッションを作成します。",
     },
-    brand: { name: 'Dangdang Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "共有プロジェクトの入口",
         description: "招待された Google ユーザーはそれぞれ空の専用会話を開始します。プロジェクトのファイルはホスト上で共有され、モデルの利用料金はホストが負担します。",
@@ -2388,7 +2388,7 @@ localTailscale: {
     actionsSettingsAboutSubtitle:
       "アクションをグローバルに、サーフェス（UI/音声/MCP）別、配置（UI 内の表示場所）別に有効/無効にできます。無効化されたアクションは実行時に安全側（フェイルクローズ）でブロックされます。",
     aboutFooter:
-      "Dangdang Agent は Happier を基盤とする共有開発ワークスペースです。プロジェクトファイルを共有し、会話はメンバーごとに保存します。",
+      "COMBO は Happier を基盤とする共有開発ワークスペースです。プロジェクトファイルを共有し、会話はメンバーごとに保存します。",
     whatsNew: "新機能",
     whatsNewSubtitle: "最新のアップデートと改善を確認",
     reportIssue: "問題を報告",

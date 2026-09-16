@@ -7,7 +7,7 @@ export type BrandMarkProps = Readonly<{
     color: string;
 }>;
 
-/** Original interlocking D monogram. Callers own its theme and accessible name. */
+/** Original COMBO C mark. Callers own its theme and accessible name. */
 export const BrandMark = React.memo(function BrandMark({ size = 24, color }: BrandMarkProps) {
     return (
         <Svg
@@ -17,7 +17,7 @@ export const BrandMark = React.memo(function BrandMark({ size = 24, color }: Bra
             {...(Platform.OS === 'web' ? { 'aria-hidden': true, focusable: false } : { accessible: false })}
         >
             <Path
-                d="M4 6h5a10 10 0 0 1 0 20H4V6Z M19 6h1a10 10 0 0 1 0 20h-1V6Z"
+                d="M25 8a11.31 11.31 0 1 0 0 16"
                 fill="none"
                 stroke={color}
                 strokeWidth={3}

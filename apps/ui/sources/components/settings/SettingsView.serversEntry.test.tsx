@@ -312,7 +312,7 @@ describe('SettingsView', () => {
         });
 
         expect(shared.routerPushSpy).not.toHaveBeenCalled();
-        expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/dangdang-agent/issues/new/choose');
+        expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace/issues/new/choose');
     });
 
     it('opens EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL when set and supported instead of routing to the composer', async () => {
@@ -353,7 +353,7 @@ describe('SettingsView', () => {
             });
 
             expect(shared.linkingCanOpenURLSpy).toHaveBeenCalledWith('https://example.test/report-issue');
-            expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/dangdang-agent/issues/new/choose');
+            expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace/issues/new/choose');
             expect(shared.routerPushSpy).not.toHaveBeenCalled();
         } finally {
             if (previousUrl === undefined) delete process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL;
@@ -367,10 +367,10 @@ describe('SettingsView', () => {
         const githubItem = screen.findRowByTitle('settings.github');
 
         expect(githubItem).toBeTruthy();
-        expect(githubItem?.props.subtitle).toBe('dangdang-tech/dangdang-agent');
+        expect(githubItem?.props.subtitle).toBe('dangdang-tech/combo-workspace');
         expect(githubItem?.props.detail).toBeUndefined();
         await act(async () => { screen.pressRowByTitle('settings.github'); });
-        expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/dangdang-agent');
+        expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace');
     });
 
     it('does not present upstream legal policies as this fork policies', async () => {

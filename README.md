@@ -1,10 +1,10 @@
-# 当当 Agent
+# COMBO
 
 **同一个项目，各自的 AI 对话。**
 
-当当 Agent 是 [当当 Tech](https://github.com/dangdang-tech) 基于 [Happier](https://github.com/happier-dev/happier) 开发的共享编程工作台。主机连接 Codex，邀请成员通过网页进入各自独立的会话，共同使用主机上的项目文件。
+COMBO 是 [当当 Tech](https://github.com/dangdang-tech) 基于 [Happier](https://github.com/happier-dev/happier) 开发的共享编程工作台。主机连接 Codex，邀请成员通过网页进入各自独立的会话，共同使用主机上的项目文件。
 
-当前为开发版，尚未发布当当 Agent 安装包或上线公共服务。仓库保留 Happier 的运行时、包名与配置变量，以便复用既有执行、加密和同步机制；上游发布的安装包不包含本 fork 的改动。
+当前为开发版，尚未发布 COMBO 安装包或上线公共服务。仓库保留 Happier 的运行时、包名与配置变量，以便复用既有执行、加密和同步机制；上游发布的安装包不包含本 fork 的改动。
 
 ## 使用方式
 
@@ -21,8 +21,8 @@
 需要 Node.js 22、Yarn Classic 1.22、可用的 Codex，以及用于真实登录的 Google OAuth 配置。
 
 ```sh
-git clone https://github.com/dangdang-tech/dangdang-agent.git
-cd dangdang-agent
+git clone https://github.com/dangdang-tech/combo-workspace.git
+cd combo-workspace
 HAPPIER_INSTALL_SCOPE=server,cli,ui yarn install --frozen-lockfile
 yarn build:packages
 ```
@@ -33,7 +33,7 @@ yarn build:packages
 HAPPIER_SERVER_HOST=127.0.0.1 \
 PORT=49321 \
 HAPPIER_DB_PROVIDER=sqlite \
-HAPPIER_SERVER_LIGHT_DATA_DIR="$HOME/.dangdang-agent/server" \
+HAPPIER_SERVER_LIGHT_DATA_DIR="$HOME/.combo-workspace/server" \
 HAPPIER_FEATURE_SHARING_SESSION_ENTRIES__ENABLED=1 \
 HAPPIER_WEBAPP_URL=http://127.0.0.1:49322 \
 PUBLIC_URL=http://127.0.0.1:49321 \
@@ -52,7 +52,7 @@ yarn --cwd apps/ui start --port 49322 --host localhost
 连接端使用与网页相同的服务地址，并使用独立的数据目录：
 
 ```sh
-export HAPPIER_HOME_DIR="$HOME/.dangdang-agent/host"
+export HAPPIER_HOME_DIR="$HOME/.combo-workspace/host"
 export HAPPIER_SERVER_URL=http://127.0.0.1:49321
 export HAPPIER_WEBAPP_URL=http://127.0.0.1:49322
 export HAPPIER_CLI_RUNTIME_DISABLE=1
@@ -70,7 +70,7 @@ Google 登录沿用服务端的 OIDC 配置；提供者 ID 使用 `google`，启
 - 共享入口的在线检查目前面向单服务进程；同一目录的并发文件修改需要参与者协调。
 - 邀请链接目前没有过期时间或领取次数限制；可换链接停止新的领取，也可单独禁用既有成员。
 - 已接收的任务在离线或禁用时停止分发，重新启用后可能继续；禁用访问不承诺停止正在运行的任务，也不能删除对方已经下载的历史。
-- 当前重点为网页与主机连接端。原生端发布、公共服务、当当 Agent 的独立安装与更新渠道尚未配置。
+- 当前重点为网页与主机连接端。原生端发布、公共服务、COMBO 的独立安装与更新渠道尚未配置。
 
 ## 开发与来源
 
@@ -78,4 +78,4 @@ Google 登录沿用服务端的 OIDC 配置；提供者 ID 使用 `google`，启
 
 本 fork 的 GitHub Actions 暂时关闭。继承的工作流含上游专用发布、维护服务与项目管理配置；启用前应配置当当 Tech 自己的目标和凭据。
 
-当当 Agent 派生自 [Happier](https://github.com/happier-dev/happier)，Happier 源于 [Happy](https://github.com/slopus/happy)。保留原有版权、[MIT 许可证](LICENCE)与各组件、第三方材料的许可证。感谢上游贡献者。
+COMBO 派生自 [Happier](https://github.com/happier-dev/happier)，Happier 源于 [Happy](https://github.com/slopus/happy)。保留原有版权、[MIT 许可证](LICENCE)与各组件、第三方材料的许可证。感谢上游贡献者。

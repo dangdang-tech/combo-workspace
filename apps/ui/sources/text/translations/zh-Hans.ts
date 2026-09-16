@@ -591,7 +591,7 @@ function plural({
 export const zhHans: TranslationStructure = {
     sourceSetup: {
         title: "从源码连接主机",
-        body: "当当 Agent 尚未发布独立安装包。请使用本仓库源码；上游安装包不包含共享入口。",
+        body: "COMBO 尚未发布独立安装包。请使用本仓库源码；上游安装包不包含共享入口。",
         openGuide: "打开源码连接指南",
         cloneTitle: "获取并构建本仓库",
         cloneBody: "在主机上准备 Node.js 22、Yarn Classic 1.22 和 Codex。",
@@ -599,7 +599,7 @@ export const zhHans: TranslationStructure = {
         connectBody: "按指南配置这里显示的服务地址和独立的主机数据目录，再运行 auth login 与 daemon start。",
         runBody: "在仓库目录下、已配置相同服务和主机数据目录的终端运行，或在网页中创建会话。",
     },
-    brand: { name: '当当 Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "共享工作入口",
         description: "每位受邀 Google 用户从自己的空白对话开始。所有人使用主机上的同一份项目文件，模型费用由主机方承担。",
@@ -2026,7 +2026,7 @@ export const zhHans: TranslationStructure = {
     actionsSettingsAboutSubtitle:
       "可全局、按界面（UI/语音/MCP）以及按展示位置（在界面中出现的位置）启用或禁用操作。被禁用的操作在运行时会以安全方式（fail-closed）被阻止。",
     aboutFooter:
-      "当当 Agent 是基于 Happier 的共享编程工作台。项目文件共享，每位成员的对话独立保存。",
+      "COMBO 是基于 Happier 的共享编程工作台。项目文件共享，每位成员的对话独立保存。",
     whatsNew: "更新日志",
     whatsNewSubtitle: "查看最新更新和改进",
     reportIssue: "报告问题",

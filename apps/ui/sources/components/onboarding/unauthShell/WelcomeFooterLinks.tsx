@@ -10,8 +10,8 @@ import { createServerUrlComparableKey } from '@/sync/domains/server/url/serverUr
 import { t } from '@/text';
 import { Icon } from '@/components/ui/icons/Icon';
 
-const DOCS_URL = 'https://github.com/dangdang-tech/dangdang-agent#readme';
-const GITHUB_URL = 'https://github.com/dangdang-tech/dangdang-agent';
+const DOCS_URL = 'https://github.com/dangdang-tech/combo-workspace#readme';
+const GITHUB_URL = 'https://github.com/dangdang-tech/combo-workspace';
 
 const HAPPIER_CLOUD_COMPARABLE_KEY = createServerUrlComparableKey(HAPPIER_CLOUD_SERVER_URL);
 

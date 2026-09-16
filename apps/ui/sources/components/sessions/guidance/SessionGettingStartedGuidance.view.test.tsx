@@ -101,7 +101,7 @@ describe('SessionGettingStartedGuidanceView', () => {
     expect(content).not.toContain('happier.dev/install');
     expect(content).not.toMatch(/\b(?:happier|hprev) (?:setup|service|codex)/);
     await screen.pressByTestIdAsync('session-getting-started-source-guide');
-    expect(openSourceGuide).toHaveBeenCalledWith('https://github.com/dangdang-tech/dangdang-agent#从源码启动');
+    expect(openSourceGuide).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace#从源码启动');
   });
 
   it('uses one target-bound guided setup instead of a parallel server/auth/service recipe', async () => {

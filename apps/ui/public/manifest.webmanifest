@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Dangdang Agent",
-  "short_name": "当当 Agent",
+  "name": "COMBO",
+  "short_name": "COMBO",
   "description": "Monitor and control your coding agents from anywhere.",
   "start_url": "/",
   "scope": "/",

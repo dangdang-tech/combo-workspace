@@ -42,7 +42,7 @@ export type SessionGettingStartedGuidanceVariant = 'phone' | 'sidebar' | 'primar
 
 const SESSION_GETTING_STARTED_GUIDANCE_FEATURE_ID = 'app.ui.sessionGettingStartedGuidance' as const satisfies FeatureId;
 const DEFER_CLI_FOLLOW_UP_VARIANTS = new Set<SessionGettingStartedGuidanceVariant>(['phone', 'newSessionBlocking']);
-const SOURCE_SETUP_URL = 'https://github.com/dangdang-tech/dangdang-agent#从源码启动';
+const SOURCE_SETUP_URL = 'https://github.com/dangdang-tech/combo-workspace#从源码启动';
 
 type DeferredCliFollowUpState = Readonly<{
     key: string;
@@ -293,7 +293,7 @@ function buildSteps(model: SessionGettingStartedGuidanceViewModel): SessionGetti
                     id: 'install_cli',
                     title: t('sourceSetup.cloneTitle'),
                     description: t('sourceSetup.cloneBody'),
-                    command: 'git clone https://github.com/dangdang-tech/dangdang-agent.git\ncd dangdang-agent\nHAPPIER_INSTALL_SCOPE=server,cli,ui yarn install --frozen-lockfile\nyarn build:packages',
+                    command: 'git clone https://github.com/dangdang-tech/combo-workspace.git\ncd combo-workspace\nHAPPIER_INSTALL_SCOPE=server,cli,ui yarn install --frozen-lockfile\nyarn build:packages',
                     copyLabel: t('sourceSetup.cloneTitle'),
                 }, connectStep];
             case 'start_daemon':

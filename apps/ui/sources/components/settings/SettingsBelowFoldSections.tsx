@@ -404,7 +404,7 @@ const SettingsAboutSection = React.memo(function SettingsAboutSection({
             <Item
                 title={t('settings.github')}
                 icon={<Icon name="github-logo" size={29} color={theme.colors.text.primary} />}
-                subtitle="dangdang-tech/dangdang-agent"
+                subtitle="dangdang-tech/combo-workspace"
                 onPress={handleGitHub}
             />
             <Item

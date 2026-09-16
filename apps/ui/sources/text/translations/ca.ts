@@ -583,7 +583,7 @@ function plural({ count, singular, plural }: { count: number; singular: string; 
 export const ca: TranslationStructure = {
     sourceSetup: {
         title: "Connectar un amfitrió des del codi",
-        body: "Dangdang Agent encara no té instal·lador propi. Utilitza aquest repositori; els instal·ladors originals no inclouen espais compartits.",
+        body: "COMBO encara no té instal·lador propi. Utilitza aquest repositori; els instal·ladors originals no inclouen espais compartits.",
         openGuide: "Obrir la guia de configuració del codi",
         cloneTitle: "Clonar i compilar aquest repositori",
         cloneBody: "Prepara Node.js 22, Yarn Classic 1.22 i Codex a l’amfitrió.",
@@ -591,7 +591,7 @@ export const ca: TranslationStructure = {
         connectBody: "Segueix la guia per configurar aquest servidor i un directori de dades separat; després executa auth login i daemon start.",
         runBody: "Executa des del repositori amb el mateix servidor i directori de dades configurats, o crea una sessió a l’aplicació.",
     },
-    brand: { name: 'Dangdang Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "Entrada al projecte compartit",
         description: "Cada usuari de Google convidat comença una conversa buida pròpia. Tothom utilitza els mateixos fitxers del projecte a l’amfitrió. L’amfitrió paga l’ús del model.",
@@ -1976,7 +1976,7 @@ export const ca: TranslationStructure = {
         developerTools: 'Eines de desenvolupador',
         about: 'Quant a',
         actionsSettingsAboutSubtitle: 'Activa o desactiva accions globalment, per superfície (UI/veu/MCP) i per ubicació (on apareixen a la interfície). Les accions desactivades queden bloquejades de manera segura en temps d’execució.',
-        aboutFooter: "Dangdang Agent és un espai de programació compartit basat en Happier. Els fitxers del projecte es comparteixen i les converses es mantenen separades.",
+        aboutFooter: "COMBO és un espai de programació compartit basat en Happier. Els fitxers del projecte es comparteixen i les converses es mantenen separades.",
         whatsNew: 'Novetats',
         whatsNewSubtitle: 'Mira les últimes actualitzacions i millores',
         reportIssue: 'Informa d\'un problema',

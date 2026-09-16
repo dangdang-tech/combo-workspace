@@ -416,7 +416,7 @@ function plural({ count, singular, plural }: { count: number; singular: string; 
 export const en = {
     sourceSetup: {
         title: "Connect a host from source",
-        body: "Dangdang Agent has no standalone installer yet. Use this repository; upstream installers do not include shared workspace entries.",
+        body: "COMBO has no standalone installer yet. Use this repository; upstream installers do not include shared workspace entries.",
         openGuide: "Open source setup guide",
         cloneTitle: "Clone and build this repository",
         cloneBody: "Prepare Node.js 22, Yarn Classic 1.22, and Codex on the host.",
@@ -424,7 +424,7 @@ export const en = {
         connectBody: "Follow the guide to set this server address and a separate host data directory, then run auth login and daemon start.",
         runBody: "Run from the repository in a terminal already configured with the same server and host data directory, or create a session in the app.",
     },
-    brand: { name: 'Dangdang Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "Shared workspace entry",
         description: "Each invited Google user starts their own blank conversation. Everyone uses the same project files on the host. The host pays for model usage.",
@@ -1900,7 +1900,7 @@ export const en = {
         developerTools: 'Developer Tools',
         about: 'About',
         actionsSettingsAboutSubtitle: 'Enable or disable actions globally, per surface (UI/voice/MCP), and per placement (where they appear in the UI). Disabled actions are fail-closed at runtime.',
-        aboutFooter: "Dangdang Agent is a shared coding workspace based on Happier. Conversations stay separate while project files are shared.",
+        aboutFooter: "COMBO is a shared coding workspace based on Happier. Conversations stay separate while project files are shared.",
         whatsNew: 'What\'s New',
         whatsNewSubtitle: 'See the latest updates and improvements',
         reportIssue: 'Report an Issue',

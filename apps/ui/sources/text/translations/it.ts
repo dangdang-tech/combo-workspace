@@ -591,7 +591,7 @@ function plural({
 export const it: TranslationStructure = {
     sourceSetup: {
         title: "Collega un host dai sorgenti",
-        body: "Dangdang Agent non ha ancora un installer dedicato. Usa questo repository; gli installer originali non includono gli spazi condivisi.",
+        body: "COMBO non ha ancora un installer dedicato. Usa questo repository; gli installer originali non includono gli spazi condivisi.",
         openGuide: "Apri la guida di configurazione dai sorgenti",
         cloneTitle: "Clona e compila questo repository",
         cloneBody: "Prepara Node.js 22, Yarn Classic 1.22 e Codex sull’host.",
@@ -599,7 +599,7 @@ export const it: TranslationStructure = {
         connectBody: "Segui la guida per configurare questo server e una cartella dati separata, poi esegui auth login e daemon start.",
         runBody: "Esegui dal repository con lo stesso server e cartella dati configurati, oppure crea una sessione nell’app.",
     },
-    brand: { name: 'Dangdang Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "Accesso al progetto condiviso",
         description: "Ogni utente Google invitato inizia una conversazione vuota personale. Tutti usano gli stessi file del progetto sull’host. L’host paga l’utilizzo del modello.",
@@ -2423,7 +2423,7 @@ export const it: TranslationStructure = {
     actionsSettingsAboutSubtitle:
       "Abilita o disabilita le azioni globalmente, per superficie (UI/voce/MCP) e per posizionamento (dove compaiono nell’interfaccia). Le azioni disabilitate vengono bloccate in modo sicuro a runtime.",
     aboutFooter:
-      "Dangdang Agent è uno spazio di programmazione condiviso basato su Happier. I file del progetto sono condivisi e le conversazioni restano separate.",
+      "COMBO è uno spazio di programmazione condiviso basato su Happier. I file del progetto sono condivisi e le conversazioni restano separate.",
     whatsNew: "Novità",
     whatsNewSubtitle: "Scopri gli ultimi aggiornamenti e miglioramenti",
     reportIssue: "Segnala un problema",

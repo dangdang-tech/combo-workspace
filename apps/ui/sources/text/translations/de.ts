@@ -418,7 +418,7 @@ function plural({ count, singular, plural }: { count: number; singular: string; 
 export const de: TranslationStructure = {
     sourceSetup: {
         title: "Host aus dem Quellcode verbinden",
-        body: "Für Dangdang Agent gibt es noch kein eigenes Installationspaket. Nutze dieses Repository; Upstream-Pakete enthalten die geteilten Arbeitsbereiche nicht.",
+        body: "Für COMBO gibt es noch kein eigenes Installationspaket. Nutze dieses Repository; Upstream-Pakete enthalten die geteilten Arbeitsbereiche nicht.",
         openGuide: "Anleitung zur Quellcode-Einrichtung öffnen",
         cloneTitle: "Repository klonen und bauen",
         cloneBody: "Bereite Node.js 22, Yarn Classic 1.22 und Codex auf dem Host vor.",
@@ -426,7 +426,7 @@ export const de: TranslationStructure = {
         connectBody: "Konfiguriere laut Anleitung die angezeigte Serveradresse und einen eigenen Datenordner; führe dann auth login und daemon start aus.",
         runBody: "Führe dies im Repository mit demselben Server und Host-Datenordner aus oder erstelle eine Sitzung in der App.",
     },
-    brand: { name: 'Dangdang Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "Geteilter Projekteinstieg",
         description: "Jeder eingeladene Google-Nutzer beginnt eine eigene leere Unterhaltung. Alle verwenden dieselben Projektdateien auf dem Host. Der Host trägt die Modellkosten.",
@@ -1899,7 +1899,7 @@ export const de: TranslationStructure = {
         developerTools: 'Entwickler-Tools',
         about: 'Über',
         actionsSettingsAboutSubtitle: 'Aktionen global aktivieren oder deaktivieren, pro Oberfläche (UI/Voice/MCP) und pro Platzierung (wo sie in der UI erscheinen). Deaktivierte Aktionen sind zur Laufzeit fail-closed.',
-        aboutFooter: "Dangdang Agent ist ein gemeinsamer Programmierarbeitsplatz auf Basis von Happier. Projektdateien werden geteilt, Gespräche bleiben getrennt.",
+        aboutFooter: "COMBO ist ein gemeinsamer Programmierarbeitsplatz auf Basis von Happier. Projektdateien werden geteilt, Gespräche bleiben getrennt.",
         whatsNew: 'Neuigkeiten',
         whatsNewSubtitle: 'Die neuesten Updates und Verbesserungen ansehen',
         reportIssue: 'Problem melden',

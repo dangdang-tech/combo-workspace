@@ -418,7 +418,7 @@ function plural({ count, singular, plural }: { count: number; singular: string; 
 export const fr: TranslationStructure = {
     sourceSetup: {
         title: "Connecter un hôte depuis les sources",
-        body: "Dangdang Agent ne propose pas encore d’installateur dédié. Utilisez ce dépôt ; les versions amont n’incluent pas les espaces partagés.",
+        body: "COMBO ne propose pas encore d’installateur dédié. Utilisez ce dépôt ; les versions amont n’incluent pas les espaces partagés.",
         openGuide: "Ouvrir le guide de configuration des sources",
         cloneTitle: "Cloner et compiler ce dépôt",
         cloneBody: "Préparez Node.js 22, Yarn Classic 1.22 et Codex sur l’hôte.",
@@ -426,7 +426,7 @@ export const fr: TranslationStructure = {
         connectBody: "Suivez le guide pour configurer ce serveur et un dossier de données distinct, puis exécutez auth login et daemon start.",
         runBody: "Exécutez depuis le dépôt avec le même serveur et dossier de données, ou créez une session dans l’application.",
     },
-    brand: { name: 'Dangdang Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "Entrée de workspace partagée",
         description: "Chaque utilisateur Google invité démarre sa propre conversation vide. Tous utilisent les mêmes fichiers sur l’hôte. L’hôte paie l’utilisation du modèle.",
@@ -1899,7 +1899,7 @@ export const fr: TranslationStructure = {
         developerTools: 'Outils de développement',
         about: 'À propos',
         actionsSettingsAboutSubtitle: 'Active ou désactive les actions globalement, par surface (UI/voix/MCP) et par emplacement (là où elles apparaissent dans l’UI). Les actions désactivées sont fail-closed au runtime.',
-        aboutFooter: "Dangdang Agent est un espace de programmation partagé basé sur Happier. Les fichiers du projet sont partagés et les conversations restent séparées.",
+        aboutFooter: "COMBO est un espace de programmation partagé basé sur Happier. Les fichiers du projet sont partagés et les conversations restent séparées.",
         whatsNew: 'Nouveautés',
         whatsNewSubtitle: 'Découvre les dernières mises à jour et améliorations',
         reportIssue: 'Signaler un problème',

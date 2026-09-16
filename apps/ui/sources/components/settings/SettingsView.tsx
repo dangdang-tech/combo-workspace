@@ -155,7 +155,7 @@ export const SettingsView = React.memo(function SettingsView() {
     }, []);
 
     const handleGitHub = async () => {
-        const url = 'https://github.com/dangdang-tech/dangdang-agent';
+        const url = 'https://github.com/dangdang-tech/combo-workspace';
         const supported = await Linking.canOpenURL(url);
         if (supported) {
             await Linking.openURL(url);
@@ -172,7 +172,7 @@ export const SettingsView = React.memo(function SettingsView() {
                 return;
             }
         }
-        await Linking.openURL('https://github.com/dangdang-tech/dangdang-agent/issues/new/choose');
+        await Linking.openURL('https://github.com/dangdang-tech/combo-workspace/issues/new/choose');
     };
 
     const handleSubscribe = async () => {

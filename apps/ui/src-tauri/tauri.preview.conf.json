@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Dangdang Agent (preview)",
+  "productName": "COMBO (preview)",
   "identifier": "dev.happier.app.preview",
   "plugins": {
     "updater": {
@@ -14,7 +14,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "Dangdang Agent (preview)",
+        "title": "COMBO (preview)",
         "width": 800,
         "height": 600,
         "visible": false,

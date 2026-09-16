@@ -642,7 +642,7 @@ function plural({
 export const pt: TranslationStructure = {
     sourceSetup: {
         title: "Ligar um anfitrião a partir do código",
-        body: "O Dangdang Agent ainda não tem instalador próprio. Usa este repositório; os instaladores originais não incluem espaços partilhados.",
+        body: "O COMBO ainda não tem instalador próprio. Usa este repositório; os instaladores originais não incluem espaços partilhados.",
         openGuide: "Abrir o guia de configuração do código",
         cloneTitle: "Clonar e compilar este repositório",
         cloneBody: "Prepara Node.js 22, Yarn Classic 1.22 e Codex no anfitrião.",
@@ -650,7 +650,7 @@ export const pt: TranslationStructure = {
         connectBody: "Segue o guia para configurar este servidor e uma pasta de dados separada; depois executa auth login e daemon start.",
         runBody: "Executa a partir do repositório com o mesmo servidor e pasta de dados configurados, ou cria uma sessão na aplicação.",
     },
-    brand: { name: 'Dangdang Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "Entrada do projeto compartilhado",
         description: "Cada usuário Google convidado inicia sua própria conversa vazia. Todos usam os mesmos arquivos do projeto no host. O host paga pelo uso do modelo.",
@@ -2205,7 +2205,7 @@ export const pt: TranslationStructure = {
     actionsSettingsAboutSubtitle:
       "Ative ou desative ações globalmente, por superfície (UI/voz/MCP) e por posicionamento (onde aparecem na interface). Ações desativadas são bloqueadas (fail-closed) em tempo de execução.",
     aboutFooter:
-      "Dangdang Agent é um espaço de programação compartilhado baseado no Happier. Os arquivos do projeto são compartilhados e as conversas ficam separadas.",
+      "COMBO é um espaço de programação compartilhado baseado no Happier. Os arquivos do projeto são compartilhados e as conversas ficam separadas.",
     whatsNew: "Novidades",
     whatsNewSubtitle: "Veja as atualizações e melhorias mais recentes",
     reportIssue: "Relatar um problema",

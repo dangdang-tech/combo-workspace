@@ -604,7 +604,7 @@ function plural({
 export const pl: TranslationStructure = {
     sourceSetup: {
         title: "Połącz hosta ze źródeł",
-        body: "Dangdang Agent nie ma jeszcze własnego instalatora. Użyj tego repozytorium; instalatory projektu bazowego nie zawierają wspólnych przestrzeni.",
+        body: "COMBO nie ma jeszcze własnego instalatora. Użyj tego repozytorium; instalatory projektu bazowego nie zawierają wspólnych przestrzeni.",
         openGuide: "Otwórz instrukcję konfiguracji źródeł",
         cloneTitle: "Sklonuj i zbuduj repozytorium",
         cloneBody: "Przygotuj na hoście Node.js 22, Yarn Classic 1.22 i Codex.",
@@ -612,7 +612,7 @@ export const pl: TranslationStructure = {
         connectBody: "Według instrukcji ustaw ten serwer i osobny katalog danych, a następnie uruchom auth login i daemon start.",
         runBody: "Uruchom z repozytorium z tym samym serwerem i katalogiem danych lub utwórz sesję w aplikacji.",
     },
-    brand: { name: 'Dangdang Agent' },
+    brand: { name: 'COMBO' },
     sharedEntry: {
         title: "Wejście do wspólnego projektu",
         description: "Każdy zaproszony użytkownik Google zaczyna własną pustą rozmowę. Wszyscy korzystają z tych samych plików projektu na hoście. Host opłaca użycie modelu.",
@@ -2112,7 +2112,7 @@ export const pl: TranslationStructure = {
     actionsSettingsAboutSubtitle:
       "Włączaj lub wyłączaj akcje globalnie, dla powierzchni (UI/głos/MCP) oraz dla miejsc umieszczenia (gdzie pojawiają się w interfejsie). Wyłączone akcje są blokowane w trybie fail-closed w czasie działania.",
     aboutFooter:
-      "Dangdang Agent to wspólna przestrzeń programistyczna oparta na Happier. Pliki projektu są współdzielone, a rozmowy pozostają osobne.",
+      "COMBO to wspólna przestrzeń programistyczna oparta na Happier. Pliki projektu są współdzielone, a rozmowy pozostają osobne.",
     whatsNew: "Co nowego",
     whatsNewSubtitle: "Zobacz najnowsze aktualizacje i ulepszenia",
     reportIssue: "Zgłoś problem",
