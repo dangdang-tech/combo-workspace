@@ -161,7 +161,7 @@ describe('useNewSessionScreenModel (draft hydration — path)', () => {
         }));
     });
 
-    it('keeps repo-native path and worktree chip visible when machine/path route params arrive as string arrays', async () => {
+    it('keeps the repo-native path without a worktree picker when route params arrive as string arrays', async () => {
         searchParamsState.value = {
             machineId: ['machine-2'],
             path: ['/repo/unlinked'],
@@ -190,8 +190,7 @@ describe('useNewSessionScreenModel (draft hydration — path)', () => {
         await renderScreen(React.createElement(Probe));
 
         expect(model?.simpleProps?.selectedPath).toBe('/repo/unlinked');
-        expect(findCheckoutChip(model)).toBeTruthy();
-        expect(getCheckoutChipLabel(model)).toBe('newSession.checkout.noWorktree');
+        expect(findCheckoutChip(model)).toBeUndefined();
     });
 
     it('hydrates the selected path from the canonical directory route param', async () => {

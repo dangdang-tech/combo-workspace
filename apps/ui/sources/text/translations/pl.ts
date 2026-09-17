@@ -614,8 +614,8 @@ export const pl: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
-        title: "Wejście do wspólnego projektu",
-        description: "Każdy zaproszony użytkownik Google zaczyna własną pustą rozmowę. Wszyscy korzystają z tych samych plików projektu na hoście. Host opłaca użycie modelu.",
+        title: "Udostępnij rozmowę",
+        description: "Każdy zaproszony użytkownik Google otrzymuje kontekst zapisany podczas tworzenia zaproszenia i kontynuuje we własnej rozmowie. Pliki projektu są wspólne, a gospodarz pokrywa koszty modelu.",
         create: "Utwórz zaproszenie",
         name: "Nazwa wejścia",
         members: "Członkowie",
@@ -643,6 +643,13 @@ export const pl: TranslationStructure = {
         refresh: "Odśwież status",
         loadingFailed: "Nie można sprawdzić dostępu. Odśwież przed wysłaniem.",
         unavailable: "Wspólne wejścia są niedostępne dla tej sesji.",
+        contextSnapshotRequired: "To zaproszenie nie ma zapisanego kontekstu. Poproś gospodarza o utworzenie nowej migawki do udostępnienia.",
+        contextSnapshotTooLarge: "Rozmowa jest zbyt długa, aby ją skopiować. Udostępnij krótszą rozmowę.",
+        contextSnapshotUnavailable: "Nie można skopiować tego kontekstu. Udostępnij zwykłą rozmowę bez rozgałęzionej historii.",
+        createFresh: "Utwórz nową migawkę do udostępnienia",
+        createFreshDetail: "Zapisz bieżący kontekst w nowym zaproszeniu. Obecni członkowie zachowują swoje rozmowy.",
+        previousInvitations: "Inne zaproszenia",
+        snapshotMissing: "To starsze zaproszenie nie ma zapisanego kontekstu rozmowy.",
     },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
@@ -9931,7 +9938,7 @@ settingsSession: {
     // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
     brandTaglineLine1: "Jeden wspólny projekt.",
     brandTaglineLine2: "Własna rozmowa z AI.",
-    brandSubTagline: "Pracujcie z Codexem w tym samym katalogu. Każdy zaczyna nową rozmowę, a zmiany plików są wspólne.",
+    brandSubTagline: "Udostępnij rozmowę wraz z kontekstem. Kontynuuj niezależnie z Codexem; pliki projektu są wspólne.",
     brandTrustStrip: "WSPÓLNE PLIKI · OSOBNE ROZMOWY · WŁASNY HOSTING",
     frontDoorSelectedServer: "Wybrany serwer",
     frontDoorHostRequirement: "Zadania działają, gdy host jest online. Żądania offline są odrzucane i nie trafiają do kolejki.",

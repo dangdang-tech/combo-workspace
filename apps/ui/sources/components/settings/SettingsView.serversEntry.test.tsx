@@ -264,148 +264,40 @@ describe('SettingsView', () => {
         return screen;
     }
 
-    it('includes a first-class Relays entry that routes to /server', async () => {
+    it('keeps only account recovery and machine management as settings destinations', async () => {
         const screen = await renderSettingsViewUnderTest();
+        const destinations = screen.tree.findAllByType('Item' as any)
+            .filter((item) => typeof item.props.onPress === 'function')
+            .map((item) => item.props.title);
 
-        expect(screen.findRowByTitle('settings.servers')).toBeTruthy();
-
-        await act(async () => {
-            screen.pressRowByTitle('settings.servers');
-        });
-
-        expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/server');
+        expect(destinations).toEqual(['settings.account', 'settings.machines']);
     });
 
-    it('includes a System Status entry that routes to /settings/system-status', async () => {
+    it('opens the existing account page for identities and recovery keys', async () => {
         const screen = await renderSettingsViewUnderTest();
 
-        expect(screen.findRowByTitle('settings.systemStatus')).toBeTruthy();
+        await screen.pressRowByTitle('settings.account');
 
-        await act(async () => {
-            screen.pressRowByTitle('settings.systemStatus');
-        });
-
-        expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/system-status');
+        expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/account');
     });
 
-    it('blurs the active element before routing to Features on web', async () => {
+    it('blurs the active element before routing to Machines on web', async () => {
         const screen = await renderSettingsViewUnderTest();
 
-        expect(screen.findRowByTitle('settings.featuresTitle')).toBeTruthy();
-
-        await act(async () => {
-            screen.pressRowByTitle('settings.featuresTitle');
-        });
+        await screen.pressRowByTitle('settings.machines');
 
         expect(shared.deferOnWebSpy).toHaveBeenCalledTimes(1);
         expect(shared.navigateWithBlurOnWebSpy).toHaveBeenCalledTimes(1);
-        expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/features');
+        expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/machines');
     });
 
-    it('opens this fork issue tracker by default when Report issue is pressed', async () => {
+    it('shows the current server address without offering relay management', async () => {
         const screen = await renderSettingsViewUnderTest();
+        const server = screen.findRowByTitle('systemStatus.sections.currentServer');
 
-        expect(screen.findRowByTitle('settings.reportIssue')).toBeTruthy();
-
-        await act(async () => {
-            await screen.pressRowByTitle('settings.reportIssue');
-        });
-
-        expect(shared.routerPushSpy).not.toHaveBeenCalled();
-        expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace/issues/new/choose');
-    });
-
-    it('opens EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL when set and supported instead of routing to the composer', async () => {
-        const previousUrl = process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL;
-        process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL = 'https://example.test/report-issue';
-        shared.linkingCanOpenURLSpy.mockResolvedValue(true);
-
-        try {
-            const screen = await renderSettingsViewUnderTest();
-
-            expect(screen.findRowByTitle('settings.reportIssue')).toBeTruthy();
-
-            await act(async () => {
-                await screen.pressRowByTitle('settings.reportIssue');
-            });
-
-            expect(shared.linkingCanOpenURLSpy).toHaveBeenCalledWith('https://example.test/report-issue');
-            expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://example.test/report-issue');
-            expect(shared.routerPushSpy).not.toHaveBeenCalledWith('/settings/report-issue');
-        } finally {
-            if (previousUrl === undefined) delete process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL;
-            else process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL = previousUrl;
-        }
-    });
-
-    it('falls back to this fork issue tracker when the configured report URL cannot be opened', async () => {
-        const previousUrl = process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL;
-        process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL = 'https://example.test/report-issue';
-        shared.linkingCanOpenURLSpy.mockResolvedValue(false);
-
-        try {
-            const screen = await renderSettingsViewUnderTest();
-
-            expect(screen.findRowByTitle('settings.reportIssue')).toBeTruthy();
-
-            await act(async () => {
-                await screen.pressRowByTitle('settings.reportIssue');
-            });
-
-            expect(shared.linkingCanOpenURLSpy).toHaveBeenCalledWith('https://example.test/report-issue');
-            expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace/issues/new/choose');
-            expect(shared.routerPushSpy).not.toHaveBeenCalled();
-        } finally {
-            if (previousUrl === undefined) delete process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL;
-            else process.env.EXPO_PUBLIC_HAPPIER_REPORT_ISSUE_URL = previousUrl;
-        }
-    });
-
-    it('renders the GitHub repository as subtitle, not right-side detail', async () => {
-        shared.linkingCanOpenURLSpy.mockResolvedValue(true);
-        const screen = await renderSettingsViewUnderTest();
-        const githubItem = screen.findRowByTitle('settings.github');
-
-        expect(githubItem).toBeTruthy();
-        expect(githubItem?.props.subtitle).toBe('dangdang-tech/combo-workspace');
-        expect(githubItem?.props.detail).toBeUndefined();
-        await act(async () => { screen.pressRowByTitle('settings.github'); });
-        expect(shared.linkingOpenURLSpy).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace');
-    });
-
-    it('does not present upstream legal policies as this fork policies', async () => {
-        const screen = await renderSettingsViewUnderTest();
-        expect(screen.findRowByTitle('settings.privacyPolicy')).toBeNull();
-        expect(screen.findRowByTitle('settings.termsOfService')).toBeNull();
-        expect(screen.findRowByTitle('settings.eula')).toBeNull();
-    });
-
-    it('shows Rate us right below What’s New and triggers store review only when pressed', async () => {
-        shared.canRequestReviewSpy.mockResolvedValue(true);
-        const screen = await renderSettingsViewUnderTest();
-
-        const aboutGroup = screen.findGroup('settings.about');
-        expect(aboutGroup).toBeTruthy();
-        const items = aboutGroup!.findAllByType('Item' as any);
-        const whatsNewIndex = items.findIndex((item: any) => item?.props?.title === 'settings.whatsNew');
-        const rateUsIndex = items.findIndex((item: any) => item?.props?.title === 'settings.rateUs');
-
-        expect(screen.findRowByTitle('settings.rateUs')).toBeTruthy();
-        expect(whatsNewIndex).toBeGreaterThanOrEqual(0);
-        expect(rateUsIndex).toBe(whatsNewIndex + 1);
-        expect(shared.requestReviewSpy).not.toHaveBeenCalled();
-
-        await act(async () => {
-            await screen.pressRowByTitle('settings.rateUs');
-        });
-
-        expect(shared.requestReviewSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it('hides Rate us when store-review action is unavailable', async () => {
-        shared.canRequestReviewSpy.mockResolvedValue(false);
-        const screen = await renderSettingsViewUnderTest();
-
-        expect(screen.findRowByTitle('settings.rateUs')).toBeNull();
+        expect(server?.props.subtitle).toBe('https://local.example.test');
+        expect(server?.props.onPress).toBeUndefined();
+        expect(server?.props.showChevron).toBe(false);
+        expect(screen.findRowByTitle('settings.servers')).toBeNull();
     });
 });

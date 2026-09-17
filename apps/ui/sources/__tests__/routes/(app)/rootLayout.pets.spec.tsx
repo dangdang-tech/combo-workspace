@@ -141,30 +141,30 @@ afterEach(() => {
 });
 
 describe('App RootLayout pets', () => {
-    it('mounts the authenticated app-shell pet runtime containers', async () => {
+    it('keeps the authenticated core shell free of pet runtime containers', async () => {
         const RootLayout = (await import('@/app/(app)/_layout')).default;
 
         const screen = await renderScreen(React.createElement(RootLayout));
         await flushHookEffects();
 
-        expect(screen.findAllByTestId('pet-app-shell-companion-mount')).toHaveLength(1);
-        expect(screen.findAllByTestId('desktop-pet-overlay-runtime-mount')).toHaveLength(1);
+        expect(screen.findAllByTestId('pet-app-shell-companion-mount')).toHaveLength(0);
+        expect(screen.findAllByTestId('desktop-pet-overlay-runtime-mount')).toHaveLength(0);
     });
 
-    it('keeps authenticated app-shell runtimes stable across unchanged root layout updates', async () => {
+    it('keeps the core route stack mounted without starting optional runtimes during an update', async () => {
         const RootLayout = (await import('@/app/(app)/_layout')).default;
 
         const screen = await renderScreen(React.createElement(RootLayout));
         await flushHookEffects();
 
-        const renderCountsAfterMount = { ...runtimeRenderCounts };
+        const initialIndexScreen = screen.findAllByType(Stack.Screen).find((node) => node.props.name === 'index');
+        expect(initialIndexScreen).toBeDefined();
 
         await screen.update(React.createElement(RootLayout));
         await flushHookEffects();
 
-        expect(runtimeRenderCounts.desktopPetOverlay).toBe(renderCountsAfterMount.desktopPetOverlay);
-        expect(runtimeRenderCounts.petCompanion).toBe(renderCountsAfterMount.petCompanion);
-        expect(runtimeRenderCounts.releaseNotes).toBe(renderCountsAfterMount.releaseNotes);
+        expect(screen.findAllByType(Stack.Screen).find((node) => node.props.name === 'index')).toBe(initialIndexScreen);
+        expect(runtimeRenderCounts).toEqual({ desktopPetOverlay: 0, petCompanion: 0, releaseNotes: 0 });
     });
 
     it('does not mount pet runtimes on unauthenticated public routes', async () => {
@@ -179,7 +179,7 @@ describe('App RootLayout pets', () => {
         expect(screen.findAllByType(Stack.Screen).map((node) => node.props?.name)).toContain('index');
     });
 
-    it('registers the desktop pet overlay route without app stack chrome', async () => {
+    it('does not register the desktop pet overlay route', async () => {
         const RootLayout = (await import('@/app/(app)/_layout')).default;
 
         const screen = await renderScreen(React.createElement(RootLayout));
@@ -189,9 +189,7 @@ describe('App RootLayout pets', () => {
             .findAllByType(Stack.Screen)
             .find((node) => node.props?.name === 'desktop/pet-overlay');
 
-        expect(desktopPetOverlayScreen?.props?.options).toEqual(expect.objectContaining({
-            headerShown: false,
-        }));
+        expect(desktopPetOverlayScreen).toBeUndefined();
     });
 
     it('keeps normal stack headers for authenticated routes that are also public before sign-in', async () => {
@@ -227,7 +225,7 @@ describe('App RootLayout pets', () => {
         }));
     });
 
-    it('renders only the desktop pet overlay route inside the native overlay window context', async () => {
+    it('keeps the core route list even when a legacy overlay window flag remains', async () => {
         desktopPetOverlayWindowContextState.current = true;
         const RootLayout = (await import('@/app/(app)/_layout')).default;
 
@@ -236,8 +234,8 @@ describe('App RootLayout pets', () => {
 
         expect(screen.findAllByTestId('pet-app-shell-companion-mount')).toHaveLength(0);
         expect(screen.findAllByTestId('desktop-pet-overlay-runtime-mount')).toHaveLength(0);
-        expect(screen.findAllByType(Stack.Screen).map((node) => node.props?.name)).toEqual([
-            'desktop/pet-overlay',
-        ]);
+        const routeNames = screen.findAllByType(Stack.Screen).map((node) => node.props?.name);
+        expect(routeNames).toContain('index');
+        expect(routeNames).not.toContain('desktop/pet-overlay');
     });
 });

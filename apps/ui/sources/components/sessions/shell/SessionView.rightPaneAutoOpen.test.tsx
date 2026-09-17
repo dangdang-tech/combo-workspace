@@ -373,12 +373,13 @@ describe('SessionView (right pane auto-open)', () => {
         (globalThis as { __DEV__?: boolean }).__DEV__ = previousDev;
     });
 
-    it('opens right pane on first visit when sessionsRightPaneDefaultOpen is enabled and no prior tab state exists', async () => {
+    it('does not reopen the retired workbench from an old auto-open preference', async () => {
         sessionsRightPaneDefaultOpen = true;
 
         const screen = await renderSessionView();
 
-        expect(openRightSpy).toHaveBeenCalledWith({ tabId: 'files' });
+        expect(openRightSpy).not.toHaveBeenCalled();
+        expect(screen.findAllByType('AppPaneScopeHost' as never)).toHaveLength(0);
 
         await screen.unmount();
     });
@@ -405,12 +406,12 @@ describe('SessionView (right pane auto-open)', () => {
         await screen.unmount();
     });
 
-    it('keeps URL pane sync enabled when multi-pane setting is unset', async () => {
+    it('does not activate a retired pane from URL parameters', async () => {
         uiMultiPanePanelsEnabledSetting = undefined;
 
         const screen = await renderSessionView({ rightTabId: 'git' });
 
-        expect(lastUrlSyncEnabled).toBe(true);
+        expect(lastUrlSyncEnabled).toBeNull();
 
         await screen.unmount();
     });
@@ -420,7 +421,7 @@ describe('SessionView (right pane auto-open)', () => {
 
         const screen = await renderSessionView({ rightTabId: 'git' });
 
-        expect(lastUrlSyncEnabled).toBe(false);
+        expect(lastUrlSyncEnabled).toBeNull();
 
         await screen.unmount();
     });

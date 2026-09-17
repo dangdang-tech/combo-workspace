@@ -2,6 +2,7 @@ import type { FeatureBuildPolicy } from './buildPolicy.js';
 import { parseFeatureBuildPolicy } from './buildPolicy.js';
 
 import {
+  DEFAULT_EMBEDDED_FEATURE_POLICY_ENV,
   EMBEDDED_FEATURE_BUILD_POLICY_RAW,
 } from './embeddedFeaturePolicies.generated.js';
 
@@ -39,7 +40,7 @@ export function resolveFeatureBuildPolicyFromEnvOrEmbedded(input: Readonly<{
   allowRaw?: string | null;
   denyRaw?: string | null;
 }>): FeatureBuildPolicy {
-  const embedded = resolveEmbeddedFeatureBuildPolicy(input.embeddedEnv);
+  const embedded = resolveEmbeddedFeatureBuildPolicy(input.embeddedEnv ?? DEFAULT_EMBEDDED_FEATURE_POLICY_ENV);
   const override = parseFeatureBuildPolicy({
     allowRaw: input.allowRaw,
     denyRaw: input.denyRaw,

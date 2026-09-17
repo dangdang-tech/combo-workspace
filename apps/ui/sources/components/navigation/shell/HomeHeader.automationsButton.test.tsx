@@ -87,18 +87,10 @@ describe('HomeHeader automations button', () => {
         automationsSupportState.enabled = true;
     });
 
-    it('shows automations button next to logo and navigates to automations', async () => {
+    it('does not offer automations even when the server supports them', async () => {
         const { HomeHeader } = await import('./HomeHeader');
-
-        let tree: renderer.ReactTestRenderer | null = null;
-        tree = (await renderScreen(<HomeHeader />)).tree;
-
-        const button = findPressableByLabel(tree!, 'Open automations');
-        await act(async () => {
-            await pressTestInstanceAsync(button);
-        });
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/automations');
+        const tree = (await renderScreen(<HomeHeader />)).tree;
+        expect(() => findPressableByLabel(tree, 'Open automations')).toThrow();
     });
 
     it('hides automations button when server reports automations disabled', async () => {

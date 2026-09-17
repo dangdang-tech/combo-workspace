@@ -417,7 +417,7 @@ describe('SessionView (data ready gating)', () => {
         );
 
         expect(screen.findAllByTestId('session-composer-input')).toHaveLength(1);
-        expect(screen.findAllByTestId('session-header-action-menu-trigger')).toHaveLength(1);
+        expect(screen.findAllByTestId('session-header-info-button')).toHaveLength(1);
     });
 
     it('does not pass route hydration blocking state into an already loaded same-server session', async () => {

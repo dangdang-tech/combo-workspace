@@ -193,14 +193,16 @@ describe('session/[id] param parsing', () => {
         expect(sessionView.props.jumpToSeq).toBe(42);
     });
 
-    it('passes pane url params through to SessionView as paneUrlState', async () => {
+    it.each([
+        { right: 'files', details: 'file', path: 'src/app.ts' },
+        { right: 'git', details: 'commit', sha: 'abc123' },
+        { right: 'terminal', bottom: 'terminal', details: 'terminal' },
+    ])('ignores obsolete workspace pane URL params %j while preserving message positioning', async (paneParams) => {
         vi.resetModules();
-        searchParams = { id: 'session-123', right: 'files', details: 'file', path: 'src/app.ts' } as any;
+        searchParams = { id: 'session-123', jumpSeq: '42', ...paneParams };
         const { sessionView } = await renderSessionScreen();
-        expect(sessionView.props.paneUrlState).toEqual({
-            rightTabId: 'files',
-            details: { kind: 'file', path: 'src/app.ts' },
-        });
+        expect(sessionView.props.paneUrlState).toBeUndefined();
+        expect(sessionView.props.jumpToSeq).toBe(42);
     });
 
     it('hydrates sessions for deep links by requesting session visibility', async () => {

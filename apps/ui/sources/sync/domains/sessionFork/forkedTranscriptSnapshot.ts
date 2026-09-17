@@ -43,6 +43,9 @@ function normalizeSeq(seq: unknown): number | null {
 
 function readForkV1(state: MinimalState, sessionId: string): any | null {
   const session = state.sessions[sessionId];
+  // Shared entries carry their fixed context in their own encrypted transcript. Following
+  // lineage here could reveal later source edits to the owner and cannot be authorized for guests.
+  if (session?.metadata?.sharedSessionEntryId) return null;
   const fork = session?.metadata?.forkV1 as any;
   if (!fork || typeof fork !== 'object') return null;
   if (fork.v !== 1) return null;

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import type { ReactTestInstance } from 'react-test-renderer';
 import { act } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { findTestInstanceByTypeContainingText, pressTestInstanceAsync, renderScreen } from '@/dev/testkit';
@@ -233,14 +232,6 @@ vi.mock('./MainView', () => ({
     MainView: 'MainView',
 }));
 
-function hasIndicatorDot(node: ReactTestInstance) {
-    return node.findAll((child: ReactTestInstance) => {
-        if (String(child.type) !== 'View') return false;
-        const style = child.props?.style ?? {};
-        return style.width === 6 && style.height === 6;
-    }).length > 0;
-}
-
 function flattenStyle(style: unknown) {
     if (Array.isArray(style)) {
         return style.reduce<Record<string, unknown>>((acc, item) => {
@@ -251,20 +242,6 @@ function flattenStyle(style: unknown) {
         }, {});
     }
     return style ?? {};
-}
-
-function styleListHasExplicitFallbackDimensions(style: unknown, dimensions: Readonly<{ width: number; height: number }>): boolean {
-    if (!Array.isArray(style)) return false;
-    return style.some((item) => {
-        if (!item || typeof item !== 'object') return false;
-        const record = item as Record<string, unknown>;
-        return record.width === dimensions.width && record.height === dimensions.height;
-    });
-}
-
-function requireTestInstance(node: ReactTestInstance | null, label: string): ReactTestInstance {
-    expect(node, `${label} should be present`).toBeTruthy();
-    return node!;
 }
 
 describe('SidebarView header automations button', () => {
@@ -284,21 +261,12 @@ describe('SidebarView header automations button', () => {
 
         const screen = await renderScreen(<SidebarView />);
         const button = screen.findByProps({ accessibilityLabel: 'common.home' });
+        expect(button.props.accessibilityRole).toBe('button');
         await act(async () => {
             await pressTestInstanceAsync(button);
         });
 
         expect(routerPushSpy).toHaveBeenCalledWith('/');
-    });
-
-    it('passes explicit dimensions to the sidebar logo image', async () => {
-        const { SidebarView } = await import('./SidebarView');
-
-        const screen = await renderScreen(<SidebarView />);
-        const logoButton = screen.findByProps({ accessibilityLabel: 'common.home' });
-        const logoImage = logoButton.findByType('Image' as never);
-
-        expect(styleListHasExplicitFallbackDimensions(logoImage.props.style, { width: 24, height: 24 })).toBe(true);
     });
 
     it('blocks shell navigation when an unsaved-changes guard is active and the user keeps editing', async () => {
@@ -345,28 +313,23 @@ describe('SidebarView header automations button', () => {
         expect(screen.findAllByType('VoiceSurface')).toHaveLength(0);
     });
 
-    it('renders VoiceSurface when voice is enabled', async () => {
+    it('keeps VoiceSurface absent even when voice is enabled', async () => {
         featureEnabledState.voice = true;
         const { SidebarView } = await import('./SidebarView');
         const screen = await renderScreen(<SidebarView />);
 
-        expect(screen.findAllByType('VoiceSurface')).toHaveLength(1);
+        expect(screen.findAllByType('VoiceSurface')).toHaveLength(0);
     });
 
-    it('shows friend request counts on the friends button and only a dot on inbox', async () => {
+    it('keeps social and activity entry points absent when their data is available', async () => {
         friendRequestsState.items = [{ id: 'fr-1' }, { id: 'fr-2' }];
         inboxState.hasContent = true;
         const { SidebarView } = await import('./SidebarView');
         const screen = await renderScreen(<SidebarView />);
 
-        const inboxButton = screen.findByTestId('sidebar-inbox-button');
-        const friendsButton = findTestInstanceByTypeContainingText(screen.tree, 'Pressable', '2');
-
-        expect(inboxButton).toBeTruthy();
-        expect(friendsButton).toBeTruthy();
-        expect(findTestInstanceByTypeContainingText(inboxButton!, 'Text', '2')).toBeUndefined();
-        expect(hasIndicatorDot(inboxButton!)).toBe(true);
-        expect(findTestInstanceByTypeContainingText(friendsButton!, 'Text', '2')).toBeTruthy();
+        expect(screen.findByTestId('sidebar-inbox-button')).toBeNull();
+        expect(screen.findByTestId('desktop-sidebar-action-operations')).toBeNull();
+        expect(screen.findAllByProps({ accessibilityLabel: 'tabs.friends' })).toHaveLength(0);
     });
 
     it('constrains the server status row to the shrinking title column before the header icons', async () => {
@@ -411,50 +374,22 @@ describe('SidebarView header automations button', () => {
         const screen = await renderScreen(<SidebarView sidebarWidthPx={600} />);
 
         expect(screen.findAllByTestId('sidebar-header-actions-overflow')).toHaveLength(0);
-        expect(screen.findAllByTestId('sidebar-inbox-button').length).toBeGreaterThan(0);
+        expect(screen.findAllByTestId('sidebar-inbox-button')).toHaveLength(0);
         expect(screen.findAllByTestId('nav-settings').length).toBeGreaterThan(0);
         expect(screen.findAllByTestId('nav-new-session').length).toBeGreaterThan(0);
     });
 
-    it('folds header icons into an overflow menu when the sidebar is narrow', async () => {
+    it('keeps settings and new session directly available on narrow sidebars without extra navigation', async () => {
         const { SidebarView } = await import('./SidebarView');
-
         const screen = await renderScreen(<SidebarView sidebarWidthPx={250} />);
 
-        expect(screen.findAllByTestId('sidebar-header-actions-overflow').length).toBeGreaterThan(0);
-        // Compact layout hides inbox/friends into the overflow menu.
+        expect(screen.findAllByTestId('sidebar-header-actions-overflow')).toHaveLength(0);
         expect(screen.findAllByTestId('sidebar-inbox-button')).toHaveLength(0);
+        expect(screen.findAllByTestId('nav-settings').length).toBeGreaterThan(0);
         expect(screen.findAllByTestId('nav-new-session').length).toBeGreaterThan(0);
-    });
-
-    it('keeps the overflow trigger left of real header icons in compact mode', async () => {
-        const { SidebarView } = await import('./SidebarView');
-
-        const screen = await renderScreen(<SidebarView sidebarWidthPx={250} />);
-
-        const overflow = requireTestInstance(
-            screen.findByTestId('sidebar-header-actions-overflow'),
-            'overflow trigger',
-        );
-        const settings = requireTestInstance(
-            screen.findByTestId('nav-settings'),
-            'settings button',
-        );
-        const newSession = requireTestInstance(
-            screen.findByTestId('nav-new-session'),
-            'new session button',
-        );
-
-        expect(overflow.parent).toBe(settings.parent);
-        expect(overflow.parent).toBe(newSession.parent);
-
-        const parent = requireTestInstance(overflow.parent, 'header action parent');
-        const order = parent.children
-            .filter((child): child is ReactTestInstance => typeof child === 'object' && child !== null && 'props' in (child as any))
-            .map((child) => child.props?.testID ?? child.props?.accessibilityLabel)
-            .filter(Boolean) as string[];
-
-        expect(order.indexOf('sidebar-header-actions-overflow')).toBeLessThan(order.indexOf('nav-settings'));
-        expect(order.indexOf('sidebar-header-actions-overflow')).toBeLessThan(order.indexOf('nav-new-session'));
+        await act(async () => {
+            await pressTestInstanceAsync(screen.findByTestId('nav-settings')!);
+        });
+        expect(routerPushSpy).toHaveBeenCalledWith('/settings');
     });
 });

@@ -50,7 +50,6 @@ import { ActionOperationActivityButton } from '@/components/inbox/actionOperatio
 import { SessionHeaderRightSidebarButton } from '@/components/sessions/actions/SessionHeaderRightSidebarButton';
 import { SessionHeaderSubagentsButton } from '@/components/sessions/actions/SessionHeaderSubagentsButton';
 import { SessionHeaderTerminalButton } from '@/components/sessions/actions/SessionHeaderTerminalButton';
-import { useOpenAttachedSessionTerminal } from '@/components/sessions/terminal/openAttachedSessionTerminal';
 import { SessionHeaderTranscriptNavigationButton, useTranscriptNavigationSurface } from '@/components/sessions/actions/SessionHeaderTranscriptNavigationButton';
 import { ChatList, type TranscriptViewportChangeState } from '@/components/sessions/transcript/ChatList';
 import { applyTranscriptJumpHighlightForJumpResult } from '@/components/sessions/transcript/navigation/transcriptJumpHighlightStore';
@@ -118,7 +117,6 @@ import {
     type SessionAgentTransitionResultV1,
 } from '@happier-dev/protocol';
 import { useResumeCapabilityOptions } from '@/agents/hooks/useResumeCapabilityOptions';
-import { useSession } from '@/sync/domains/state/storage';
 import { readMessageDisplayText } from '@/sync/domains/messages/messageDisplayText';
 import { writeSessionInitialPromptV1 } from '@/sync/domains/sessionInitialPrompt/sessionInitialPromptV1';
 import { Session, type Metadata } from '@/sync/domains/state/storageTypes';
@@ -175,7 +173,6 @@ import { useSessionAgentActivity } from '@/hooks/session/useSessionAgentActivity
 import { useReconciledStableRows } from '@/hooks/session/reconcileStableRows';
 import { deriveSessionSubagentRecipients } from '@/sync/domains/session/subagents/deriveSessionSubagentRecipients';
 import type { AgentActivityCounts } from '@/sync/domains/session/agentActivity/deriveAgentActivityCounts';
-import { hasSessionSubagentLaunchCards } from '@/agents/registry/sessionSubagentUiBehavior';
 import { useSurfaceAnchorPathname } from '@/components/sessions/shell/surface/sessionSurfaceAnchorPathname';
 import { isExecutionRunNotRunningSendError, sessionExecutionRunSend } from '@/sync/ops/sessionExecutionRuns';
 import { nowServerMs } from '@/sync/runtime/time';
@@ -296,7 +293,6 @@ import { useRegisterSessionPaneDriver } from '@/components/sessions/panes/useReg
 import { useAppPaneScope } from '@/components/appShell/panes/hooks/useAppPaneScope';
 import { SessionScreenTestIdsProvider } from './sessionScreenTestIds';
 import { useSessionScreenIsFocused } from './useSessionScreenIsFocused';
-import { resolveMobileWorkspaceExperienceToggleActionId } from '@/components/workspaceCockpit/mobileWorkspaceExperience';
 import { useMobileWorkspaceExperienceState } from '@/components/workspaceCockpit/useMobileWorkspaceExperienceState';
 import { useOpenSessionTarget } from '@/components/sessions/panes/open/useOpenSessionTarget';
 import type { SessionPaneUrlState } from '@/components/sessions/panes/url/sessionPaneUrlState';
@@ -916,212 +912,40 @@ function readParticipantTargetKey(target: SessionParticipantTarget): string {
 type SessionHeaderRightElementProps = Readonly<{
     sessionId: string;
     session: Session;
-    directSessionRuntime: ReturnType<typeof useDirectSessionRuntime>;
-    paneScopeId: string;
     currentSessionRouteServerId: string;
-    mobileWorkspaceExperienceToggleActionId: string;
-    mobileWorkspaceExperienceToggleLabelKey: TranslationKey | null;
-    onToggleWorkspaceExperience: () => void;
-    sessionAutomationsEnabledCount: number;
-    shouldFoldHeaderIconActions: boolean;
     onOpenSessionInfo: () => void;
-    showAutomations: boolean;
-    showWorkspaceExperienceToggle: boolean;
 }>;
 
 const SessionHeaderRightElement = React.memo(function SessionHeaderRightElement(props: SessionHeaderRightElementProps) {
     const { theme } = useUnistyles();
     const router = useRouter();
-    const openAgentRoster = useOpenSessionTarget({
-        sessionId: props.sessionId,
-        scopeId: props.paneScopeId,
-        serverId: props.currentSessionRouteServerId,
+    const sharingEnabled = useFeatureEnabled('sharing.sessionEntries', {
+        scopeKind: 'spawn', serverId: props.currentSessionRouteServerId,
     });
-    const attachedSessionTerminal = useOpenAttachedSessionTerminal(props.sessionId);
-    const transcriptNavigation = useTranscriptNavigationSurface({
-        scopeId: props.paneScopeId,
-        sessionId: props.sessionId,
-    });
-    const sessionExecutionRunsSupported = useSessionExecutionRunsSupported(props.sessionId, {
-        serverId: props.currentSessionRouteServerId,
-    });
-    // R-8: the header count reads the unified activity model, not a private tally over the raw
-    // roster. It is the same `counts` object the composer badge and the Agents pane use, so the
-    // glyph beside the composer and the list it opens cannot report different numbers.
-    const { counts: agentActivityCounts } = useSessionAgentActivity({
-        sessionId: props.sessionId,
-        directSessionRuntime: props.directSessionRuntime,
-    });
-    // The icon is a live indicator: work that is still open, which includes an agent stopped on a
-    // permission prompt. The overflow menu is a destination, so it stays available whenever there is
-    // anything to look at, finished agents included.
-    const openAgentCount = agentActivityCounts.live;
-    const shouldOfferSubagentsMenuItem =
-        agentActivityCounts.total > 0
-        || sessionExecutionRunsSupported
-        || hasSessionSubagentLaunchCards(props.session);
-
-    const buildCurrentSessionHref = React.useCallback((suffix = '') => {
-        return buildScopedSessionRouteHref({
-            sessionId: props.sessionId,
-            serverId: props.currentSessionRouteServerId,
-            suffix,
-        });
-    }, [props.currentSessionRouteServerId, props.sessionId]);
-
-    const handleHeaderExtraItemSelect = React.useCallback((actionId: string) => {
-        if (actionId === 'header.openAttachedClaudeTerminal') {
-            attachedSessionTerminal.open();
-            return true;
-        }
-        if (actionId === props.mobileWorkspaceExperienceToggleActionId) {
-            if (actionId === 'header.openMobileWorkspaceCockpit') {
-                Keyboard.dismiss();
-            }
-            props.onToggleWorkspaceExperience();
-            return true;
-        }
-        if (actionId === 'header.openTranscriptNavigation') {
-            if (!transcriptNavigation.available) return false;
-            transcriptNavigation.open();
-            return true;
-        }
-        if (actionId !== 'header.openSubagents') return false;
-        // The SAME decision the header glyph makes, and the one that matters most: below 520pt the
-        // glyph is folded away, so on a phone this menu item is the only way into the roster — and
-        // it used to open a right pane that is structurally hidden there.
-        return openAgentRoster({ kind: 'agentRoster' });
-    }, [attachedSessionTerminal, openAgentRoster, transcriptNavigation, props.mobileWorkspaceExperienceToggleActionId, props.onToggleWorkspaceExperience]);
-
-    const headerExtraItems = React.useMemo(() => {
-        const items: DropdownMenuItem[] = [];
-        if (props.showWorkspaceExperienceToggle && props.mobileWorkspaceExperienceToggleLabelKey) {
-            items.push({
-                id: props.mobileWorkspaceExperienceToggleActionId,
-                title: t(props.mobileWorkspaceExperienceToggleLabelKey),
-                icon: <Icon name="device-mobile" size={16} color={theme.colors.text.secondary} />,
-            });
-        }
-        if (attachedSessionTerminal.available) {
-            items.push({
-                id: 'header.openAttachedClaudeTerminal',
-                title: t('tools.askUserQuestion.claudeDialogNotice.openTerminal'),
-                icon: <Icon name="terminal" size={16} color={theme.colors.text.secondary} />,
-            });
-        }
-        if (!props.shouldFoldHeaderIconActions) return items;
-
-        // Offered only where it leads somewhere. Below the fold this menu is the phone's ONLY way to
-        // transcript navigation, and navigation exists solely as a right-pane tab or a cockpit
-        // surface — so on a classic phone layout there is nothing behind it to open.
-        if (transcriptNavigation.available) {
-            items.push({
-                id: 'header.openTranscriptNavigation',
-                title: t('session.openTranscriptNavigation'),
-                icon: <Icon name="list" size={16} color={theme.colors.text.secondary} />,
-            });
-        }
-        if (shouldOfferSubagentsMenuItem) {
-            items.push({
-                id: 'header.openSubagents',
-                title: t('session.openSubagents', { count: openAgentCount }),
-                icon: <Icon name="robot" size={ICON_SIZE.md} color={theme.colors.text.secondary} />,
-            });
-        }
-        if (sessionExecutionRunsSupported) {
-            items.push({
-                id: 'header.openRuns',
-                title: t('session.openRuns'),
-                icon: <Icon name="play" size={16} color={theme.colors.text.secondary} />,
-            });
-        }
-        if (props.showAutomations) {
-            items.push({
-                id: 'header.openAutomations',
-                title: t('session.openAutomations'),
-                icon: <Icon name="timer" size={16} color={theme.colors.text.secondary} />,
-            });
-        }
-        return items;
-    }, [
-        attachedSessionTerminal.available,
-        props.mobileWorkspaceExperienceToggleActionId,
-        props.mobileWorkspaceExperienceToggleLabelKey,
-        props.shouldFoldHeaderIconActions,
-        props.showAutomations,
-        props.showWorkspaceExperienceToggle,
-        sessionExecutionRunsSupported,
-        shouldOfferSubagentsMenuItem,
-        openAgentCount,
-        theme.colors.text.secondary,
-        transcriptNavigation.available,
-    ]);
-
-    const badgeLabel =
-        props.sessionAutomationsEnabledCount > 99 ? '99+' : String(props.sessionAutomationsEnabledCount);
-
+    const canShare = sharingEnabled && !props.session.accessLevel && !props.session.metadata?.sharedSessionEntryId;
     return (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <ActionOperationActivityButton
-                preferredSessionId={props.sessionId}
-                testID="session-header-action-operations"
-                buttonSize={44}
-                iconSize={SESSION_HEADER_ICON_SIZE_PX}
-            />
-            <SessionHeaderActionMenu
-                sessionId={props.sessionId}
-                session={props.session}
-                extraItems={headerExtraItems.length > 0 ? headerExtraItems : undefined}
-                onSelectExtraItem={handleHeaderExtraItemSelect}
-            />
-            {!props.shouldFoldHeaderIconActions ? (
-                <SessionHeaderTranscriptNavigationButton sessionId={props.sessionId} scopeId={props.paneScopeId} />
-            ) : null}
-            {!props.shouldFoldHeaderIconActions ? (
-                <SessionHeaderSubagentsButton
-                    sessionId={props.sessionId}
-                    scopeId={props.paneScopeId}
-                    serverId={props.currentSessionRouteServerId}
-                    activeCount={openAgentCount}
-                />
-            ) : null}
-            <SessionHeaderTerminalButton
-                sessionId={props.sessionId}
-                scopeId={props.paneScopeId}
-                serverId={props.currentSessionRouteServerId}
-            />
-{/* Never folded. Session details used to be reachable by pressing the avatar, which was
-                shown on every width; moving that navigation to an icon that folds below 520pt would
-                delete the only path to it on phones rather than tidy the row. */}
-            <SessionHeaderInfoButton onPress={props.onOpenSessionInfo} />
-            {!props.shouldFoldHeaderIconActions && props.showAutomations && props.sessionAutomationsEnabledCount > 0 ? (
+            {canShare ? (
                 <Pressable
-                    onPress={() => navigateWithBlurOnWeb(() => router.push(buildCurrentSessionHref('/automations') as any))}
-                    hitSlop={15}
+                    testID="session-header-share-button"
+                    accessibilityRole="button"
+                    accessibilityLabel={t('sharedEntry.title')}
+                    onPress={() => navigateWithBlurOnWeb(() => router.push(buildScopedSessionRouteHref({
+                        sessionId: props.sessionId,
+                        serverId: props.currentSessionRouteServerId,
+                        suffix: '/entry-sharing',
+                    }) as any))}
                     style={({ pressed }) => ({
-                        width: 44,
-                        height: 44,
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        minWidth: 44, height: 44, paddingHorizontal: 12,
+                        flexDirection: 'row', alignItems: 'center', gap: 6,
                         opacity: pressed ? 0.7 : 1,
                     })}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('session.openAutomations')}
                 >
-                    {/* No `badgeColor` override: this count shares `SessionHeaderIconWithCount`
-                        with the agent count sitting a few points to its left, and in this row a
-                        filled-red count means one thing only — a person is needed. Enabled
-                        automations are a configuration fact, not a request for attention, so it
-                        takes the primitive's default accent. */}
-                    <SessionHeaderIconWithCount count={props.sessionAutomationsEnabledCount}>
-                        <Icon
-                            name="timer"
-                            size={SESSION_HEADER_ICON_SIZE_PX}
-                            color={theme.colors.chrome.header.foreground}
-                        />
-                    </SessionHeaderIconWithCount>
+                    <Icon name="share" size={SESSION_HEADER_ICON_SIZE_PX} color={theme.colors.chrome.header.foreground} />
+                    <Text style={{ color: theme.colors.chrome.header.foreground }}>{t('sharedEntry.title')}</Text>
                 </Pressable>
             ) : null}
+            <SessionHeaderInfoButton onPress={props.onOpenSessionInfo} />
         </View>
     );
 });
@@ -1561,13 +1385,10 @@ export const SessionView = React.memo((props: SessionViewProps) => {
         explicitRouteServerId
         || resolveServerIdForSessionIdFromLocalCache(sessionId)
         || getActiveServerSnapshot().serverId;
-    const automationsSupport = useAutomationsSupport({ scopeKind: 'spawn', serverId: currentSessionRouteServerId });
-    const showAutomations = automationsSupport?.enabled !== false;
     const executionRunsEnabled = useFeatureEnabled('execution.runs', {
         scopeKind: 'spawn',
         serverId: currentSessionRouteServerId,
     });
-    const mobileWorkspaceExperienceState = useMobileWorkspaceExperienceState();
     const handleBackPress = React.useCallback(() => {
         safeRouterBack({
             router,
@@ -1679,10 +1500,6 @@ export const SessionView = React.memo((props: SessionViewProps) => {
     const routerRef = React.useRef(router);
     routerRef.current = router;
 
-    // Treat multi-pane panels as enabled unless explicitly disabled. `useLocalSetting` can return
-    // `undefined` during hydration; failing closed here causes deep links like `?right=git` to be
-    // ignored and makes the UI feel broken on first load.
-    const multiPaneEnabled = useLocalSetting('uiMultiPanePanelsEnabled') !== false;
     const paneScopeId = useRegisterSessionPaneDriver(sessionId);
     const pane = useAppPaneScope(paneScopeId);
     // Stable identity for THIS pane mount (not the session): `useId` is allocated by the outer
@@ -1696,33 +1513,10 @@ export const SessionView = React.memo((props: SessionViewProps) => {
             forgetSessionViewContentWidthSurface(contentWidthSurfaceId);
         };
     }, [contentWidthSurfaceId]);
-    const sessionAutomationsEnabledCount = useSessionAutomationsEnabledCount(sessionId, showAutomations);
 
-    const constrainHeaderWidth = !(multiPaneEnabled
-        && Platform.OS === 'web'
-        && ((pane.scopeState?.right.isOpen ?? false) || (pane.scopeState?.details.isOpen ?? false)));
+    const constrainHeaderWidth = true;
 
-    const mobileWorkspaceExperienceToggleActionId = React.useMemo(
-        () => resolveMobileWorkspaceExperienceToggleActionId(mobileWorkspaceExperienceState.mobileWorkspaceExperience),
-        [mobileWorkspaceExperienceState.mobileWorkspaceExperience],
-    );
-    const toggleWorkspaceExperienceRef = React.useRef(mobileWorkspaceExperienceState.toggleWorkspaceExperience);
-    toggleWorkspaceExperienceRef.current = mobileWorkspaceExperienceState.toggleWorkspaceExperience;
-
-    const handleToggleWorkspaceExperience = React.useCallback(() => {
-        toggleWorkspaceExperienceRef.current();
-    }, []);
-    const shouldFoldHeaderIconActions = windowWidth < 520;
-
-    // `ChatHeaderView` is memoized, and the header is the one surface that must not repaint on
-    // every transcript-driven render of this screen. An element built inline in the JSX below is a
-    // new object on every render and defeats that memo on its own, so the gutter element is built
-    // here with the only two inputs it has.
-    const headerGutterElement = React.useMemo(() => (
-        shouldFoldHeaderIconActions
-            ? undefined
-            : <SessionHeaderRightSidebarButton scopeId={paneScopeId} />
-    ), [paneScopeId, shouldFoldHeaderIconActions]);
+    const headerGutterElement = undefined;
 
     // Compute header props based on session state
     const headerProps = useMemo(() => {
@@ -1797,17 +1591,8 @@ export const SessionView = React.memo((props: SessionViewProps) => {
             <SessionHeaderRightElement
                 sessionId={sessionId}
                 session={headerSession}
-                directSessionRuntime={directSessionRuntime}
-                paneScopeId={paneScopeId}
                 currentSessionRouteServerId={currentSessionRouteServerId}
-                mobileWorkspaceExperienceToggleActionId={mobileWorkspaceExperienceToggleActionId}
-                mobileWorkspaceExperienceToggleLabelKey={mobileWorkspaceExperienceState.workspaceExperienceToggleLabelKey}
-                onToggleWorkspaceExperience={handleToggleWorkspaceExperience}
-                sessionAutomationsEnabledCount={sessionAutomationsEnabledCount}
-                shouldFoldHeaderIconActions={shouldFoldHeaderIconActions}
                 onOpenSessionInfo={openSessionInfo}
-                showAutomations={showAutomations}
-                showWorkspaceExperienceToggle={mobileWorkspaceExperienceState.showWorkspaceExperienceToggle}
             />
         );
         return {
@@ -1824,22 +1609,15 @@ export const SessionView = React.memo((props: SessionViewProps) => {
 	        };
 	    }, [
         directSessionRuntime,
-        handleToggleWorkspaceExperience,
         isDataReady,
-        mobileWorkspaceExperienceState.showWorkspaceExperienceToggle,
-        mobileWorkspaceExperienceState.workspaceExperienceToggleLabelKey,
-        mobileWorkspaceExperienceToggleActionId,
         paneScopeId,
         routeHydrationPending,
         routeHydrationState,
         routeHydrationTerminalMissing,
         stableSessionForHeader,
         sessionWorkspacePresentation,
-        sessionAutomationsEnabledCount,
         sessionId,
         shouldRenderSessionSurface,
-        shouldFoldHeaderIconActions,
-        showAutomations,
     ]);
 
     const normalSessionContent = session && shouldRenderSessionSurface
@@ -2404,11 +2182,6 @@ function SessionViewLoaded({
     const [measuredContentWidth, setMeasuredContentWidth] = React.useState<number | null>(
         () => readSeededSessionViewContentWidth({ surfaceId: contentWidthSurfaceId, windowWidthPx: windowWidth }),
     );
-    // Treat multi-pane panels as enabled unless explicitly disabled. `useLocalSetting` can return
-    // `undefined` during hydration; failing closed here causes deep links like `?right=git` to be
-    // ignored and makes the UI feel broken on first load.
-    const multiPaneEnabled = useLocalSetting('uiMultiPanePanelsEnabled') !== false;
-    const sessionsRightPaneDefaultOpen = useLocalSetting('sessionsRightPaneDefaultOpen');
     const pane = useAppPaneScope(paneScopeId);
     const activeServerId = getActiveServerSnapshot().serverId;
     const sessionRouteServerId = (routeServerId ?? '').trim()
@@ -2510,38 +2283,6 @@ function SessionViewLoaded({
         };
     }, [sessionId, usageLimitRecoveryResetAtMs]);
 
-    useSessionPaneUrlSync({
-        enabled: paneUrlSyncRouteActive && multiPaneEnabled && Platform.OS === 'web',
-        scopeKey: paneScopeId,
-        scopeState: pane.scopeState,
-        urlState: paneUrlState,
-        pane,
-        setParams: typeof (router as any)?.setParams === 'function' ? (router as any).setParams.bind(router) : null,
-    });
-
-    // Session preference: optionally open the right sidebar by default (files tab) when
-    // entering a session for the first time on this device.
-    React.useEffect(() => {
-        if (!sessionsRightPaneDefaultOpen) return;
-        if (!multiPaneEnabled) return;
-        if (!(Platform.OS === 'web' || deviceType === 'tablet')) return;
-        if (paneUrlState?.rightTabId) return;
-        const right = (pane.scopeState as any)?.right ?? null;
-        if (!right) return;
-        if (right.isOpen === true) return;
-        // If the user previously opened any right-pane tab in this session, don't override their choice
-        // (even if they closed the pane after).
-        if (right.activeTabId !== null && right.activeTabId !== undefined) return;
-        pane.openRight({ tabId: 'files' });
-        pane.setRightTab('files');
-    }, [
-        deviceType,
-        multiPaneEnabled,
-        pane,
-        pane.scopeState,
-        paneUrlState?.rightTabId,
-        sessionsRightPaneDefaultOpen,
-    ]);
     const [message, setMessage] = React.useState('');
     const realtimeStatus = useRealtimeStatus();
     const transcriptMessageSelectionEnabled = useSetting('transcriptMessageSelectionEnabled');
@@ -5144,50 +4885,6 @@ function SessionViewLoaded({
     const inactiveStatusText = inactiveUi.inactiveStatusTextKey ? t(inactiveUi.inactiveStatusTextKey) : null;
 
       const shouldShowInput = inactiveUi.shouldShowInput && !isEncryptedSessionLocked;
-        const handlePickAttachmentFile = React.useCallback(() => {
-            openAttachmentFilePickerFiles(filePickerRef.current);
-        }, [filePickerRef]);
-        const handlePickAttachmentImage = React.useCallback(() => {
-            openAttachmentFilePickerImages(filePickerRef.current);
-        }, [filePickerRef]);
-        const handleAppendLinkedPath = React.useCallback((path: string) => {
-            setDraftValue((prev) => {
-                const base = prev ?? '';
-                const spacer = base.length === 0 || base.endsWith(' ') || base.endsWith('\n') ? '' : ' ';
-                return `${base}${spacer}@${path} `;
-            });
-        }, [setDraftValue]);
-        const extraActionChips = useSessionAgentInputExtraActionChips({
-            sessionId,
-            attachmentsUploadsEnabled,
-            isReadOnly,
-            isUploadingAttachments,
-            onPickAttachmentFile: handlePickAttachmentFile,
-            onPickAttachmentImage: handlePickAttachmentImage,
-            onPasteAttachmentImage: pasteAttachmentImage,
-            onAppendLinkedPath: handleAppendLinkedPath,
-            reviewCommentsEnabled,
-            reviewScope,
-            reviewCommentDrafts,
-            defaultBackendTarget: sessionActionDefaultBackend?.backendTarget ?? null,
-            defaultBackendId: sessionActionDefaultBackend?.defaultBackendId ?? null,
-            instructionsText: message,
-        });
-        const sessionMcpChip = useExistingSessionMcpSelection({
-            sessionId,
-            sessionMetadata: session.metadata,
-            machineId: controlMachineTarget?.machineId ?? machineId ?? null,
-            directory: liveAuthoringContext.snapshot.directory,
-            agentId: liveComposerState.agentId,
-            serverId: capabilityServerId,
-            isReadOnly,
-            sessionActive: session.active === true,
-        });
-        const routingControls = useSessionAgentInputRoutingControls({
-            isReadOnly,
-            participantTargets,
-            recipientState,
-        });
         const connectedServicesAuthSwitchDisabledReason = useConnectedServicesAuthSwitchDisabledReason({
             isReadOnly,
             session: sessionRuntimeStatusSource,
@@ -5260,23 +4957,6 @@ function SessionViewLoaded({
             sessionConnectedServicesAuthSwitch.statusBadges,
             sessionStatusBadges,
         ]);
-        const agentInputExtraActionChips = React.useMemo(() => {
-            const chips = [
-                ...(sessionGoalActionChip ? [sessionGoalActionChip] : []),
-                ...(extraActionChips ?? []),
-                ...(sessionMcpChip ? [sessionMcpChip] : []),
-                ...(sessionConnectedServicesAuthSwitch.connectedServicesAuthChip
-                    ? [sessionConnectedServicesAuthSwitch.connectedServicesAuthChip]
-                    : []),
-                ...(routingControls.extraActionChips ?? []),
-            ];
-            return chips.length > 0 ? chips : undefined;
-        }, [extraActionChips, routingControls.extraActionChips, sessionConnectedServicesAuthSwitch.connectedServicesAuthChip, sessionGoalActionChip, sessionMcpChip]);
-
-    const openFileViewer = React.useCallback(() => {
-        openSessionTarget({ kind: 'fileBrowser' });
-    }, [openSessionTarget]);
-    const handleAgentInputFileViewerPress = useStableAgentInputFileViewerPress(openFileViewer);
     const handleAgentInputAbort = React.useCallback(() => {
         return sessionAbort(sessionId);
     }, [sessionId]);
@@ -6360,11 +6040,6 @@ function SessionViewLoaded({
                 inputComposerCaptureTransientStateRef={inputComposerCaptureTransientStateRef}
                 inputComposerRestoreTransientStateRef={inputComposerRestoreTransientStateRef}
                 agentType={liveComposerState.agentId}
-                armedContinuationTarget={armedContinuationTarget}
-                composeAgentPickerOptions={inSessionAgentPicker.composeAgentPickerOptions}
-                onAgentPickerIntent={inSessionAgentPicker.onAgentPickerIntent}
-                onAgentPickerVisibilityChange={inSessionAgentPicker.onAgentPickerVisibilityChange}
-                agentPickerSelectedOptionId={inSessionAgentPicker.agentPickerSelectedOptionId}
                 attachments={attachmentsUploadsEnabled ? agentInputAttachments : undefined}
                 onAttachmentsAdded={attachmentsUploadsEnabled ? addAttachments : undefined}
                 hasSendableAttachments={hasIncludedReviewCommentDrafts || (attachmentsUploadsEnabled && attachmentDrafts.length > 0)}
@@ -6379,17 +6054,6 @@ function SessionViewLoaded({
                 modelMode={modelMode}
                 onModelModeChange={updateModelMode}
                 metadata={session.metadata}
-                profileId={liveComposerState.profileId ?? undefined}
-                onProfileClick={liveComposerState.profileId !== null ? () => {
-                    const profileId = liveComposerState.profileId;
-                    const profileInfo = (profileId === null || (typeof profileId === 'string' && profileId.trim() === ''))
-                        ? t('profiles.noProfile')
-                        : (typeof profileId === 'string' ? profileId : t('status.unknown'));
-                    Modal.alert(
-                        t('profiles.title'),
-                        `${t('profiles.sessionUses', { profile: profileInfo })}\n\n${t('profiles.profilesFixedPerSession')}`,
-                    );
-                } : undefined}
                 statusBadges={agentInputStatusBadges}
                 providerUsageGauge={providerUsageGauge}
                 onProviderUsageRecoveryCreditPress={providerUsageRecoveryCreditAction}
@@ -6404,13 +6068,11 @@ function SessionViewLoaded({
                 isMicActive={micButtonState.isMicActive}
                 onAbort={handleAgentInputAbort}
                 inactiveStatusText={inactiveStatusText}
-                onFileViewerPress={handleAgentInputFileViewerPress}
                 // Autocomplete configuration
                 autocompleteKinds={SESSION_COMPOSER_SUGGESTION_KINDS}
                 autocompleteSuggestions={handleAutocompleteSuggestions}
                 disabled={isReadOnly}
                 alwaysShowContextSize={alwaysShowContextSize}
-                extraActionChips={agentInputExtraActionChips}
             />
             {attachmentsUploadsEnabled ? (
                 <AttachmentFilePicker
@@ -6572,13 +6234,7 @@ function SessionViewLoaded({
 
     return (
         <SessionResumeProvider onResumeSession={handleResumeSession}>
-            <AppPaneScopeHost
-                scopeId={paneScopeId}
-                // Keep the real session tree mounted; the pane host is responsible for hiding
-                // the main region in pane focus mode so focus toggles don't accidentally
-                // render an empty placeholder region.
-                main={main}
-            />
+            {main}
         </SessionResumeProvider>
     );
 }

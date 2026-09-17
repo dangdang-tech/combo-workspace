@@ -68,34 +68,7 @@ vi.mock('@/hooks/session/useNavigateToSession', () => ({
 }));
 
 vi.mock('@/hooks/server/useFeatureEnabled', () => ({
-    useFeatureEnabled: () => false,
-}));
-
-vi.mock('@/sync/ops/actions/defaultActionExecutor', () => ({
-    createDefaultActionExecutor: () => ({
-        execute: vi.fn(async () => ({ ok: true, result: {} })),
-    }),
-}));
-
-vi.mock('@/sync/runtime/orchestration/serverScopedRpc/resolveServerIdForSessionIdFromLocalCache', () => ({
-    resolveServerIdForSessionIdFromLocalCache: () => null,
-}));
-
-vi.mock('@/components/pets/desktop/bridge/desktopPetOverlayBridge', () => ({
-    resetDesktopPetOverlayPosition: vi.fn(async () => {}),
-}));
-
-vi.mock('@/components/settings/pets/petSettingsCommandEvents', () => ({
-    requestCodexPetRefresh: vi.fn(),
-}));
-
-vi.mock('@/sync/store/settingsWriters', () => ({
-    useApplyLocalSettings: () => vi.fn(),
-    useApplySettings: () => vi.fn(),
-}));
-
-vi.mock('@/utils/platform/tauri', () => ({
-    isTauriDesktop: () => false,
+    useFeatureEnabled: () => true,
 }));
 
 vi.mock('./buildCommandPaletteCommands', async () => {
@@ -148,6 +121,22 @@ describe('CommandPaletteProvider', () => {
 
         expect(buildCommandPaletteCommandsSpy).toHaveBeenCalledTimes(1);
         expect(Modal.show).toHaveBeenCalledTimes(1);
+    });
+
+    it('exposes only the sharing workspace navigation from the keyboard palette', async () => {
+        const { renderScreen } = await import('@/dev/testkit');
+        const { Modal } = await import('@/modal');
+        const { CommandPaletteProvider } = await import('./CommandPaletteProvider');
+
+        await renderScreen(<CommandPaletteProvider><Child /></CommandPaletteProvider>);
+        await act(async () => {
+            window.dispatchEvent(createKeyboardEvent({ key: 'k', code: 'KeyK', altKey: true }));
+        });
+
+        const props = vi.mocked(Modal.show).mock.calls[0]?.[0]?.props as { commands: Array<{ id: string }> };
+        expect(props.commands.map((command) => command.id)).toEqual([
+            'new-session', 'sessions', 'settings', 'account', 'machines', 'connect', 'sign-out',
+        ]);
     });
 
     it('uses the latest sessions when opening the palette after a closed-state update', async () => {

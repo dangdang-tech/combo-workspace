@@ -21,12 +21,11 @@ import {
 } from '@/components/sessions/new/components/NewSessionComposerCloseButton';
 import { safeRouterBack } from '@/utils/navigation/safeRouterBack';
 import { AgentInput } from '@/components/sessions/agentInput';
-import { AttachmentFilePicker } from '@/components/sessions/attachments/AttachmentFilePicker';
 import { PopoverBoundaryProvider } from '@/components/ui/popover';
 import { t } from '@/text';
 import type { AcpConfigOptionOverridesV1 } from '@happier-dev/protocol';
 import type { HandleCreateSessionOptions } from '../hooks/useCreateNewSession';
-import { useNewSessionAttachmentsController } from '@/components/sessions/new/attachments/useNewSessionAttachmentsController';
+import { blurActiveElementOnWeb, deferOnWeb } from '@/utils/platform/deferOnWeb';
 import { isMobileLayoutWidth } from '@/components/sessions/layout/isMobileLayoutWidth';
 import {
     useNewSessionPromptValue,
@@ -308,19 +307,33 @@ export const NewSessionSimplePanel = React.memo(function NewSessionSimplePanel(p
         };
     }, [cardExitProgress, enterProgress]);
 
-    const attachmentsController = useNewSessionAttachmentsController({
-        flowId: props.attachmentFlowId,
-        isCreating: props.isCreating,
-        promptStore: props.promptStore,
-        handleCreateSession: props.handleCreateSession,
-        selectedProfileId: props.selectedProfileId,
-        targetServerId: props.targetServerId,
-        selectedMachineId: props.selectedMachineId,
-        selectedMachineHomeDir: props.selectedMachineHomeDir,
-        selectedPath: props.selectedPath,
-        baseActionChips: props.agentInputExtraActionChips,
-        resumePersistedLaunchKey: props.resumePersistedLaunchKey,
-    });
+    const submitNewSession = React.useCallback((
+        options: Parameters<NonNullable<React.ComponentProps<typeof AgentInput>['onSend']>>[0],
+        capturePromptAtDispatch: boolean,
+    ) => {
+        const promptText = options?.inputTextOverride ?? props.promptStore.getPrompt();
+        const structuredInputMetaOverrides = options?.structuredInputMetaOverrides;
+        const createOptions = options?.inputTextOverride || structuredInputMetaOverrides || (capturePromptAtDispatch && promptText)
+            ? {
+                ...((options?.inputTextOverride || (capturePromptAtDispatch && promptText))
+                    ? { inputTextOverride: promptText }
+                    : {}),
+                ...(structuredInputMetaOverrides ? { structuredInputMetaOverrides } : {}),
+            }
+            : undefined;
+        blurActiveElementOnWeb();
+        deferOnWeb(() => props.handleCreateSession(createOptions));
+    }, [props.handleCreateSession, props.promptStore]);
+    const handleSend = React.useCallback<NonNullable<React.ComponentProps<typeof AgentInput>['onSend']>>((options) => {
+        submitNewSession(options, true);
+    }, [submitNewSession]);
+    const resumedPersistedLaunchKeyRef = React.useRef<string | null>(null);
+    React.useEffect(() => {
+        const key = props.resumePersistedLaunchKey?.trim() ?? '';
+        if (!key || resumedPersistedLaunchKeyRef.current === key) return;
+        resumedPersistedLaunchKeyRef.current = key;
+        submitNewSession(undefined, false);
+    }, [props.resumePersistedLaunchKey, submitNewSession]);
 
     return (
         <ComposerKeyboardScaffold
@@ -416,7 +429,7 @@ export const NewSessionSimplePanel = React.memo(function NewSessionSimplePanel(p
                             ) : null}
                             <NewSessionSimplePanelComposer
                                 panelProps={props}
-                                attachmentsController={attachmentsController}
+                                onSend={handleSend}
                             />
                         </View>
                     </Animated.View>
@@ -449,12 +462,12 @@ export const NewSessionSimplePanel = React.memo(function NewSessionSimplePanel(p
 
 type NewSessionSimplePanelComposerProps = Readonly<{
     panelProps: NewSessionSimplePanelProps;
-    attachmentsController: ReturnType<typeof useNewSessionAttachmentsController>;
+    onSend: NonNullable<React.ComponentProps<typeof AgentInput>['onSend']>;
 }>;
 
 function NewSessionSimplePanelComposer({
     panelProps: props,
-    attachmentsController,
+    onSend,
 }: NewSessionSimplePanelComposerProps): React.ReactElement {
     // The composer scaffold computes the available panel height synchronously at mount
     // (seeded from the viewport + safe-area insets), so the bottom-anchored panel can
@@ -494,46 +507,24 @@ function NewSessionSimplePanelComposer({
                     <AgentInput
                         value={sessionPrompt}
                         onChangeText={props.setSessionPrompt}
-                        onSend={attachmentsController.handleSend}
+                        onSend={onSend}
                         isSendDisabled={!props.canCreate}
                         isSending={props.isCreating}
                         placeholder={t('session.inputPlaceholder')}
                         autocompleteKinds={props.emptyAutocompleteKinds}
                         autocompleteSuggestions={props.emptyAutocompleteSuggestions}
-                        extraActionChips={attachmentsController.extraActionChips}
                         inputMaxHeight={props.sessionPromptInputMaxHeight}
                         maxPanelHeight={maxPanelHeight}
                         panelMaxHeightMode="host-constrained"
                         submitAccessibilityLabel={props.submitAccessibilityLabel}
                         agentType={props.agentType}
                         agentLabel={props.agentLabel}
-                        onAgentClick={props.handleAgentClick}
-                        agentPickerOptions={props.agentPickerOptions}
-                        agentPickerSelectedOptionId={props.agentPickerSelectedOptionId}
-                        onAgentPickerSelect={props.onAgentPickerSelect}
-                        agentPickerApplyLabel={props.agentPickerApplyLabel}
-                        agentPickerProbe={props.agentPickerProbe}
-                        attachments={attachmentsController.agentInputAttachments}
-                        onAttachmentsAdded={attachmentsController.attachmentsUploadsEnabled ? attachmentsController.addWebFiles : undefined}
-                        hasSendableAttachments={attachmentsController.hasSendableAttachments}
                         permissionMode={props.permissionMode}
                         onPermissionModeChange={props.handlePermissionModeChange}
                         modelMode={props.modelMode}
                         onModelModeChange={props.setModelMode}
                         modelOptionsOverride={props.modelOptions}
                         modelOptionsOverrideProbe={props.modelOptionsProbe}
-                        acpSessionModeOptionsOverride={props.acpSessionModeOptions}
-                        acpSessionModeSelectedIdOverride={props.acpSessionModeId ?? null}
-                        acpSessionModeOptionsOverrideProbe={props.acpSessionModeProbe}
-                        onAcpSessionModeChange={
-                            (props.acpSessionModeOptions?.length ?? 0) > 0 && props.setAcpSessionModeId
-                                ? (modeId) => props.setAcpSessionModeId?.(modeId === 'default' ? null : modeId)
-                                : undefined
-                        }
-                        acpConfigOptionsOverride={props.acpConfigOptions}
-                        acpConfigOptionsOverrideProbe={props.acpConfigOptionsProbe}
-                        acpConfigOptionOverridesOverride={props.acpConfigOptionOverrides ?? null}
-                        onSessionConfigOptionChange={props.setSessionConfigOptionOverride}
                         connectionStatus={props.connectionStatus}
                         statusBadges={props.statusBadges}
                         statusTrailingActions={props.statusTrailingActions}
@@ -544,30 +535,9 @@ function NewSessionSimplePanelComposer({
                         currentPath={props.selectedPath}
                         onPathClick={undefined}
                         pathPopover={props.pathPopover}
-                        resumeSessionId={props.showResumePicker ? props.resumeSessionId : undefined}
-                        onResumeClick={undefined}
-                        resumePopover={props.showResumePicker ? props.resumePopover : undefined}
-                        resumeIsChecking={props.isResumeSupportChecking}
                         contentPaddingHorizontal={0}
                         maxWidthCap={null}
-                        {...(props.useProfiles
-                            ? {
-                                profileId: props.selectedProfileId,
-                                profilePopover: props.profilePopover,
-                                onProfileClick: undefined,
-                                envVarsCount: undefined,
-                                envVarsPopover: undefined,
-                                onEnvVarsClick: undefined,
-                            }
-                            : {})}
                     />
-                    {attachmentsController.attachmentsUploadsEnabled ? (
-                        <AttachmentFilePicker
-                            ref={attachmentsController.filePickerRef}
-                            onAttachmentsPicked={attachmentsController.addPickedAttachments}
-                            multiple
-                        />
-                    ) : null}
                 </View>
             </View>
         </View>

@@ -428,8 +428,8 @@ export const de: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
-        title: "Geteilter Projekteinstieg",
-        description: "Jeder eingeladene Google-Nutzer beginnt eine eigene leere Unterhaltung. Alle verwenden dieselben Projektdateien auf dem Host. Der Host trägt die Modellkosten.",
+        title: "Gespräch teilen",
+        description: "Jeder eingeladene Google-Nutzer erhält den beim Erstellen der Einladung gespeicherten Kontext und setzt ihn in einem eigenen Gespräch fort. Projektdateien werden geteilt; der Host trägt die Modellkosten.",
         create: "Einladung erstellen",
         name: "Name des Einstiegs",
         members: "Mitglieder",
@@ -457,6 +457,13 @@ export const de: TranslationStructure = {
         refresh: "Status aktualisieren",
         loadingFailed: "Zugriff konnte nicht geprüft werden. Aktualisiere vor dem Senden.",
         unavailable: "Geteilte Einstiege sind für diese Sitzung nicht verfügbar.",
+        contextSnapshotRequired: "Diese Einladung enthält keinen gespeicherten Kontext. Bitte den Host, einen neuen Stand zum Teilen zu erstellen.",
+        contextSnapshotTooLarge: "Das Gespräch ist zum Kopieren zu lang. Teile ein kürzeres Gespräch.",
+        contextSnapshotUnavailable: "Dieser Kontext kann nicht kopiert werden. Teile ein normales Gespräch ohne abgezweigten Verlauf.",
+        createFresh: "Neuen Stand zum Teilen erstellen",
+        createFreshDetail: "Speichere den aktuellen Kontext in einer neuen Einladung. Bestehende Mitglieder behalten ihre Gespräche.",
+        previousInvitations: "Weitere Einladungen",
+        snapshotMissing: "Diese ältere Einladung enthält keinen gespeicherten Gesprächskontext.",
     },
     settingsKeyboard: {
         title: 'Tastenkürzel',
@@ -9357,7 +9364,7 @@ settingsSession: {
         // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
         brandTaglineLine1: "Ein gemeinsames Projekt.",
         brandTaglineLine2: "Eigene KI-Gespräche.",
-        brandSubTagline: "Arbeitet mit Codex im selben Projektverzeichnis. Jeder beginnt ein neues Gespräch; Dateiänderungen werden geteilt.",
+        brandSubTagline: "Teile ein Gespräch mit seinem Kontext. Arbeite unabhängig mit Codex weiter; Projektdateien werden geteilt.",
         brandTrustStrip: "GEMEINSAME DATEIEN · GETRENNTE GESPRÄCHE · SELBST HOSTBAR",
         frontDoorSelectedServer: "Ausgewählter Server",
         frontDoorHostRequirement: "Aufgaben laufen, solange der Host online ist. Offline-Anfragen werden abgelehnt und nicht vorgemerkt.",

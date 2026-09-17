@@ -9,6 +9,17 @@ import { createSharedEntryClient, SharedEntryError } from './apiSharedEntries';
 const access = { entryId: 'entry', title: 'Project', memberId: 'member', status: 'pending', sessionId: null, hostOnline: true, errorCode: null };
 describe('shared entry API boundary', () => {
     beforeEach(() => boundary.fetch.mockReset());
+    it.each([
+        { snapshot: true, expected: true },
+        { snapshot: undefined, expected: false },
+    ])('preserves context readiness in list and create responses (snapshot=$snapshot)', async ({ snapshot, expected }) => {
+        const entry = { id: 'entry', title: 'Project', sourceSessionId: 'source', machineId: 'host', createdAt: 1, hasContextSnapshot: snapshot };
+        boundary.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ entries: [entry] })))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ entry, inviteToken: 'new-token' })));
+        const client = createSharedEntryClient();
+        expect((await client.list())[0].hasContextSnapshot).toBe(expected);
+        expect((await client.create({ title: 'Project', sourceSessionId: 'source', machineId: 'host' })).entry.hasContextSnapshot).toBe(expected);
+    });
     it('redeems the opaque invite without treating pending access as a ready conversation', async () => {
         boundary.fetch.mockResolvedValue(new Response(JSON.stringify({ access }), { status: 200 }));
         const client = createSharedEntryClient();

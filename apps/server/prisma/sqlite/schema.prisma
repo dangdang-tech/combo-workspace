@@ -1287,6 +1287,8 @@ model SharedSessionEntry {
     machine         Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
     title           String
     inviteTokenHash String   @unique
+    /// Share-time stored rows and metadata, visible only to the owner daemon.
+    sourceSnapshot Json?
     createdAt       DateTime @default(now())
     updatedAt       DateTime @updatedAt
     members         SharedSessionEntryMember[]

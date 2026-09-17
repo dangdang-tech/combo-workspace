@@ -33,7 +33,6 @@ import {
 } from '@/sync/domains/session/activeViewingSession';
 import { NotificationsSettingsV1Schema } from '@happier-dev/protocol';
 import { useTrackScreens } from '@/track/useTrackScreens';
-import { RealtimeProvider } from '@/realtime/RealtimeProvider';
 import { FaviconPermissionIndicator } from '@/components/web/FaviconPermissionIndicator';
 import { CommandPaletteProvider } from '@/components/appShell/commandPalette/CommandPaletteProvider';
 import { StatusBarProvider } from '@/components/ui/layout/StatusBarProvider';
@@ -65,7 +64,6 @@ import { isTauriDesktop } from '@/utils/platform/tauri';
 import { useIsTablet } from '@/utils/platform/responsive';
 import { ThemePreferenceTransitionHost } from '@/components/settings/appearance/ThemePreferenceTransitionHost';
 import { useTauriMainWindowBackgroundColor } from '@/desktop/window/useTauriMainWindowBackgroundColor';
-import { OnboardingShowcaseAutoShowMount } from '@/onboarding/showcase';
 import { DesktopMainContentDragSurface } from '@/components/navigation/desktopWindowChrome/DesktopMainContentDragSurface';
 import { useChromeSafeAreaInsets } from '@/components/ui/layout/useChromeSafeAreaInsets';
 import { loadExpoNotifications, type ExpoNotificationsModule } from '@/utils/platform/loadExpoNotifications';
@@ -747,18 +745,16 @@ function AppBoot(props: {
                             <StatusBarProvider />
                             <AppPaneModalProvider>
                                 <CommandPaletteProvider>
-                                    <RealtimeProvider>
-                                        <ThemePreferenceTransitionHost>
-                                            <HorizontalSafeAreaWrapper>
-                                                <RootAppShell
-                                                    isDesktopPetOverlayWindow={isDesktopPetOverlayWindow}
-                                                    isTablet={isTablet}
-                                                    isTerminalConnectRoute={isTerminalConnectRoute}
-                                                    safeArea={safeArea}
-                                                />
-                                            </HorizontalSafeAreaWrapper>
-                                        </ThemePreferenceTransitionHost>
-                                    </RealtimeProvider>
+                                    <ThemePreferenceTransitionHost>
+                                        <HorizontalSafeAreaWrapper>
+                                            <RootAppShell
+                                                isDesktopPetOverlayWindow={isDesktopPetOverlayWindow}
+                                                isTablet={isTablet}
+                                                isTerminalConnectRoute={isTerminalConnectRoute}
+                                                safeArea={safeArea}
+                                            />
+                                        </HorizontalSafeAreaWrapper>
+                                    </ThemePreferenceTransitionHost>
                                 </CommandPaletteProvider>
                             </AppPaneModalProvider>
                         </ThemeProvider>
@@ -816,7 +812,6 @@ function RootAppShell(props: Readonly<{
     const shellContent = (
         <View style={{ flex: 1, position: 'relative' }}>
             <ActionOperationRuntime enabled={auth.isAuthenticated && !props.isDesktopPetOverlayWindow} />
-            {!props.isDesktopPetOverlayWindow ? <OnboardingShowcaseAutoShowMount /> : null}
             {appShellChromeHost === 'narrow-desktop-fallback' || appShellChromeHost === 'unauth-shell' ? (
                 <DesktopFallbackShellChrome safeArea={props.safeArea} />
             ) : appShellChromeHost === 'web-top-right' ? (

@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { View, Pressable } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import { useSocketStatus } from '@/sync/domains/state/storage';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 import {
     useVisibleSessionListPaneState,
@@ -12,33 +11,18 @@ import { SessionGettingStartedGuidance } from '@/components/sessions/guidance/Se
 import { HiddenInactiveSessionsEmptyState } from '@/components/sessions/guidance/HiddenInactiveSessionsEmptyState';
 import { SessionsListContent } from '@/components/sessions/shell/SessionsList';
 import { readSessionIdFromPathname } from '@/components/sessions/shell/readSessionIdFromPathname';
-import { useSessionListStorageKind } from '@/components/sessions/model/useSessionListStorageKind';
-import { SessionsListStorageChrome } from '@/components/sessions/shell/SessionsListStorageChrome';
 import {
     resolveSessionListSurfaceOwnership,
     resolveSidebarSessionListSurfaceInteractive,
     SESSION_LIST_SURFACE_OWNER_SIDEBAR,
 } from '@/components/sessions/shell/surface/sessionListSurfaceOwnership';
 import { FABWide } from '@/components/ui/buttons/FABWide';
-import { InboxView } from '@/components/navigation/shell/InboxView';
-import { FriendsView } from '@/components/navigation/shell/FriendsView';
 import { SessionsListWrapper } from '@/components/sessions/shell/SessionsListWrapper';
 import { Header } from '@/components/navigation/Header';
 import { HeaderLogo } from '@/components/ui/navigation/HeaderLogo';
-import { VoiceSurface } from '@/components/voice/surface/VoiceSurface';
-import { StatusDot } from '@/components/ui/status/StatusDot';
 import { Typography } from '@/constants/Typography';
 import { t } from '@/text';
-import { isUsingCustomServer } from '@/sync/domains/server/serverConfig';
-import { trackFriendsSearch } from '@/track';
 import { ConnectionStatusControl } from '@/components/navigation/ConnectionStatusControl';
-import { ActionOperationActivityButton } from '@/components/inbox/actionOperations/ActionOperationActivityButton';
-import { useFriendsEnabled } from '@/hooks/server/useFriendsEnabled';
-import { useFriendsIdentityReadiness } from '@/hooks/server/useFriendsIdentityReadiness';
-import { useAutomationsSupport } from '@/hooks/server/useAutomationsSupport';
-import { useFeatureEnabled } from '@/hooks/server/useFeatureEnabled';
-import { useInboxAvailable } from '@/hooks/inbox/useInboxAvailable';
-import { useTabState } from '@/hooks/ui/useTabState';
 import { Text } from '@/components/ui/text/Text';
 import { getFeatureBuildPolicyDecision } from '@/sync/domains/features/featureBuildPolicy';
 import type { FeatureId } from '@happier-dev/protocol';
@@ -150,11 +134,6 @@ const styles = StyleSheet.create((theme) => ({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    headerButtonsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 2,
-    },
     primaryPaneFallback: {
         flex: 1,
         flexBasis: 0,
@@ -175,41 +154,17 @@ const styles = StyleSheet.create((theme) => ({
 
 const SESSION_GETTING_STARTED_GUIDANCE_FEATURE_ID = 'app.ui.sessionGettingStartedGuidance' as const satisfies FeatureId;
 
-// Tab header configuration (zen excluded as that tab is disabled)
-const TAB_TITLES = {
-    sessions: 'tabs.sessions',
-    inbox: 'tabs.inbox',
-    friends: 'tabs.friends',
-    settings: 'tabs.settings',
-} as const;
+const HeaderTitle = React.memo(() => (
+    <View style={styles.titleContainer}>
+        <Text style={styles.titleText}>{t('tabs.sessions')}</Text>
+        <ConnectionStatusControl variant="header" />
+    </View>
+));
 
-// Active tabs (excludes zen which is disabled)
-type ActiveTabType = 'sessions' | 'inbox' | 'friends' | 'settings';
-
-// Header title component with connection status
-const HeaderTitle = React.memo(({ activeTab }: { activeTab: ActiveTabType }) => {
-    const { theme } = useUnistyles();
-
-    return (
-        <View style={styles.titleContainer}>
-            <Text style={styles.titleText}>
-                {t(TAB_TITLES[activeTab])}
-            </Text>
-            <ConnectionStatusControl variant="header" />
-        </View>
-    );
-});
-
-// Header right button - varies by tab
-const HeaderRight = React.memo(({ activeTab }: { activeTab: ActiveTabType }) => {
+const HeaderRight = React.memo(() => {
     const router = useRouter();
     const resolveNewSessionOrdinaryEntryRoute = useResolveNewSessionOrdinaryEntryRoute();
     const { theme } = useUnistyles();
-    const isCustomServer = isUsingCustomServer();
-    const friendsIdentityReadiness = useFriendsIdentityReadiness();
-    const friendsIdentityReady = friendsIdentityReadiness.isReady;
-    const automationsSupport = useAutomationsSupport();
-    const showAutomations = automationsSupport?.enabled !== false;
     const handleNewSession = React.useCallback((event?: unknown) => {
         const { draftId, draftOrigin } = resolveNewSessionOrdinaryEntryRoute({
             forceFresh: shouldForceFreshNewSessionEntryFromPressEvent(event),
@@ -217,75 +172,18 @@ const HeaderRight = React.memo(({ activeTab }: { activeTab: ActiveTabType }) => 
         router.push({ pathname: '/new', params: { draftId, draftOrigin } });
     }, [resolveNewSessionOrdinaryEntryRoute, router]);
 
-    if (activeTab === 'sessions') {
-        return (
-            <View style={styles.headerButtonsRow}>
-                <ActionOperationActivityButton testID="main-header-action-operations" />
-                {showAutomations ? (
-                    <Pressable
-                        onPress={() => router.push('/automations')}
-                        hitSlop={15}
-                        style={styles.headerButton}
-                    >
-                        <Icon name="timer" size={20} color={theme.colors.chrome.header.foreground} />
-                    </Pressable>
-                ) : null}
-                <Pressable
-                    testID="main-header-start-new-session"
-                    onPress={handleNewSession}
-                    hitSlop={15}
-                    style={styles.headerButton}
-                >
-                    <Icon name="plus" size={29} color={theme.colors.chrome.header.foreground} />
-                </Pressable>
-            </View>
-        );
-    }
-
-    if (activeTab === 'friends') {
-        return (
-            <View style={styles.headerButtonsRow}>
-                <ActionOperationActivityButton testID="main-header-action-operations" />
-                <Pressable
-                    onPress={() => {
-                        trackFriendsSearch();
-                        router.push('/friends/search');
-                    }}
-                    hitSlop={15}
-                    style={[styles.headerButton, { opacity: friendsIdentityReady ? 1 : 0.5 }]}
-                    disabled={!friendsIdentityReady}
-                    accessibilityState={{ disabled: !friendsIdentityReady }}
-                >
-                    <Icon name="user-plus" size={24} color={theme.colors.chrome.header.foreground} />
-                </Pressable>
-            </View>
-        );
-    }
-
-    if (activeTab === 'inbox') {
-        return <ActionOperationActivityButton testID="main-header-action-operations" />;
-    }
-
-    if (activeTab === 'settings') {
-        if (!isCustomServer) {
-            // Empty view to maintain header centering
-            return <ActionOperationActivityButton testID="main-header-action-operations" />;
-        }
-        return (
-            <View style={styles.headerButtonsRow}>
-                <ActionOperationActivityButton testID="main-header-action-operations" />
-                <Pressable
-                    onPress={() => router.push('/settings/server')}
-                    hitSlop={15}
-                    style={styles.headerButton}
-                >
-                    <Icon name="hard-drives" size={24} color={theme.colors.chrome.header.foreground} />
-                </Pressable>
-            </View>
-        );
-    }
-
-    return null;
+    return (
+        <Pressable
+            testID="main-header-start-new-session"
+            onPress={handleNewSession}
+            hitSlop={15}
+            style={styles.headerButton}
+            accessibilityRole="button"
+            accessibilityLabel={t('newSession.title')}
+        >
+            <Icon name="plus" size={29} color={theme.colors.chrome.header.foreground} />
+        </Pressable>
+    );
 });
 
 const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
@@ -296,7 +194,7 @@ const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
     pathname: string;
 }>) {
     const { theme } = useUnistyles();
-    const { directSessionsEnabled, storageKind, setStorageKind } = useSessionListStorageKind();
+    const storageKind = 'persisted' as const;
     const router = useRouter();
     const resolveNewSessionOrdinaryEntryRoute = useResolveNewSessionOrdinaryEntryRoute();
     const activeSessionId = React.useMemo(() => readSessionIdFromPathname(pathname), [pathname]);
@@ -325,19 +223,10 @@ const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
         router.push({ pathname: '/new', params: { draftId, draftOrigin } });
     }, [resolveNewSessionOrdinaryEntryRoute, router]);
 
-    const storageChrome = (
-        <SessionsListStorageChrome
-            directSessionsEnabled={directSessionsEnabled}
-            storageKind={storageKind}
-            onSelectStorageKind={setStorageKind}
-        />
-    );
-
     let content: React.ReactNode;
     if (sessionListViewData === null) {
         content = (
             <View style={styles.sidebarContainer}>
-                {storageChrome}
                 <View style={styles.sidebarContentContainer}>
                     <View style={styles.tabletLoadingContainer}>
                         <ActivitySpinner size="small" color={theme.colors.text.secondary} />
@@ -349,7 +238,6 @@ const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
         const suppressSidebarGuidance = isTablet && pathname === '/';
         content = (
             <View style={styles.sidebarContainer}>
-                {storageChrome}
                 <View style={styles.sidebarContentContainer}>
                     <View style={styles.emptyStateContainer}>
                         {hasHiddenInactiveSessions ? (
@@ -369,7 +257,6 @@ const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
     } else {
         content = (
             <View style={styles.sidebarContainer}>
-                {storageChrome}
                 <View style={styles.sidebarContentContainer}>
                     <SessionsListContent
                         storageKind={storageKind}
@@ -390,65 +277,8 @@ const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
     );
 });
 
-const PhoneMainViewContent = React.memo(function PhoneMainViewContent({
-    isTablet,
-    pathname,
-}: Readonly<{
-    isTablet: boolean;
-    pathname: string;
-}>) {
-    return <PhoneTabbedMainViewContent isTablet={isTablet} pathname={pathname} />;
-});
-
-const PhoneTabbedMainViewContent = React.memo(function PhoneTabbedMainViewContent({
-    isTablet,
-    pathname,
-}: Readonly<{
-    isTablet: boolean;
-    pathname: string;
-}>) {
+const PhoneMainViewContent = React.memo(function PhoneMainViewContent({ isTablet }: Readonly<{ isTablet: boolean }>) {
     const { theme } = useUnistyles();
-    const friendsEnabled = useFriendsEnabled();
-    const inboxEnabled = useInboxAvailable();
-    const voiceEnabled = useFeatureEnabled('voice');
-    // Tab state management
-    // NOTE: Zen tab removed - the feature never got to a useful state
-    const { activeTab, setActiveTab } = useTabState();
-    const routePinnedPhoneTab: ActiveTabType | null = pathname === '/' ? 'sessions' : null;
-    const effectiveActiveTab = routePinnedPhoneTab ?? activeTab;
-
-    React.useEffect(() => {
-        if (routePinnedPhoneTab !== null) return;
-        if (!inboxEnabled && activeTab === 'inbox') {
-            void setActiveTab('sessions');
-            return;
-        }
-
-        if (friendsEnabled) return;
-        if (activeTab !== 'friends') return;
-        void setActiveTab('sessions');
-    }, [activeTab, friendsEnabled, inboxEnabled, routePinnedPhoneTab, setActiveTab]);
-
-    const headerTab: ActiveTabType = React.useMemo(() => {
-        const normalized = (effectiveActiveTab === 'inbox' || effectiveActiveTab === 'friends' || effectiveActiveTab === 'sessions' || effectiveActiveTab === 'settings')
-            ? effectiveActiveTab
-            : 'sessions';
-        if (!inboxEnabled && normalized === 'inbox') return 'sessions';
-        if (!friendsEnabled && normalized === 'friends') return 'sessions';
-        return normalized;
-    }, [effectiveActiveTab, friendsEnabled, inboxEnabled]);
-
-    const renderTabContent = React.useCallback(() => {
-        switch (effectiveActiveTab) {
-            case 'inbox':
-                return inboxEnabled ? <InboxView /> : <SessionsListWrapper />;
-            case 'friends':
-                return friendsEnabled ? <FriendsView /> : <SessionsListWrapper />;
-            case 'sessions':
-            default:
-                return <SessionsListWrapper pathname="/" />;
-        }
-    }, [effectiveActiveTab, friendsEnabled, inboxEnabled]);
 
     if (isTablet) {
         const buildPolicyDecision = getFeatureBuildPolicyDecision(SESSION_GETTING_STARTED_GUIDANCE_FEATURE_ID);
@@ -468,15 +298,14 @@ const PhoneTabbedMainViewContent = React.memo(function PhoneTabbedMainViewConten
         <View style={styles.phoneContainer}>
             <View style={{ backgroundColor: theme.colors.background.canvas }}>
                 <Header
-                    title={<HeaderTitle activeTab={headerTab} />}
-                    headerRight={() => <HeaderRight activeTab={headerTab} />}
+                    title={<HeaderTitle />}
+                    headerRight={() => <HeaderRight />}
                     headerLeft={() => <HeaderLogo />}
                     headerShadowVisible={false}
                     headerTransparent={true}
                 />
-                {voiceEnabled ? <VoiceSurface variant="sidebar" /> : null}
             </View>
-            {renderTabContent()}
+            <SessionsListWrapper pathname="/" />
         </View>
     );
 });
@@ -485,7 +314,7 @@ const MainViewLoaded = React.memo(({ variant, isTablet, pathname }: MainViewLoad
     if (variant === 'sidebar') {
         return <SidebarMainViewContent isTablet={isTablet} pathname={pathname} />;
     }
-    return <PhoneMainViewContent isTablet={isTablet} pathname={pathname} />;
+    return <PhoneMainViewContent isTablet={isTablet} />;
 });
 
 export const MainView = React.memo((props: MainViewProps) => {

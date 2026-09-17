@@ -132,16 +132,16 @@ vi.mock('@/hooks/server/useHappierVoiceSupport', () => ({
     useHappierVoiceSupport: () => happierVoiceSupportState.current,
 }));
 
-describe('RootLayout voice gating', () => {
-    it('mounts the in-window pet companion surface for ordinary web clients', async () => {
+describe('RootLayout keeps removed voice features inactive', () => {
+    it('does not mount the in-window pet companion surface', async () => {
         const RootLayout = (await import('@/app/(app)/_layout')).default;
 
         const screen = await renderScreen(React.createElement(RootLayout));
 
-        expect(screen.findByTestId('pet-app-shell-companion-mount')).not.toBeNull();
+        expect(screen.findAllByTestId('pet-app-shell-companion-mount')).toHaveLength(0);
     });
 
-    it('disables Happier voice mode when server reports voice unsupported', async () => {
+    it('does not rewrite stored voice preferences when the server reports voice unsupported', async () => {
         happierVoiceSupportState.current = false;
         applySettings.mockClear();
 
@@ -149,17 +149,10 @@ describe('RootLayout voice gating', () => {
 
         await renderScreen(React.createElement(RootLayout));
 
-        expect(applySettings).toHaveBeenCalledWith({
-            voice: {
-                providerId: 'off',
-                adapters: {
-                    realtime_elevenlabs: { billingMode: 'happier' },
-                },
-            },
-        });
+        expect(applySettings).not.toHaveBeenCalled();
     });
 
-    it('does not permanently disable Happier voice while support is still unknown', async () => {
+    it('leaves voice preferences unchanged while support is unknown', async () => {
         happierVoiceSupportState.current = null;
         applySettings.mockClear();
 
@@ -170,7 +163,7 @@ describe('RootLayout voice gating', () => {
         expect(applySettings).not.toHaveBeenCalled();
     });
 
-    it('reacts when active server support changes after mount', async () => {
+    it('does not rewrite voice preferences when server support changes after mount', async () => {
         happierVoiceSupportState.current = true;
         applySettings.mockClear();
 
@@ -186,13 +179,6 @@ describe('RootLayout voice gating', () => {
             tree!.update(React.createElement(RootLayout));
         });
 
-        expect(applySettings).toHaveBeenCalledWith({
-            voice: {
-                providerId: 'off',
-                adapters: {
-                    realtime_elevenlabs: { billingMode: 'happier' },
-                },
-            },
-        });
+        expect(applySettings).not.toHaveBeenCalled();
     });
 });

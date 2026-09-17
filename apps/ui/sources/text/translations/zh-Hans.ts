@@ -601,8 +601,8 @@ export const zhHans: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
-        title: "共享工作入口",
-        description: "每位受邀 Google 用户从自己的空白对话开始。所有人使用主机上的同一份项目文件，模型费用由主机方承担。",
+        title: "分享会话",
+        description: "每位受邀 Google 用户获得创建邀请时的聊天上下文，再在自己的会话中继续聊。项目文件共用，模型费用由主机方承担。",
         create: "创建邀请",
         name: "入口名称",
         members: "成员",
@@ -630,6 +630,13 @@ export const zhHans: TranslationStructure = {
         refresh: "刷新状态",
         loadingFailed: "无法确认访问状态，请刷新后再发送。",
         unavailable: "此会话暂不支持共享入口。",
+        contextSnapshotRequired: "此邀请没有保存聊天上下文，请主机方创建新的分享快照。",
+        contextSnapshotTooLarge: "聊天内容过长，无法复制。请分享一段较短的会话。",
+        contextSnapshotUnavailable: "无法复制此上下文，请分享没有分支历史的普通会话。",
+        createFresh: "创建新的分享快照",
+        createFreshDetail: "将当前聊天上下文保存为新邀请，已有成员保留原来的对话。",
+        previousInvitations: "其他邀请",
+        snapshotMissing: "此旧邀请没有保存聊天上下文。",
     },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
@@ -9565,7 +9572,7 @@ settingsSession: {
     // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
     brandTaglineLine1: "同一个项目，",
     brandTaglineLine2: "各自的 AI 对话。",
-    brandSubTagline: "在同一个项目目录里使用 Codex。每位成员从空白对话开始，共享文件改动。",
+    brandSubTagline: "把对话和上下文分享给他人，继续与 Codex 聊。后续对话独立，项目文件共用。",
     brandTrustStrip: "共享文件 · 独立对话 · 可自托管",
     frontDoorSelectedServer: "当前服务",
     frontDoorHostRequirement: "主机在线时执行任务；离线请求会被拒绝，不会排队等待。",

@@ -71,6 +71,29 @@ describe('getForkedTranscriptSnapshotCached', () => {
     vi.unstubAllEnvs();
   });
 
+  it('uses only the copied child history for a shared entry, even if its source is cached', () => {
+    const state = createState({
+      sessions: {
+        source: sessionRow('source', { path: '/tmp', host: 'h' }),
+        shared: sessionRow('shared', {
+          path: '/tmp', host: 'h',
+          forkV1: { v: 1, parentSessionId: 'source', parentCutoffSeqInclusive: 4, createdAtMs: 0, strategy: 'replay' },
+        }),
+      },
+      sessionMessages: {
+        source: sessionMessagesRow({ idsOldestFirst: ['private-row'], messagesById: { 'private-row': userMessage('private-row', 4, 'source updated after sharing') }, messagesVersion: 1, isLoaded: true }),
+        shared: sessionMessagesRow({ idsOldestFirst: ['copied-row'], messagesById: { 'copied-row': userMessage('copied-row', 1, 'fixed snapshot') }, messagesVersion: 1, isLoaded: true }),
+      },
+      sessionMessagesHistoryStartLoaded: { shared: true },
+    });
+    expect(getForkedTranscriptSnapshotCached(state, 'shared')).not.toBeNull();
+    state.sessions.shared!.metadata = { ...state.sessions.shared!.metadata!, sharedSessionEntryId: 'entry-1' };
+    // Null selects the canonical child-only transcript and prevents sync from requesting ancestors.
+    expect(getForkedTranscriptSnapshotCached(state, 'shared')).toBeNull();
+    delete state.sessions.source;
+    expect(getForkedTranscriptSnapshotCached(state, 'shared')).toBeNull();
+  });
+
   it('reveals cached ancestor segments only as closer history starts are reached, without stealing child-native ids', () => {
     const state = {
       ...createState({

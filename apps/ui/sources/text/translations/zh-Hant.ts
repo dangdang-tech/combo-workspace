@@ -622,8 +622,8 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         runBody: "在倉庫目錄下、已設定相同服務和主機資料目錄的終端執行，或在網頁中建立工作階段。",
     },
     sharedEntry: {
-        title: "共用工作入口",
-        description: "每位受邀 Google 使用者從自己的空白對話開始。所有人使用主機上的同一份專案檔案，模型費用由主機方承擔。",
+        title: "分享會話",
+        description: "每位受邀 Google 使用者取得建立邀請時的聊天上下文，再於自己的會話中繼續聊。專案檔案共用，模型費用由主機方承擔。",
         create: "建立邀請",
         name: "入口名稱",
         members: "成員",
@@ -651,6 +651,13 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         refresh: "重新整理狀態",
         loadingFailed: "無法確認存取狀態，請重新整理後再傳送。",
         unavailable: "此工作階段暫不支援共用入口。",
+        contextSnapshotRequired: "此邀請沒有儲存聊天上下文，請主機方建立新的分享快照。",
+        contextSnapshotTooLarge: "聊天內容過長，無法複製。請分享一段較短的會話。",
+        contextSnapshotUnavailable: "無法複製此上下文，請分享沒有分支歷史的一般會話。",
+        createFresh: "建立新的分享快照",
+        createFreshDetail: "將目前聊天上下文儲存為新邀請，已有成員保留原來的對話。",
+        previousInvitations: "其他邀請",
+        snapshotMissing: "此舊邀請沒有儲存聊天上下文。",
     },
   settingsKeyboard: {
       title: 'Keyboard shortcuts',
@@ -7952,7 +7959,7 @@ settingsSession: {
         // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
         brandTaglineLine1: "同一個專案，",
         brandTaglineLine2: "各自的 AI 對話。",
-        brandSubTagline: "在同一個專案目錄裡使用 Codex。每位成員從空白對話開始，共享檔案變更。",
+        brandSubTagline: "將對話和上下文分享給他人，繼續與 Codex 聊。後續對話獨立，專案檔案共用。",
         brandTrustStrip: "共享檔案 · 獨立對話 · 可自架",
         frontDoorSelectedServer: "目前服務",
         frontDoorHostRequirement: "主機在線時執行任務；離線請求會被拒絕，不會排隊等待。",

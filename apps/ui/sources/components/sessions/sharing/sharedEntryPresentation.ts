@@ -7,6 +7,9 @@ export function sharedEntryErrorMessage(error: unknown): string {
             case 'google_identity_required': return t('sharedEntry.googleRequired');
             case 'content_keys_required': return t('sharedEntry.keysRequired');
             case 'invite_not_found': return t('sharedEntry.inviteInvalid');
+            case 'context_snapshot_required': return t('sharedEntry.contextSnapshotRequired');
+            case 'context_snapshot_too_large': return t('sharedEntry.contextSnapshotTooLarge');
+            case 'context_snapshot_unavailable': return t('sharedEntry.contextSnapshotUnavailable');
             case 'forbidden':
             case 'shared_session_access_revoked': return t('sharedEntry.accessDisabled');
         }

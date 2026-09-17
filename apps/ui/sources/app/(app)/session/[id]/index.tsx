@@ -5,14 +5,7 @@ import { SessionView } from '@/components/sessions/shell/SessionView';
 import { SessionInvalidLinkFallback } from '@/components/sessions/shell/SessionInvalidLinkFallback';
 import { TranscriptSameSessionHandoffProvider } from '@/components/sessions/transcript/viewport/lifecycle/transcriptSameSessionHandoff';
 import type { AttachmentDraft } from '@/components/sessions/attachments/attachmentDraftModel';
-import { parseSessionPaneUrlState } from '@/components/sessions/panes/url/sessionPaneUrlState';
-import { useAppPaneScope } from '@/components/appShell/panes/hooks/useAppPaneScope';
-import { resolveSessionPaneScopeId } from '@/components/sessions/panes/sessionPaneScopeId';
-import { SessionCockpitShell } from '@/components/workspaceCockpit/session/SessionCockpitShell';
 import { selectSessionViewShellSessionForRouteState } from '@/components/sessions/shell/sessionViewStableSession';
-import { resolveSessionMobileSurfaceIntent } from '@/components/workspaceCockpit/session/sessionCockpitState';
-import { useMobileWorkspaceExperienceState } from '@/components/workspaceCockpit/useMobileWorkspaceExperienceState';
-import { useSessionTerminalAvailability } from '@/components/sessions/terminal/useSessionTerminalAvailability';
 import { getTempData } from '@/utils/sessions/tempDataStore';
 import { resolveSessionRouteAuthRecoveryState } from '@/hooks/session/sessionRouteAuthRecovery';
 import { useSessionRouteServerScope } from '@/hooks/session/sessionRouteServerScope';
@@ -20,79 +13,25 @@ import { useHydrateSessionForRoute } from '@/hooks/session/useHydrateSessionForR
 import { useActiveServerSnapshot } from '@/hooks/server/useActiveServerSnapshot';
 import { markSessionRouteEnteredForSessionUiTelemetry } from '@/sync/runtime/performance/sessionUiTelemetry';
 import {
-    isSessionRouteHydrationAvailable,
     isSessionRouteHydrationPending,
 } from '@/sync/domains/session/sessionRouteHydrationState';
 import {
-    getStorage,
-    readSessionLastMobileSurfaceFromMap,
     storage,
     useEndpointConnectivity,
     useSyncError,
 } from '@/sync/domains/state/storage';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 
-type InitialMobileSurfaceHintCache = Readonly<{
-    sessionId: string;
-    serverId: string | null;
-    explicitMobileSurfaceHint: string | null;
-    persistedSurface: string | null;
-}>;
-
-function readPersistedMobileSurfaceSnapshot(sessionId: string, serverId: string | null): string | null {
-    return readSessionLastMobileSurfaceFromMap(
-        getStorage().getState().localSettings.sessionLastMobileSurfaceBySessionId,
-        {
-            sessionId,
-            explicitServerId: serverId,
-        },
-    );
-}
-
-function useInitialMobileSurfaceHint(
-    sessionId: string,
-    explicitMobileSurfaceHint: string | null,
-    serverId: string | null,
-): string | null {
-    const cacheRef = React.useRef<InitialMobileSurfaceHintCache | null>(null);
-    const cached = cacheRef.current;
-
-    if (
-        !cached
-        || cached.sessionId !== sessionId
-        || cached.serverId !== serverId
-        || cached.explicitMobileSurfaceHint !== explicitMobileSurfaceHint
-    ) {
-        cacheRef.current = {
-            sessionId,
-            serverId,
-            explicitMobileSurfaceHint,
-            persistedSurface: explicitMobileSurfaceHint ?? (
-                sessionId ? readPersistedMobileSurfaceSnapshot(sessionId, serverId) : null
-            ),
-        };
-    }
-
-    return cacheRef.current?.persistedSurface ?? null;
-}
-
 export default React.memo(() => {
     const params = useLocalSearchParams<{
         id?: string | string[];
         serverId?: string | string[];
-        mobileSurface?: string | string[];
         jumpSeq?: string | string[];
-        right?: string | string[];
-        bottom?: string | string[];
-        details?: string | string[];
-        path?: string | string[];
-        sha?: string | string[];
         recoveryDataId?: string | string[];
     }>();
     const routeScope = useSessionRouteServerScope(params as Record<string, unknown>);
     const {
         id: sessionIdParam,
-        mobileSurface: mobileSurfaceParam,
         jumpSeq: jumpSeqParam,
         recoveryDataId: recoveryDataIdParam,
     } = params;
@@ -115,16 +54,6 @@ export default React.memo(() => {
         : Array.isArray(recoveryDataIdParam)
             ? (recoveryDataIdParam[0] ?? '')
             : '';
-    const explicitMobileSurfaceHint = typeof mobileSurfaceParam === 'string'
-        ? mobileSurfaceParam
-        : Array.isArray(mobileSurfaceParam)
-            ? (mobileSurfaceParam[0] ?? null)
-            : null;
-    const initialMobileSurfaceHint = useInitialMobileSurfaceHint(
-        sessionId,
-        explicitMobileSurfaceHint,
-        routeScope.serverId ?? null,
-    );
     const recoverableAttachmentDrafts = React.useMemo(() => {
         const trimmedRecoveryDataId = recoveryDataId.trim();
         if (!trimmedRecoveryDataId) {
@@ -134,15 +63,6 @@ export default React.memo(() => {
         const data = getTempData<{ attachmentDrafts?: readonly AttachmentDraft[] | null }>(trimmedRecoveryDataId);
         return Array.isArray(data?.attachmentDrafts) ? data.attachmentDrafts : null;
     }, [recoveryDataId]);
-    const paneUrlState = React.useMemo(() => parseSessionPaneUrlState(params as any), [params]);
-    const scopeId = React.useMemo(() => resolveSessionPaneScopeId(sessionId), [sessionId]);
-    const pane = useAppPaneScope(scopeId);
-    const { cockpitEnabled } = useMobileWorkspaceExperienceState();
-    const { sidebarTabAvailable: terminalTabAvailable } = useSessionTerminalAvailability({
-        sessionId,
-        serverId: routeScope.serverId ?? null,
-    });
-
     const endpointConnectivity = useEndpointConnectivity();
     const syncError = useSyncError();
     const activeServerSnapshot = useActiveServerSnapshot();
@@ -157,7 +77,6 @@ export default React.memo(() => {
         `SessionRoute.ensureSessionVisible gen=${activeServerGeneration}`,
         routeScope.hydrationOptions,
     );
-    const sessionHydrated = isSessionRouteHydrationAvailable(routeHydrationState);
     const sessionCached = storage((state) => {
         return Boolean(selectSessionViewShellSessionForRouteState(
             {
@@ -191,41 +110,17 @@ export default React.memo(() => {
     }
 
     return (
-        <TranscriptSameSessionHandoffProvider
-            desiredExperience={cockpitEnabled ? 'cockpit' : 'classic'}
-            sessionId={sessionId}
-        >
-            {(experience) => experience === 'cockpit'
-                ? (
-                    <SessionCockpitShell
-                        sessionId={sessionId}
-                        scopeId={scopeId}
-                        surface={resolveSessionMobileSurfaceIntent({
-                            routeKind: 'index',
-                            activeRightTabId: pane.scopeState?.right?.activeTabId,
-                            detailsTargetPresent: (pane.scopeState?.details?.tabs?.length ?? 0) > 0,
-                            persistedSurface: initialMobileSurfaceHint,
-                            terminalTabAvailable,
-                        })}
-                        routeServerId={routeScope.serverId ?? undefined}
-                        jumpToSeq={jumpToSeq}
-                        paneUrlState={paneUrlState ?? undefined}
-                        initialAttachmentDrafts={recoverableAttachmentDrafts}
-                        routeHydrationState={routeHydrationState}
-                        terminalTabAvailable={terminalTabAvailable}
-                    />
-                )
-                : (
-                    <SessionView
-                        id={sessionId}
-                        routeServerId={routeScope.serverId ?? undefined}
-                        jumpToSeq={jumpToSeq}
-                        paneUrlState={paneUrlState ?? undefined}
-                        initialAttachmentDrafts={recoverableAttachmentDrafts}
-                        routeAnchorOverride={Platform.OS === 'web' ? undefined : true}
-                        routeHydrationState={routeHydrationState}
-                    />
-                )}
+        <TranscriptSameSessionHandoffProvider desiredExperience="classic" sessionId={sessionId}>
+            {() => (
+                <SessionView
+                    id={sessionId}
+                    routeServerId={routeScope.serverId ?? undefined}
+                    jumpToSeq={jumpToSeq}
+                    initialAttachmentDrafts={recoverableAttachmentDrafts}
+                    routeAnchorOverride={Platform.OS === 'web' ? undefined : true}
+                    routeHydrationState={routeHydrationState}
+                />
+            )}
         </TranscriptSameSessionHandoffProvider>
     );
 });

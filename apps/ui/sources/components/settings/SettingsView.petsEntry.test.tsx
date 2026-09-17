@@ -184,43 +184,19 @@ describe('SettingsView pets entry', () => {
         shared.petsSyncEnabled = false;
     });
 
-    it('hides the Pets row when the companion feature is denied', async () => {
-        shared.petsCompanionEnabled = false;
+    it.each([
+        [false, false],
+        [true, false],
+        [false, true],
+        [true, true],
+    ])('omits Pets regardless of companion=%s and sync=%s', async (companion, sync) => {
+        shared.petsCompanionEnabled = companion;
+        shared.petsSyncEnabled = sync;
 
         const { SettingsView } = await import('./SettingsView');
         const screen = await renderSettingsView(<SettingsView />);
 
         expect(screen.findRow('settings-pets-row')).toBeNull();
-    });
-
-    it('shows the Pets row when the companion feature is enabled', async () => {
-        shared.petsCompanionEnabled = true;
-
-        const { SettingsView } = await import('./SettingsView');
-        const screen = await renderSettingsView(<SettingsView />);
-
-        expect(screen.findRow('settings-pets-row')).not.toBeNull();
-    });
-
-    it('shows the Pets row when sync is enabled even if the companion feature is denied', async () => {
-        shared.petsCompanionEnabled = false;
-        shared.petsSyncEnabled = true;
-
-        const { SettingsView } = await import('./SettingsView');
-        const screen = await renderSettingsView(<SettingsView />);
-
-        expect(screen.findRow('settings-pets-row')).not.toBeNull();
-    });
-
-    it('navigates to the Pets settings screen from the row', async () => {
-        shared.petsCompanionEnabled = true;
-
-        const { SettingsView } = await import('./SettingsView');
-        const screen = await renderSettingsView(<SettingsView />);
-
-        screen.pressRow('settings-pets-row');
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/pets');
+        expect(screen.findRowByTitle('settings.account')).not.toBeNull();
     });
 });

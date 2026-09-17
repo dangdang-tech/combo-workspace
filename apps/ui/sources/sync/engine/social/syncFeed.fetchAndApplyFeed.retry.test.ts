@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const runtimeFetchSpy = vi.hoisted(() => vi.fn());
 
@@ -14,6 +14,19 @@ import { encodeBase64 } from '@/encryption/base64';
 import { encodeUTF8 } from '@/encryption/text';
 import type { AuthCredentials } from '@/auth/storage/tokenStorage';
 import { upsertAndActivateServer } from '@/sync/domains/server/serverRuntime';
+import { createRootLayoutFeaturesResponse } from '@/dev/testkit';
+import { storage } from '@/sync/domains/state/storage';
+import { resetServerFeaturesClientForTests } from '@/sync/api/capabilities/serverFeaturesClient';
+
+const initialStorageState = storage.getState();
+
+function featureResponse(enabled: boolean): Response {
+    return Response.json(createRootLayoutFeaturesResponse({ features: { social: { friends: { enabled } } } }));
+}
+
+function requestPath(input: unknown): string {
+    return new URL(String(input)).pathname;
+}
 
 function buildTokenWithSub(sub: string): string {
     const payload = encodeBase64(encodeUTF8(JSON.stringify({ sub })), 'base64');
@@ -21,9 +34,18 @@ function buildTokenWithSub(sub: string): string {
 }
 
 describe('fetchAndApplyFeed retry semantics', () => {
+    beforeEach(() => {
+        vi.stubEnv('EXPO_PUBLIC_HAPPIER_BUILD_FEATURES_ALLOW', 'social.friends');
+        storage.setState(initialStorageState, true);
+        storage.getState().applySettingsLocal({ experiments: true, featureToggles: { 'social.friends': true } });
+        resetServerFeaturesClientForTests();
+    });
+
     afterEach(() => {
         runtimeFetchSpy.mockReset();
-        vi.resetModules();
+        resetServerFeaturesClientForTests();
+        storage.setState(initialStorageState, true);
+        vi.unstubAllEnvs();
         vi.useRealTimers();
         vi.restoreAllMocks();
     });
@@ -33,7 +55,9 @@ describe('fetchAndApplyFeed retry semantics', () => {
         vi.spyOn(Math, 'random').mockReturnValue(0);
 
         upsertAndActivateServer({ serverUrl: 'https://server.example.test', scope: 'tab' });
-        runtimeFetchSpy.mockResolvedValue(new Response('nope', { status: 500 }));
+        runtimeFetchSpy.mockImplementation(async (input: unknown) => requestPath(input) === '/v1/features'
+            ? featureResponse(true)
+            : new Response('nope', { status: 500 }));
 
         const { fetchAndApplyFeed } = await import('./syncFeed');
 
@@ -56,7 +80,23 @@ describe('fetchAndApplyFeed retry semantics', () => {
         await vi.runAllTimersAsync();
         await assertion;
 
-        expect(runtimeFetchSpy).toHaveBeenCalledTimes(1);
+        expect(runtimeFetchSpy.mock.calls.filter(([input]) => requestPath(input) === '/v1/feed')).toHaveLength(1);
+    });
+
+    it('does not request or apply feed when the existing social feature is disabled', async () => {
+        upsertAndActivateServer({ serverUrl: 'https://server.example.test', scope: 'tab' });
+        runtimeFetchSpy.mockImplementation(async (input: unknown) => requestPath(input) === '/v1/features'
+            ? featureResponse(false)
+            : Response.json({ items: [], hasMore: false }));
+        const { fetchAndApplyFeed } = await import('./syncFeed');
+        const applyFeedItems = vi.fn();
+        await fetchAndApplyFeed({
+            credentials: { token: buildTokenWithSub('server-test'), secret: encodeBase64(new Uint8Array(32).fill(1), 'base64url') },
+            getFeedItems: () => [], getFeedHead: () => null, assumeUsers: async () => {}, getUsers: () => ({}),
+            applyFeedItems, log: { log: vi.fn() },
+        });
+        expect(runtimeFetchSpy.mock.calls.map(([input]) => requestPath(input))).not.toContain('/v1/feed');
+        expect(applyFeedItems).not.toHaveBeenCalled();
     });
 
     it('drops fetched feed items when the captured sync scope is stale before apply', async () => {

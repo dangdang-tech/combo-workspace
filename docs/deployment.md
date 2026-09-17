@@ -42,6 +42,24 @@ Before accepting a deployment, verify `/ready`, `/v1/features`, the application 
 
 On a shared build host, use a dedicated builder with CPU/memory limits and limited parallelism; see [Docker container-driver limits](https://docs.docker.com/build/builders/drivers/docker-container/) and [BuildKit parallelism](https://docs.docker.com/build/buildkit/configure/#max-parallelism). Stop that builder after the build without pruning unrelated Docker resources.
 
+## Upgrade the COMBO context-snapshot version
+
+Treat this as a coordinated source-version upgrade of the server, web UI, and host CLI. The server requires `contextSnapshotVersion: 1` when a daemon completes member preparation. An older daemon can still connect, but cannot complete the updated preparation protocol. A new daemon rejects new allocations without a share-time snapshot instead of reading the current source history. Restoring an already allocated member reuses that child and its key without copying any source history.
+
+The additive `20260917120000_shared_session_context_snapshot` migration adds nullable `SharedSessionEntry.sourceSnapshot` for PostgreSQL, SQLite, and MySQL. Existing entries remain readable with a null snapshot; migration does not backfill them from a newer source conversation. Existing ready members retain access under the current grant rules, and can be revoked and restored to the same child. Create a new entry for new recipients when an old entry has members and no snapshot. Replacing a current invitation token preserves its snapshot. Source deletion keeps the existing cascade behavior: it removes the entry, memberships, and their stored grants, while child sessions remain with the host. Immediate invalidation of every open socket is not asserted here.
+
+Before switching the test environment:
+
+1. Stop its dedicated host daemon so old and new provisioning workers do not overlap.
+2. Back up that environment's database and preserve its data/config directories, including the server master secret. Verify the provider-specific migration on a backup or disposable clone; do not point development migration commands at another environment.
+3. Deploy the matching source-built server and UI, apply the provider's migration through the existing startup or migration owner, and check readiness and the feature response.
+4. Start the matching host CLI against the same origin and confirm its exact-machine presence.
+5. Use two real Google accounts in a disposable project. Put a marker in A's conversation, create an invitation, then add a different marker to A. B must see and use the first marker, not the later one; B's new messages must leave A's conversation unchanged. Verify independent child keys, host-only tool approval, revoke/re-enable, and offline draft behavior separately.
+
+The server saves source metadata and stored message ciphertext at invitation creation, so later in-place streaming updates cannot change the saved context. It accepts at most 5,000 main-conversation rows and 2,000,000 serialized bytes. The daemon reuses the canonical replay reader and creator, with a default 120,000-character seed budget including framing (`HAPPIER_REPLAY_MAX_SEED_CHARS`, bounded by the existing replay configuration). Oversized or unreadable context and fork-dependent sources fail closed. Copied history contains user/assistant text, not the complete provider trace. Each child keeps the source project directory; project files remain shared.
+
+These are upgrade and acceptance requirements, not a claim that a particular image has been deployed or passed browser/provider acceptance. Preserve the pre-upgrade backup; rolling back readers after new snapshot writes requires its own validation.
+
 ## Runtime overview
 - **App server:** Node.js running `tsx ./sources/main.ts` (Fastify + Socket.IO).
 - **Database:** Postgres via Prisma.

@@ -89,18 +89,6 @@ vi.mock('@/hooks/server/useFeatureEnabled', () => ({
     useFeatureEnabled: () => true,
 }));
 
-function hasTextChild(node: renderer.ReactTestInstance, value: string) {
-    return node.findAllByType('Text' as never).some((child) => String(child.props.children) === value);
-}
-
-function hasIndicatorDot(node: renderer.ReactTestInstance) {
-    return node.findAll((child) => {
-        if (String(child.type) !== 'View') return false;
-        const style = child.props?.style ?? {};
-        return style.width === 6 && style.height === 6;
-    }).length > 0;
-}
-
 function styleObjects(style: unknown): Record<string, unknown>[] {
     const styles = Array.isArray(style) ? style : [style];
     return styles.filter((value): value is Record<string, unknown> => Boolean(value) && typeof value === 'object');
@@ -146,40 +134,24 @@ describe('TabBar', () => {
         expect(screen.findAllHostsByTestId('tabbar-tab-sessions')).toHaveLength(1);
         expect(screen.findAll((node) => typeof node.props?.testID === 'string'
             && node.props.testID.startsWith('tabbar-tab-')
-            && typeof node.type === 'string')).toHaveLength(4);
+            && typeof node.type === 'string')).toHaveLength(2);
     });
 
-    it('hides tab badges when disabled in settings', async () => {
-        friendRequestsState.items = [{ id: 'fr-1' }, { id: 'fr-2' }];
+    it('keeps only sessions and settings reachable even when inbox and friends have content', async () => {
+        friendRequestsState.items = [{ id: 'fr-1' }];
         inboxState.hasContent = true;
-        badgeSettingsState.friends = false;
-        badgeSettingsState.inbox = false;
+        const onTabPress = vi.fn();
         const { TabBar } = await import('./TabBar');
+        const screen = await renderScreen(<TabBar activeTab="sessions" onTabPress={onTabPress} />);
 
-        const tree = (await renderScreen(<TabBar activeTab="sessions" onTabPress={() => {}} />)).tree;
-
-        const tabs = tree.findAll((node) => typeof node.props?.onPress === 'function');
-        const allTextNodes = tree.findAllByType('Text' as never);
-        expect(tabs.some((tab) => hasIndicatorDot(tab))).toBe(false);
-        expect(allTextNodes.some((node) => String(node.props.children) === '2')).toBe(false);
-    });
-
-    it('shows friend request counts on the friends tab and a dot for inbox content', async () => {
-        friendRequestsState.items = [{ id: 'fr-1' }, { id: 'fr-2' }];
-        inboxState.hasContent = true;
-        const { TabBar } = await import('./TabBar');
-
-        let tree: renderer.ReactTestRenderer | null = null;
-        tree = (await renderScreen(<TabBar activeTab="sessions" onTabPress={() => {}} />)).tree;
-
-        const tabs = tree!.findAll((node) => typeof node.props?.onPress === 'function');
-        const inboxTab = tabs.find((tab) => hasIndicatorDot(tab));
-        const allTextNodes = tree!.findAllByType('Text' as never);
-
-        expect(inboxTab).toBeTruthy();
-        expect(allTextNodes.some((node) => String(node.props.children) === '2')).toBe(true);
-        expect(hasIndicatorDot(inboxTab!)).toBe(true);
-        expect(hasTextChild(inboxTab!, '2')).toBe(false);
+        expect(screen.findAllHostsByTestId('tabbar-tab-inbox')).toHaveLength(0);
+        expect(screen.findAllHostsByTestId('tabbar-tab-friends')).toHaveLength(0);
+        expect(screen.findByTestId('tabbar-tab-settings')?.props.accessibilityRole).toBe('tab');
+        expect(screen.findByTestId('tabbar-tab-sessions')?.props.accessibilityState.selected).toBe(true);
+        screen.pressByTestId('tabbar-tab-settings');
+        expect(onTabPress).toHaveBeenCalledWith('settings');
+        screen.pressByTestId('tabbar-tab-sessions');
+        expect(onTabPress).toHaveBeenLastCalledWith('sessions');
     });
 
 });

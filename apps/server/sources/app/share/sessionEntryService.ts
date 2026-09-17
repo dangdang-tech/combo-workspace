@@ -17,7 +17,6 @@ export class SessionEntryError extends Error {
 
 export const ENTRY_INCLUDE = {
     machine: { select: SESSION_ENTRY_MACHINE_SELECT },
-    sourceSession: { select: { encryptionMode: true, dataEncryptionKey: true } },
 } as const;
 
 export const MEMBER_INCLUDE = { entry: { include: ENTRY_INCLUDE }, user: { select: { username: true } } } as const;
@@ -32,8 +31,9 @@ export function newInvite() {
     return { token, hash: hashInvite(token) };
 }
 export function hashInvite(token: string) { return createHash("sha256").update(token).digest("hex"); }
-export function publicEntry(entry: Pick<Entry, "id" | "title" | "sourceSessionId" | "machineId" | "createdAt">) {
-    return { id: entry.id, title: entry.title, sourceSessionId: entry.sourceSessionId, machineId: entry.machineId, createdAt: entry.createdAt.getTime() };
+export function publicEntry(entry: Pick<Entry, "id" | "title" | "sourceSessionId" | "machineId" | "createdAt" | "sourceSnapshot">) {
+    return { id: entry.id, title: entry.title, sourceSessionId: entry.sourceSessionId, machineId: entry.machineId,
+        createdAt: entry.createdAt.getTime(), hasContextSnapshot: Boolean(entry.sourceSnapshot) };
 }
 export function memberSummary(member: Member) {
     return { id: member.id, userId: member.userId, username: member.user.username, status: member.enabled ? member.status : "revoked", enabled: member.enabled, sessionId: member.sessionId, errorCode: member.errorCode };
@@ -59,6 +59,21 @@ export async function assertGoogleIdentity(userId: string, tx: Tx = db) {
 
 export function assertHostOnline(entry: Pick<Entry, "machine">) {
     if (!isSessionEntryHostLive(entry.machine)) throw new SessionEntryError(409, "host_offline");
+}
+
+/** Provisioning follows the frozen source contract, never the source's current mode. */
+export function entrySourceEncryptionMode(entry: Pick<Entry, "sourceSnapshot" | "sourceSessionId">): "plain" | "e2ee" {
+    const snapshot = entry.sourceSnapshot;
+    if (snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+        && "v" in snapshot && snapshot.v === 1 && "session" in snapshot) {
+        const session = snapshot.session;
+        if (session && typeof session === "object" && !Array.isArray(session)
+            && "id" in session && session.id === entry.sourceSessionId && "encryptionMode" in session
+            && (session.encryptionMode === "plain" || session.encryptionMode === "e2ee")) {
+            return session.encryptionMode;
+        }
+    }
+    throw new SessionEntryError(409, "context_snapshot_required");
 }
 
 export function parseEntryDataKey(value: string | undefined): Uint8Array<ArrayBuffer> {
@@ -110,4 +125,20 @@ export async function revokeEntrySession(tx: Tx, member: Member) {
         invalidateSessionRelayAuthorizationForSession(sessionId);
         if (share) eventRouter.emitUpdate({ userId: member.userId, payload: buildSessionShareRevokedUpdate(share.id, sessionId, cursor, randomKeyNaked(12)), recipientFilter: { type: "all-user-authenticated-connections" } });
     });
+}
+
+/** Freeze stored message content and metadata without decrypting encrypted sessions. */
+export async function captureEntrySourceSnapshot(tx: Tx, sourceSessionId: string) {
+    const session = await tx.session.findUniqueOrThrow({ where: { id: sourceSessionId },
+        select: { id: true, seq: true, metadata: true, encryptionMode: true, dataEncryptionKey: true } });
+    const messages = await tx.sessionMessage.findMany({ where: { sessionId: sourceSessionId, seq: { lte: session.seq }, sidechainId: null },
+        orderBy: { seq: "asc" }, take: 5_001, select: { seq: true, createdAt: true, content: true, messageRole: true } });
+    const snapshot = { v: 1, session: { ...session,
+        dataEncryptionKey: session.dataEncryptionKey ? privacyKit.encodeBase64(new Uint8Array(session.dataEncryptionKey)) : null },
+        messages: messages.map((message) => ({ ...message, createdAt: message.createdAt.getTime() })) };
+    // Refuse oversized shares; never silently replace a snapshot with a later live read.
+    if (messages.length > 5_000 || Buffer.byteLength(JSON.stringify(snapshot), "utf8") > 2_000_000) {
+        throw new SessionEntryError(409, "context_snapshot_too_large");
+    }
+    return snapshot;
 }

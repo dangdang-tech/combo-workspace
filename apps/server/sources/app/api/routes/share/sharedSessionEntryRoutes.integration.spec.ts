@@ -97,8 +97,211 @@ describe("private session entry lifecycle", () => {
         return result.json().assignment;
     }
     function complete(memberId: string, sessionId: string, encryptedDataKey?: string) {
-        return post(ownerId, `/v1/machines/${machineId}/shared-session-entries/${memberId}/complete`, { sessionId, ...(encryptedDataKey ? { encryptedDataKey } : {}) });
+        return post(ownerId, `/v1/machines/${machineId}/shared-session-entries/${memberId}/complete`, { sessionId, contextSnapshotVersion: 1, ...(encryptedDataKey ? { encryptedDataKey } : {}) });
     }
+
+    it("reports snapshot availability without exposing snapshot contents in entry summaries", async () => {
+        const { newInvite } = await import("@/app/share/sessionEntryService");
+        const legacy = await db.sharedSessionEntry.create({ data: { ownerId, sourceSessionId, machineId, title: "Legacy summary", inviteTokenHash: newInvite().hash } });
+        const created = await entry();
+        expect(created.entry.hasContextSnapshot).toBe(true);
+        const response = await app.inject({ method: "GET", url: "/v1/shared-session-entries", headers: { "x-test-user-id": ownerId } });
+        expect(response.statusCode).toBe(200);
+        expect(response.json().entries).toEqual(expect.arrayContaining([
+            expect.objectContaining({ id: created.entry.id, hasContextSnapshot: true }),
+            expect.objectContaining({ id: legacy.id, hasContextSnapshot: false }),
+        ]));
+        expect(response.body).not.toContain("sourceSnapshot");
+        expect(response.body).not.toContain("opaque-source-metadata");
+        expect(response.body).not.toContain("dataEncryptionKey");
+    });
+
+    it("rejects completion from daemons that do not acknowledge context snapshot version 1", async () => {
+        const created = await entry();
+        const memberId = (await redeem(created.inviteToken)).json().access.memberId;
+        await claim(memberId);
+        const childSession = await child();
+        for (const contextSnapshotVersion of [undefined, 0, 2, "1"]) {
+            const response = await post(ownerId, `/v1/machines/${machineId}/shared-session-entries/${memberId}/complete`, {
+                sessionId: childSession.id, ...(contextSnapshotVersion === undefined ? {} : { contextSnapshotVersion }),
+            });
+            expect(response.statusCode).toBe(400);
+            expect(await db.sessionShare.count({ where: { entryMemberId: memberId } })).toBe(0);
+            expect(await checkSessionAccess(guestId, childSession.id)).toBeNull();
+        }
+        expect(await db.sharedSessionEntryMember.findUniqueOrThrow({ where: { id: memberId } })).toMatchObject({ status: "provisioning", sessionId: null });
+        expect((await complete(memberId, childSession.id)).statusCode).toBe(200);
+    });
+
+    it.each(["pending", "provisioning", "failed", "ready", "revoked"])("refuses to capture a new snapshot when rotating a legacy entry with a %s member", async (status) => {
+        const { newInvite } = await import("@/app/share/sessionEntryService");
+        const invite = newInvite();
+        const legacy = await db.sharedSessionEntry.create({ data: { ownerId, sourceSessionId, machineId, title: "Legacy with members", inviteTokenHash: invite.hash } });
+        const childSession = await child();
+        const member = await db.sharedSessionEntryMember.create({ data: {
+            entryId: legacy.id, userId: guestId, status, enabled: status !== "revoked", sessionId: status === "ready" ? childSession.id : null,
+        } });
+        if (status === "ready") {
+            await db.sessionShare.create({ data: {
+                sessionId: childSession.id, sharedByUserId: ownerId, sharedWithUserId: guestId,
+                entryMemberId: member.id, accessLevel: "edit", canApprovePermissions: false,
+            } });
+        }
+
+        const rotated = await post(ownerId, `/v1/shared-session-entries/${legacy.id}/invite`);
+
+        expect(rotated.statusCode).toBe(409);
+        expect(rotated.json().error).toBe("context_snapshot_required");
+        expect(await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: legacy.id } })).toMatchObject({ sourceSnapshot: null, inviteTokenHash: invite.hash });
+        const newGuest = await guest();
+        expect((await redeem(invite.token, newGuest.id)).json().error).toBe("context_snapshot_required");
+        if (status === "ready") {
+            expect((await redeem(invite.token)).json().access.sessionId).toBe(childSession.id);
+            const response = await app.inject({ method: "GET", url: `/v1/shared-session-entries/${legacy.id}/access`, headers: { "x-test-user-id": guestId } });
+            expect(response.json().access).toMatchObject({ status: "ready", sessionId: childSession.id });
+            expect((await checkSessionAccess(guestId, childSession.id))?.level).toBe("edit");
+        } else if (status !== "revoked") {
+            expect((await redeem(invite.token)).json().error).toBe("context_snapshot_required");
+            expect((await complete(member.id, childSession.id)).json().error).toBe("context_snapshot_required");
+        } else {
+            const enabled = await app.inject({ method: "PATCH", url: `/v1/shared-session-entries/${legacy.id}/members/${member.id}`,
+                headers: { "x-test-user-id": ownerId }, payload: { enabled: true } });
+            expect(enabled.statusCode).toBe(409);
+            expect(enabled.json().error).toBe("context_snapshot_required");
+            expect(await db.sharedSessionEntryMember.findUniqueOrThrow({ where: { id: member.id } })).toMatchObject({ enabled: false, status: "revoked" });
+        }
+    });
+
+    it("skips legacy pending assignments without snapshots so they cannot block new shares", async () => {
+        const { newInvite } = await import("@/app/share/sessionEntryService");
+        const legacy = await db.sharedSessionEntry.create({ data: { ownerId, sourceSessionId, machineId, title: "Legacy pending", inviteTokenHash: newInvite().hash } });
+        await db.sharedSessionEntryMember.create({ data: { entryId: legacy.id, userId: guestId, createdAt: new Date(0) } });
+        const created = await entry();
+        const memberId = (await redeem(created.inviteToken)).json().access.memberId;
+
+        expect((await claim(memberId)).sourceSnapshot.v).toBe(1);
+    });
+
+    it.each(["plain", "e2ee"])("restores the same legacy %s child after revocation without capturing source context", async (encryptionMode) => {
+        const { newInvite } = await import("@/app/share/sessionEntryService");
+        const invite = newInvite();
+        const legacy = await db.sharedSessionEntry.create({ data: { ownerId, sourceSessionId, machineId, title: "Legacy conversation", inviteTokenHash: invite.hash } });
+        const childSession = await child(encryptionMode);
+        await db.sessionMessage.create({ data: { sessionId: childSession.id, seq: 1, content: { t: "encrypted", c: "existing-child-content" } } });
+        const member = await db.sharedSessionEntryMember.create({ data: { entryId: legacy.id, userId: guestId, status: "ready", sessionId: childSession.id } });
+        await db.sessionShare.create({ data: {
+            sessionId: childSession.id, sharedByUserId: ownerId, sharedWithUserId: guestId,
+            entryMemberId: member.id, accessLevel: "edit", canApprovePermissions: false,
+        } });
+        const toggle = (enabled: boolean) => app.inject({ method: "PATCH", url: `/v1/shared-session-entries/${legacy.id}/members/${member.id}`,
+            headers: { "x-test-user-id": ownerId }, payload: { enabled } });
+        expect((await toggle(false)).statusCode).toBe(200);
+        expect(await checkSessionAccess(guestId, childSession.id)).toBeNull();
+        expect(await db.sessionShare.count({ where: { entryMemberId: member.id } })).toBe(0);
+
+        expect((await toggle(true)).statusCode).toBe(200);
+        const assignment = await claim(member.id);
+        expect(assignment).toMatchObject({ sessionId: childSession.id, sourceSnapshot: null, encryptionMode });
+        expect(await checkSessionAccess(guestId, childSession.id)).toBeNull();
+        const differentChild = await child(encryptionMode);
+        expect((await complete(member.id, differentChild.id)).json().error).toBe("invalid_child_session");
+        const wrappedKey = encryptionMode === "e2ee" ? Buffer.alloc(105).toString("base64") : undefined;
+        if (wrappedKey) expect((await complete(member.id, childSession.id)).json().error).toBe("encrypted_data_key_required");
+        expect((await complete(member.id, childSession.id, wrappedKey)).statusCode).toBe(200);
+        expect((await checkSessionAccess(guestId, childSession.id))?.level).toBe("edit");
+        const share = await db.sessionShare.findUniqueOrThrow({ where: { entryMemberId: member.id } });
+        expect(share).toMatchObject({ sessionId: childSession.id, accessLevel: "edit", canApprovePermissions: false });
+        if (wrappedKey) expect(Buffer.from(share.encryptedDataKey!).toString("base64")).toBe(wrappedKey);
+        expect((await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: legacy.id } })).sourceSnapshot).toBeNull();
+        expect(await db.sessionMessage.count({ where: { sessionId: childSession.id } })).toBe(1);
+        expect((await redeem(invite.token, (await guest()).id)).json().error).toBe("context_snapshot_required");
+    });
+
+    it("keeps the snapshot and encryption contract frozen when the source changes and the invitation rotates", async () => {
+        const encryptedSource = await child("e2ee");
+        const created = await entry(encryptedSource.id);
+        const captured = (await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: created.entry.id } })).sourceSnapshot;
+        await db.session.update({ where: { id: encryptedSource.id }, data: { encryptionMode: "plain", dataEncryptionKey: null, metadata: "later-private-metadata" } });
+
+        const rotated = await post(ownerId, `/v1/shared-session-entries/${created.entry.id}/invite`);
+        expect(rotated.statusCode).toBe(200);
+        expect((await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: created.entry.id } })).sourceSnapshot).toEqual(captured);
+        const encryptedGuest = await guest();
+        expect((await redeem(rotated.json().inviteToken, encryptedGuest.id)).json().error).toBe("content_keys_required");
+        await db.account.update({ where: { id: encryptedGuest.id }, data: { contentPublicKey: new Uint8Array(32), contentPublicKeySig: new Uint8Array(64) } });
+        const memberId = (await redeem(rotated.json().inviteToken, encryptedGuest.id)).json().access.memberId;
+        const assignment = await claim(memberId);
+        expect(assignment.encryptionMode).toBe("e2ee");
+        expect(assignment.sourceSnapshot).toEqual(captured);
+        const plaintextChild = await child();
+        expect((await complete(memberId, plaintextChild.id)).json().error).toBe("encryption_mode_mismatch");
+        const encryptedChild = await child("e2ee");
+        expect((await complete(memberId, encryptedChild.id, Buffer.alloc(105).toString("base64"))).statusCode).toBe(200);
+    });
+
+    it("allows 5000 snapshot rows and atomically refuses a larger context", async () => {
+        const source = await child();
+        await db.session.update({ where: { id: source.id }, data: { seq: 5_000 } });
+        for (let offset = 0; offset < 5_000; offset += 500) {
+            await db.sessionMessage.createMany({ data: Array.from({ length: 500 }, (_, index) => ({
+                sessionId: source.id, seq: offset + index + 1, content: { t: "plain", v: "context" },
+            })) });
+        }
+        const created = await entry(source.id);
+        const snapshot = (await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: created.entry.id } })).sourceSnapshot as { messages: unknown[] };
+        expect(snapshot.messages).toHaveLength(5_000);
+        await db.session.update({ where: { id: source.id }, data: { seq: 5_001 } });
+        await db.sessionMessage.create({ data: { sessionId: source.id, seq: 5_001, content: { t: "plain", v: "extra" } } });
+        const rejected = await post(ownerId, "/v1/shared-session-entries", { title: "Oversized", sourceSessionId: source.id, machineId });
+        expect(rejected.statusCode).toBe(409);
+        expect(rejected.json().error).toBe("context_snapshot_too_large");
+        expect(await db.sharedSessionEntry.count({ where: { sourceSessionId: source.id } })).toBe(1);
+    });
+
+    it("bounds snapshot size in UTF-8 bytes without leaving a partial entry", async () => {
+        const source = await child();
+        await db.session.update({ where: { id: source.id }, data: { metadata: "界".repeat(700_000) } });
+        const rejected = await post(ownerId, "/v1/shared-session-entries", { title: "Oversized bytes", sourceSessionId: source.id, machineId });
+        expect(rejected.statusCode).toBe(409);
+        expect(rejected.json().error).toBe("context_snapshot_too_large");
+        expect(await db.sharedSessionEntry.count({ where: { sourceSessionId: source.id } })).toBe(0);
+    });
+
+    it("freezes message content and metadata when sharing, without exposing the source snapshot to guests", async () => {
+        const source = await child();
+        await db.session.update({ where: { id: source.id }, data: { seq: 1, metadata: "metadata-at-share" } });
+        const message = await db.sessionMessage.create({ data: {
+            sessionId: source.id, seq: 1, localId: "streaming-source",
+            content: { t: "plain", v: { role: "user", content: { type: "text", text: "before sharing" } } },
+        } });
+        const created = await entry(source.id);
+        expect(JSON.stringify(created)).not.toContain("metadata-at-share");
+        await db.session.update({ where: { id: source.id }, data: { seq: 2, metadata: "private-after-sharing" } });
+        await db.sessionMessage.update({ where: { id: message.id }, data: {
+            content: { t: "plain", v: { role: "user", content: { type: "text", text: "private streamed addition" } } },
+        } });
+        await db.sessionMessage.create({ data: { sessionId: source.id, seq: 2,
+            content: { t: "plain", v: { role: "user", content: { type: "text", text: "private later turn" } } },
+        } });
+        const redeemed = (await redeem(created.inviteToken)).json();
+        expect(JSON.stringify(redeemed)).not.toContain("before sharing");
+        const assignment = await claim(redeemed.access.memberId);
+        expect(assignment.sourceSnapshot).toMatchObject({ v: 1, session: { id: source.id, seq: 1, metadata: "metadata-at-share" },
+            messages: [{ seq: 1, content: { t: "plain", v: { content: { text: "before sharing" } } } }] });
+        expect(JSON.stringify(assignment.sourceSnapshot)).not.toContain("private");
+        expect(await checkSessionAccess(guestId, source.id)).toBeNull();
+    });
+
+    it("refuses legacy invitations without a share-time snapshot until the owner regenerates the invitation", async () => {
+        const { newInvite } = await import("@/app/share/sessionEntryService");
+        const invite = newInvite();
+        const legacy = await db.sharedSessionEntry.create({ data: { ownerId, sourceSessionId, machineId, title: "Legacy", inviteTokenHash: invite.hash } });
+        expect((await redeem(invite.token)).json().error).toBe("context_snapshot_required");
+        expect(await db.sharedSessionEntryMember.count({ where: { entryId: legacy.id } })).toBe(0);
+        const refreshed = await post(ownerId, `/v1/shared-session-entries/${legacy.id}/invite`);
+        expect(refreshed.statusCode).toBe(200);
+        expect((await redeem(refreshed.json().inviteToken)).statusCode).toBe(200);
+    });
 
     it("redeems without friendship, keeps one membership, and gives every guest a distinct private child", async () => {
         const created = await entry();

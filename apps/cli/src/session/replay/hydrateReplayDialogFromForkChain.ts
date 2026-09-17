@@ -15,7 +15,7 @@ import { fetchLatestMemorySynopsisSystemRecord } from '@/session/systemRecords/m
 import { readMemorySynopsisPointerV1FromSessionMetadata } from '@/session/memoryArtifacts/memorySynopsisPointerV1';
 
 import type { HappierReplayDialogItem } from './types';
-import { fetchEncryptedTranscriptMessagesPage } from './fetchEncryptedTranscriptMessages';
+import { fetchEncryptedTranscriptMessagesPage, type RawTranscriptRow as StoredTranscriptRow } from './fetchEncryptedTranscriptMessages';
 import { decryptTranscriptReplaySlice } from './decryptTranscriptReplaySlice';
 
 type ForkV1 = Readonly<{
@@ -172,9 +172,16 @@ function readMinSeq(rows: readonly { seq?: unknown }[]): number | null {
   return Number.isFinite(min) ? Math.max(0, min) : null;
 }
 
+/** Immutable stored source supplied by a share-time snapshot instead of live transport. */
+export type ReplayTranscriptSnapshot = Readonly<{
+  session: Readonly<{ id: string; seq: number; metadata: string; encryptionMode: string; dataEncryptionKey: string | null }>;
+  messages: readonly StoredTranscriptRow[];
+}>;
+
 export async function hydrateReplayDialogFromForkChain(params: Readonly<{
   credentials: Credentials;
   startingSessionId: string;
+  sourceSnapshot?: ReplayTranscriptSnapshot;
   /** Transcript page size. The server caps a single request at 500 rows. */
   limit: number;
   /**
@@ -270,6 +277,17 @@ export async function hydrateReplayDialogFromForkChain(params: Readonly<{
   /** The starting Session's `metadata.summary.text`, when it has one. */
   sourceTitleText: string | null;
 } | null> {
+  const fetchPage: typeof fetchEncryptedTranscriptMessagesPage = async (request) => {
+    if (!params.sourceSnapshot) return fetchEncryptedTranscriptMessagesPage(request);
+    if (request.sessionId !== params.sourceSnapshot.session.id) throw new Error('Snapshot source unavailable');
+    const eligible = params.sourceSnapshot.messages.filter((row) => typeof row.seq === 'number'
+      && (request.beforeSeq === undefined || row.seq < request.beforeSeq)
+      && (!request.roles || row.messageRole == null || request.roles.includes(row.messageRole as 'user' | 'agent')))
+      .sort((a, b) => Number(b.seq) - Number(a.seq));
+    const messages = eligible.slice(0, request.limit);
+    return { messages, hasMore: eligible.length > messages.length,
+      nextBeforeSeq: eligible.length > messages.length ? Number(messages.at(-1)!.seq) : null, nextAfterSeq: null };
+  };
   const maxDepth =
     typeof params.maxDepth === 'number' && Number.isFinite(params.maxDepth)
       ? Math.max(1, Math.min(25, Math.floor(params.maxDepth)))
@@ -323,7 +341,9 @@ export async function hydrateReplayDialogFromForkChain(params: Readonly<{
     if (visited.has(currentSessionId)) break;
     visited.add(currentSessionId);
 
-    const rawSession = await fetchSessionByIdCompat({ token: params.credentials.token, sessionId: currentSessionId }).catch((error) => {
+    const rawSession = await (params.sourceSnapshot
+      ? Promise.resolve(currentSessionId === params.sourceSnapshot.session.id ? params.sourceSnapshot.session : null)
+      : fetchSessionByIdCompat({ token: params.credentials.token, sessionId: currentSessionId })).catch((error) => {
       if (isAuthenticationError(error)) throw error;
       return null;
     });
@@ -370,7 +390,7 @@ export async function hydrateReplayDialogFromForkChain(params: Readonly<{
    */
   let segmentContentUnavailable = false;
   let unreadableRowCount = 0;
-  const wantSynopsisText = params.wantSynopsisText === true;
+  const wantSynopsisText = params.wantSynopsisText === true && !params.sourceSnapshot;
 
   /**
    * WHICH key opens a Session is not this reader's decision. The canonical
@@ -466,7 +486,7 @@ export async function hydrateReplayDialogFromForkChain(params: Readonly<{
       }
       requestsUsed += 1;
 
-      const page = await fetchEncryptedTranscriptMessagesPage({
+      const page = await fetchPage({
         token: params.credentials.token,
         sessionId: segment.sessionId,
         limit: pageSize,
@@ -589,7 +609,7 @@ export async function hydrateReplayDialogFromForkChain(params: Readonly<{
   // it. One targeted lookup — the newest user row of the source, nothing else —
   // is the whole cost of not handing the target Agent the work without the ask.
   if (!lastUserDialogItem) {
-    const pinnedPage = await fetchEncryptedTranscriptMessagesPage({
+    const pinnedPage = await fetchPage({
       token: params.credentials.token,
       sessionId: startingSegment.sessionId,
       limit: 1,

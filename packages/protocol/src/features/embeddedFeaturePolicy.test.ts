@@ -5,7 +5,16 @@ import {
   mergeFeatureBuildPolicies,
   resolveEmbeddedFeatureBuildPolicy,
   resolveEmbeddedFeaturePolicyEnv,
+  resolveFeatureBuildPolicyFromEnvOrEmbedded,
 } from './embeddedFeaturePolicy.js';
+import { FEATURE_IDS, getFeatureDependencies } from './catalog.js';
+
+const workspaceFeatures = [
+  'connectedServices', 'sharing.session', 'sharing.sessionEntries', 'sharing.contentKeys',
+  'sharing.pendingQueueV2', 'sharing.pendingDeliveryState', 'sessions', 'sessions.drafts', 'machines',
+  'auth.recovery.providerReset', 'auth.login.keyChallenge', 'auth.ui.recoveryKeyReminder',
+  'auth.pairing.desktopQrMobileScan', 'app.ui.sessionGettingStartedGuidance',
+] as const;
 
 describe('embedded feature build policy', () => {
   it('does not treat development as preview', () => {
@@ -19,16 +28,16 @@ describe('embedded feature build policy', () => {
     expect(policy.deny).toEqual([]);
   });
 
-  it('loads the production embedded policy (may be neutral)', () => {
-    const policy = resolveEmbeddedFeatureBuildPolicy('production');
-    expect(policy.allow).toEqual(expect.any(Array));
-    expect(policy.deny).toEqual(expect.any(Array));
-    expect(evaluateFeatureBuildPolicy(policy, 'updates.ota')).toBe('neutral');
-  });
-
-  it('does not ship-deny attachments uploads in the production embedded policy', () => {
-    const policy = resolveEmbeddedFeatureBuildPolicy('production');
-    expect(evaluateFeatureBuildPolicy(policy, 'attachments.uploads')).toBe('neutral');
+  it.each(['production', 'preview', undefined] as const)('ships only the sharing workspace, including without environment configuration: %s', (embeddedEnv) => {
+    const policy = resolveFeatureBuildPolicyFromEnvOrEmbedded({ embeddedEnv });
+    for (const id of FEATURE_IDS) {
+      expect(evaluateFeatureBuildPolicy(policy, id), id).toBe(workspaceFeatures.some((feature) => feature === id) ? 'allow' : 'deny');
+    }
+    for (const id of workspaceFeatures) {
+      for (const dependency of getFeatureDependencies(id)) {
+        expect(evaluateFeatureBuildPolicy(policy, dependency), `${id} needs ${dependency}`).toBe('allow');
+      }
+    }
   });
 
   it('merges env policy by union and preserves deny precedence', () => {

@@ -8,7 +8,6 @@ import { getServerInfo } from '@/sync/domains/server/serverConfig';
 import { BrandMark } from '@/components/ui/icons/BrandMark';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { t } from '@/text';
-import { useAutomationsSupport } from '@/hooks/server/useAutomationsSupport';
 import { Text } from '@/components/ui/text/Text';
 import { useConnectionHealth } from '@/components/navigation/connectionStatus/useConnectionHealth';
 import { AppUpdateStatusTag } from '@/components/ui/feedback/AppUpdateStatusTag';
@@ -75,15 +74,13 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
 
 export const HomeHeader = React.memo(() => {
     const { theme } = useUnistyles();
-    const automationsSupport = useAutomationsSupport();
-    const showAutomations = automationsSupport?.enabled !== false;
 
     return (
         <View style={{ backgroundColor: theme.colors.background.canvas }}>
             <Header
                 title={<HeaderTitleWithSubtitle />}
                 headerRight={() => <HeaderRight />}
-                headerLeft={() => <HeaderLeft showAutomations={showAutomations} />}
+                headerLeft={() => <HeaderLeft />}
                 headerShadowVisible={false}
                 headerTransparent={true}
             />
@@ -99,7 +96,7 @@ export const HomeHeaderNotAuth = React.memo(() => {
         <Header
             title={<HeaderTitleWithSubtitle subtitle={serverInfo.isCustom ? serverInfo.hostname + (serverInfo.port ? `:${serverInfo.port}` : '') : undefined} />}
             headerRight={() => <HeaderRightNotAuth />}
-            headerLeft={() => <HeaderLeft showAutomations={false} />}
+            headerLeft={() => <HeaderLeft />}
             headerShadowVisible={false}
             headerBackgroundColor={theme.colors.background.canvas}
         />
@@ -121,6 +118,8 @@ function HeaderRight() {
     return (
         <Pressable
             testID="home-header-start-new-session"
+            accessibilityRole="button"
+            accessibilityLabel={t('newSession.title')}
             onPress={handleNewSession}
             hitSlop={15}
             style={styles.headerButton}
@@ -148,8 +147,7 @@ function HeaderRightNotAuth() {
     );
 }
 
-function HeaderLeft(props: { showAutomations: boolean }) {
-    const router = useRouter();
+function HeaderLeft() {
     const styles = stylesheet;
     const { theme } = useUnistyles();
     const logo = (
@@ -164,17 +162,6 @@ function HeaderLeft(props: { showAutomations: boolean }) {
                 labelVariant="short"
                 fallback={logo}
             />
-            {props.showAutomations ? (
-                <Pressable
-                    onPress={() => router.push('/automations')}
-                    hitSlop={15}
-                    style={styles.headerButton}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('automations.openA11y')}
-                >
-                    <Icon name="timer" size={20} color={theme.colors.chrome.header.foreground} />
-                </Pressable>
-            ) : null}
         </View>
     );
 }

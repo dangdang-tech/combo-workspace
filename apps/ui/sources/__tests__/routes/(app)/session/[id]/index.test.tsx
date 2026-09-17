@@ -288,7 +288,7 @@ describe('session route index', () => {
         expect(screen.findAllByType('SessionCockpitShell')).toHaveLength(0);
     });
 
-    it('shows a loading spinner before mounting the cockpit shell while hydration is pending', async () => {
+    it('keeps the loading gate when a legacy cockpit preference is saved', async () => {
         hydrateSessionForRouteSpy.mockReturnValue({ kind: 'loading', sessionId: 'session-1', reason: 'cold' });
         deviceType = 'phone';
         mobileWorkspaceExperience = 'cockpit';
@@ -299,6 +299,18 @@ describe('session route index', () => {
         expect(screen.findAllByType('ActivitySpinner')).toHaveLength(1);
         expect(screen.findAllByType('SessionView')).toHaveLength(0);
         expect(screen.findAllByType('SessionCockpitShell')).toHaveLength(0);
+    });
+
+    it('keeps the authentication recovery surface visible while hydration is pending', async () => {
+        routeParams.value = { id: 'session-1', serverId: 'server-target' };
+        syncError = { kind: 'auth', message: 'Sign in again', serverId: 'server-target' };
+        hydrateSessionForRouteSpy.mockReturnValue({ kind: 'loading', sessionId: 'session-1', serverId: 'server-target', reason: 'cold' });
+        const Route = await import('@/app/(app)/session/[id]');
+
+        const screen = await renderScreen(React.createElement(Route.default));
+
+        expect(screen.findAllByType('ActivitySpinner')).toHaveLength(0);
+        expect(screen.findAllByType('SessionView')).toHaveLength(1);
     });
 
     it('rehydrates when active server listener reports a new generation', async () => {
@@ -316,7 +328,7 @@ describe('session route index', () => {
         expect(String(latestTag)).toContain('gen=2');
     });
 
-    it('renders the session cockpit shell on phone when cockpit mode is enabled by default', async () => {
+    it('renders the classic chat with its server scope despite a saved cockpit preference', async () => {
         deviceType = 'phone';
         mobileWorkspaceExperience = 'cockpit';
         routeParams.value = { id: 'session-1', serverId: 'server-b' };
@@ -325,15 +337,13 @@ describe('session route index', () => {
 
         const screen = await renderScreen(React.createElement(Route.default));
 
-        const cockpit = screen.findByType('SessionCockpitShell' as never);
-        expect(cockpit.props.sessionId).toBe('session-1');
-        expect(cockpit.props.scopeId).toBe('session:session-1');
-        expect(cockpit.props.surface).toBe('git');
-        expect(cockpit.props.routeServerId).toBe('server-b');
-        expect(screen.findAllByType('SessionView')).toHaveLength(0);
+        const sessionView = screen.findByType('SessionView' as never);
+        expect(sessionView.props.id).toBe('session-1');
+        expect(sessionView.props.routeServerId).toBe('server-b');
+        expect(screen.findAllByType('SessionCockpitShell')).toHaveLength(0);
     });
 
-    it('prefers the route server-scoped mobile surface over a legacy bare session id entry', async () => {
+    it('ignores both server-scoped and bare saved workspace surfaces', async () => {
         deviceType = 'phone';
         mobileWorkspaceExperience = 'cockpit';
         routeParams.value = { id: 'session-1', serverId: 'server-b' };
@@ -345,11 +355,11 @@ describe('session route index', () => {
 
         const screen = await renderScreen(React.createElement(Route.default));
 
-        const cockpit = screen.findByType('SessionCockpitShell' as never);
-        expect(cockpit.props.surface).toBe('tabs');
+        expect(screen.findAllByType('SessionView')).toHaveLength(1);
+        expect(screen.findAllByType('SessionCockpitShell')).toHaveLength(0);
     });
 
-    it('keeps the cockpit terminal surface when the viewed session server enables terminal', async () => {
+    it('ignores terminal surface URL hints and saved preferences', async () => {
         deviceType = 'phone';
         mobileWorkspaceExperience = 'cockpit';
         terminalTabAvailableForSessionId = 'session-1';
@@ -359,11 +369,11 @@ describe('session route index', () => {
 
         const screen = await renderScreen(React.createElement(Route.default));
 
-        const cockpit = screen.findByType('SessionCockpitShell' as never);
-        expect(cockpit.props.surface).toBe('terminal');
+        expect(screen.findAllByType('SessionView')).toHaveLength(1);
+        expect(screen.findAllByType('SessionCockpitShell')).toHaveLength(0);
     });
 
-    it('scopes terminal availability to the viewed session id in cockpit mode', async () => {
+    it('does not query terminal capabilities for the chat route', async () => {
         deviceType = 'phone';
         mobileWorkspaceExperience = 'cockpit';
         terminalTabAvailableForSessionId = 'session-scoped';
@@ -372,6 +382,6 @@ describe('session route index', () => {
 
         await renderScreen(React.createElement(Route.default));
 
-        expect(terminalAvailabilityCalls.at(-1)).toEqual(expect.objectContaining({ sessionId: 'session-scoped' }));
+        expect(terminalAvailabilityCalls).toEqual([]);
     });
 });

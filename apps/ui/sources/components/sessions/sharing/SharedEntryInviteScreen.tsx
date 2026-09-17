@@ -9,7 +9,7 @@ import { buildScopedSessionRouteHref } from '@/hooks/session/sessionRouteServerS
 import { getActiveServerSnapshot } from '@/sync/domains/server/serverProfiles';
 import { upsertActivateAndSwitchServer } from '@/sync/domains/server/activeServerSwitch';
 import { canonicalizeServerUrl, createServerUrlComparableKey } from '@/sync/domains/server/url/serverUrlCanonical';
-import { createSharedEntryClient, type SharedEntryAccess } from '@/sync/api/social/apiSharedEntries';
+import { createSharedEntryClient, SharedEntryError, type SharedEntryAccess } from '@/sync/api/social/apiSharedEntries';
 import { sharedEntryErrorMessage } from './sharedEntryPresentation';
 import { useSharedEntryPolling } from './useSharedEntryPolling';
 
@@ -73,7 +73,7 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
                     })} /> : <>
                         {preparing ? <Item testID="shared-entry-preparing" title={t('sharedEntry.preparing')} subtitle={access?.hostOnline ? t('sharedEntry.preparingDetail') : t('sharedEntry.hostOffline')} showChevron={false} /> : null}
                         {access?.status === 'revoked' ? <Item title={t('sharedEntry.accessDisabled')} showChevron={false} /> : null}
-                        {access?.status === 'failed' ? <Item title={t('sharedEntry.preparationFailed')} showChevron={false} /> : null}
+                        {access?.status === 'failed' ? <Item testID="shared-entry-preparation-failed" title={access.errorCode?.startsWith('context_snapshot_') ? sharedEntryErrorMessage(new SharedEntryError(access.errorCode, 409)) : t('sharedEntry.preparationFailed')} showChevron={false} /> : null}
                         {!preparing && access?.status !== 'revoked' && access?.status !== 'ready' ? <Item testID="shared-entry-accept" title={busy ? t('common.loading') : auth.isAuthenticated ? (access ? t('common.retry') : t('sharedEntry.accept')) : t('sharedEntry.signIn')} disabled={busy} onPress={accept} /> : null}
                         {preparing ? <Item testID="shared-entry-refresh" title={t('sharedEntry.refresh')} disabled={busy} onPress={() => void refresh()} /> : null}
                     </>}

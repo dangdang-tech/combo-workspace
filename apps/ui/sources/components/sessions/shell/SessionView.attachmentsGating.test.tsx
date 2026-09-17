@@ -483,4 +483,17 @@ describe('SessionView attachments gating', () => {
     expect(executeSessionComposerResolutionMock).toHaveBeenCalled();
     expect(modalAlertSpy).toHaveBeenCalledWith('Goal unavailable', 'This backend does not support editable session goals yet.');
   });
+  it('keeps the shared conversation composer focused on messages and abort', async () => {
+    sessionState.session = { ...sessionState.session, active: true, metadata: { flavor: 'codex' } };
+    const { SessionView } = await import('./SessionView');
+    const tree = await renderScreen(<AppPaneProvider><SessionView id="s1" /></AppPaneProvider>);
+    const input = tree.findByType('AgentInput' as any);
+    expect(input.props.onSend).toBeTypeOf('function');
+    expect(input.props.onAbort).toBeTypeOf('function');
+    expect(input.props.extraActionChips).toBeUndefined();
+    expect(input.props.onFileViewerPress).toBeUndefined();
+    expect(input.props.onProfileClick).toBeUndefined();
+    expect(input.props.onAgentPickerIntent).toBeUndefined();
+  });
+
 });

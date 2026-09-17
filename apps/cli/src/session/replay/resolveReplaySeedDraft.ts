@@ -13,7 +13,7 @@ import { isAuthenticationError } from '@/api/client/httpStatusError';
 import type { Credentials } from '@/persistence';
 import { resolveCliFeatureDecision } from '@/features/featureDecisionService';
 
-import { hydrateReplayDialogFromForkChain } from './hydrateReplayDialogFromForkChain';
+import { hydrateReplayDialogFromForkChain, type ReplayTranscriptSnapshot } from './hydrateReplayDialogFromForkChain';
 import { hydrateVoiceReplayDialogFromTranscript } from './hydrateVoiceReplayDialogFromTranscript';
 import { runReplaySummaryForDialog } from './summary/runReplaySummaryForDialog';
 
@@ -107,6 +107,8 @@ export type ReplaySeedDraftResolution =
       dialog: readonly HappierReplayDialogItem[];
       summaryText: string | null;
       sourceCutoffSeqInclusive: number;
+      complete: boolean;
+      historyIncomplete: boolean;
     }>
   /** Retrieval succeeded and the source carries no replayable dialog. */
   | Readonly<{ status: 'no_source_dialog' }>
@@ -117,6 +119,7 @@ export async function resolveReplaySeedDraft(params: Readonly<{
   credentials: Credentials;
   cwd: string;
   source: ReplaySeedSource;
+  sourceSnapshot?: ReplayTranscriptSnapshot;
   strategy: HappierReplayStrategy;
   /**
    * The released `recentMessagesCount` wire bound, or `null` for "no count
@@ -178,6 +181,7 @@ export async function resolveReplaySeedDraft(params: Readonly<{
       ? await hydrateReplayDialogFromForkChain({
           credentials: params.credentials,
           startingSessionId: sourceSessionId,
+          ...(params.sourceSnapshot ? { sourceSnapshot: params.sourceSnapshot } : {}),
           limit: params.candidateLimit,
           maxDialogItems: params.recentMessagesCount,
           maxTextChars: params.maxTextChars,
@@ -304,5 +308,7 @@ export async function resolveReplaySeedDraft(params: Readonly<{
     dialog: hydrated.dialog,
     summaryText,
     sourceCutoffSeqInclusive: hydrated.sourceCutoffSeqInclusive,
+    historyIncomplete,
+    complete: !historyIncomplete && readHydratedReachedSourceStart(hydrated) !== false,
   };
 }

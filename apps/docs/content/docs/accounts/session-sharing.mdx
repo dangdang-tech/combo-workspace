@@ -1,103 +1,73 @@
 ---
 title: Session sharing
-description: Share a session with someone in Happier, or publish a read-only link — and know what gets logged when you do.
+description: Invite someone to continue from saved chat context in their own conversation, using your Codex host and project files.
 ---
 
-Sharing lets someone else see a session you are running. Two mechanisms, and they are not variations of each other: a **direct share** invites a specific person into the session with a level of access you choose, and a **public link** publishes a read-only view to anyone holding the URL.
+Share the conversation you have already had with Codex, so another person can continue from that context. Creating an invitation saves the existing user and assistant text. Each invited Google account receives its own conversation; later messages stay with the person who sends them.
 
-<Callout type="warn" title="Availability">
-Direct sharing needs **Friends**, which is experimental and off by default. Turn it on under **Settings → Features**. It is deliberately not switched on by the Experiments master toggle, so enabling experiments generally does not enable it.
-
-Public links do not depend on Friends and are available without turning anything on.
+<Callout type="info" title="COMBO development version">
+This page describes the COMBO source build. Its product policy allows shared session entries, session sharing, and content keys. Set `HAPPIER_FEATURE_SHARING_SESSION_ENTRIES__ENABLED=1` on the server; the server entry flag is off by default. Keep session sharing and content keys enabled as well. Use matching server, CLI, and UI builds; upstream Happier packages do not contain this behavior. Legacy direct-share and public-link routes are not part of this product surface. This page does not certify a deployed environment.
 </Callout>
 
-## What gets logged
+## What you need first
 
-Worth knowing before you share anything, because it is about other people's data, not yours.
-
-**Every access to a shared session is logged with the viewer's IP address and user agent** — for direct shares and public links alike. For a public link you can decide whether the viewer is told: **Require consent** shows them *"This link requires your consent to log your IP address and user agent"* and makes them accept before the session opens.
-
-Turning consent off does not stop the logging. It removes the notice. If you are sending a link outside your team, leaving consent on is the honest default.
-
-## Direct sharing
-
-From a session's sharing screen, pick a person and give them one of three levels:
-
-| Level | What they can do |
-| --- | --- |
-| **View only** | Read the session. Cannot send messages. |
-| **Can edit** | Send messages, and take part in session-wide things like the pending queue. |
-| **Can manage** | Everything above, plus manage the session's sharing — other people's shares and the public link. |
-
-### Letting someone approve permissions
-
-Separately from the access level, a **Can edit** or **Can manage** recipient can be allowed to approve permission prompts: *"Allows this user to approve permission prompts and run tools on your machine."*
-
-Read that literally. The session runs on your machine, so this hands someone else the ability to authorise tool runs there. It is worth it when a collaborator needs to keep work moving while you are away, and it is not something to grant casually.
-
-It is a per-person setting, not a fourth access level, and you can turn it on when you add the share or later. Happier tells you when it is unavailable and why — public links are read-only, view-only access cannot approve, an inactive session has nothing to approve, or the owner simply did not grant it.
-
-### Managing shares
-
-From the same screen you can see everyone the session is shared with, change a level, turn approval delegation on or off, and stop sharing with someone — which revokes their access immediately.
-
-People without **Can manage** can open the session but do not get the management surface.
-
-## Public links
-
-A public link is view-only. Anyone holding it can read messages and tool output; nobody can interact or approve anything.
-
-When you create or regenerate one, you choose:
-
-- **Expires in** — 7 days, 30 days, or Never
-- **Maximum uses** — Unlimited, 10 uses, or 50 uses
-- **Require consent** — whether viewers are told their access is logged
-
-Afterwards Happier shows a QR code, the URL, the expiry, the usage count, and whether consent is required.
-
-**The token is shown once.** Tokens are stored hashed and cannot be recovered — if you lose the URL, regenerate the link, which creates a new token and revokes the old one. Deleting the link revokes access for everyone.
-
-## Where shared sessions appear
-
-A session shared with you is a normal session, not an inbox item. It lands in your session list in a **Shared sessions** subgroup, inside whichever section the list is showing — Active, Inactive, or the combined Sessions layout on narrower screens.
-
-So you can open it, pin it, and work with it exactly like your own. Unread state, permission prompts and pending messages all behave normally, subject to your access level. Attention that genuinely needs a decision still reaches you through the usual surfaces.
-
-## Encrypted deployments
-
-On an encrypted deployment, the person you are sharing with needs sharing keys on their account before an encrypted session can be shared with them. Until then Happier shows that they have not registered encryption keys yet, and they cannot be picked.
-
-This is a readiness state, not a permanent block — it resolves once their device has the keys. On plaintext-storage deployments the sharing model is identical; only the storage mode behind it differs. See [Encryption model](/security/encryption).
-
-## When it goes wrong
-
-**Someone is missing from the share picker.** Either Friends is off for you, or their account has not registered encryption keys yet on an encrypted deployment.
-
-**A collaborator cannot approve a prompt.** Check that they have Can edit or Can manage *and* that approval delegation is on for them specifically. The disabled reason Happier shows names which of the two is missing.
-
-**The link stopped working.** Check expiry and the usage count against the maximum. Both are shown on the link's own screen. A regenerated link invalidates the previous token.
+- Google-linked accounts on the same COMBO server. Self-hosters must configure [Google OIDC with keyed accounts](/self-hosting/auth-oidc#google-keyed-accounts-with-e2ee).
+- An online host daemon, a working Codex configuration, and an owned session in the project directory you want to share.
+- A source conversation whose history does not depend on a fork ancestor. A member's managed conversation cannot be shared again.
+- On encrypted deployments, a per-session source key and the recipient's registered content keys. Restore or connect account keys before accepting an encrypted invitation.
 
 ## Shared workspace entries
 
-<Callout type="info" title="Development-only">
-This fork adds **Shared workspace entry**, disabled by default. Use matching server, CLI, and UI builds with `HAPPIER_FEATURE_SHARING_SESSION_ENTRIES__ENABLED=1` on the server. Session sharing and content keys must also remain enabled. This is not an availability claim for a published Happier release.
-</Callout>
+1. Open your session's information screen and choose **Share conversation**.
+2. Choose **Create invitation**, then **Copy invitation link**. The context is fixed when the invitation is created, even if the recipient accepts later.
+3. The recipient opens the link. If it names another relay, choose **Continue on the invitation server**, then sign in with Google and choose **Accept invitation**.
+4. Keep the host online while it prepares the conversation. The recipient can read the copied user and assistant text and send a new message that continues from it.
 
-An entry gives each invited Google account its own blank conversation on the host machine. Every conversation uses the source session's project directory and Agent. Project files and changes are shared; conversation histories are separate. Model usage uses the host's Agent credentials. Source conversation history is not copied.
+A returning recipient reuses their existing conversation. Different invited accounts receive different conversations. The host's later chat messages are not added to those copies, and a recipient's replies are not written into the host's original conversation.
 
-Configure [Google OIDC with keyed accounts](/self-hosting/auth-oidc#google-keyed-accounts-with-e2ee), connect the host daemon, and open an owned session's information screen. Choose **Shared workspace entry**, then **Create invitation** and **Copy invitation link**. If the invitation points to another relay, the recipient first chooses **Continue on the invitation server**. They then sign in with a Google-linked account, accept the invitation, and wait for the host to prepare their conversation. Returning through the invitation reuses that person's conversation.
+### Project files remain shared
 
-The host's member list offers **Can use** and **No access**. Members can read and send messages in their assigned conversation; they cannot manage sharing or approve tool permissions. The host handles permission prompts under the Agent's existing execution policy.
+Every conversation uses the source session's project directory on the host machine. There is no workspace clone: file edits made from one conversation are visible to the others. Coordinate changes to the same files.
 
-Copy the invitation when it is created: reopening the management screen does not reveal the old token. Replace the link to obtain a new one. Invitation links currently have no expiry or redemption limit. Anyone receiving a forwarded link can accept with an eligible Google account. **Replace invitation link** invalidates the previous invitation for future acceptance; it does not disable existing members. Use **Disable access** to remove a member's ongoing access. Re-enabling access restores the same conversation after the host prepares its grant again.
+Model usage uses the host's Codex credentials and is charged to the host's account. Members can read and send messages in their assigned conversation. They cannot manage sharing or approve tool permissions. The host handles permission prompts under the Agent's existing execution policy.
 
-A disconnected host rejects new tasks. The UI keeps rejected input as a draft and requires a manual send after reconnection. Previously accepted tasks stop dispatching while the host is offline or the member is disabled. Re-enabling a member can make their retained queue eligible again. Disabling access does not promise to stop an already running Agent or erase history already downloaded by a recipient.
+### Encryption and copied context
 
-This development version checks a live host connection on a single relay process. It does not coordinate concurrent edits across conversations in the shared project. Hosts should coordinate work on the same files. Encrypted source sessions need a per-session encryption key; legacy encrypted sessions without one are rejected. Plaintext sources do not require that key. If the account's creation encryption mode has changed since the source session was created, prepare a new source session in the current mode.
+On encrypted deployments, each child conversation has an independent data encryption key (DEK). The host decrypts the saved source text and encrypts the copied history for the child. The member receives access to the child's key, without receiving the source conversation's key or permission to read its later history. Plaintext deployments keep the same access rules with plaintext storage.
+
+The copied context is readable user and assistant text. It does not reproduce tool payloads, reasoning traces, attachments, or the complete provider session. Codex receives this text through the existing replay mechanism when the member continues chatting; copying history does not submit the old prompts as new tasks.
+
+## Limits
+
+A saved entry holds at most 5,000 main-conversation storage rows and 2,000,000 bytes of serialized snapshot data. The host also applies its replay budget, which defaults to 120,000 characters including the prompt framing. A conversation that exceeds these bounds, cannot be decrypted completely, or relies on a fork ancestor is rejected. It is not silently replaced with a truncated tail or a newer live history.
+
+Presence checks currently require a single API instance and the exact host's live connection. A disconnected host rejects new tasks. The UI keeps rejected input as a draft; send it manually after reconnection. Previously accepted tasks stop dispatching while the host is offline or access is disabled. An already running Agent is not guaranteed to stop when access is disabled.
+
+Deleting the source session also deletes its sharing entry, memberships, and their stored access grants. This removes existing members' authorization as well as stopping new acceptance. Child conversations remain with the host. This does not promise an immediate disconnect of every open connection or erase already downloaded history; a saved entry is not an independent backup of a deleted source.
+
+## Manage invitations and access
+
+The host's member list shows **Can use** or **No access**. **Disable access** revokes ongoing access; **Allow access** restores the same conversation after the host prepares its grant again. This also restores an already allocated legacy child without importing new context. Re-enabling can make previously accepted, retained tasks eligible again. Revocation cannot erase history that a recipient has already downloaded.
+
+Copy an invitation when it is created: the server stores its token hashed and cannot show it again. **Replace invitation link** creates a new token and invalidates the previous token for future acceptance. It preserves the entry's original context and its existing members. To capture newer context, choose **Create new sharing snapshot**.
+
+Invitation links have no expiry or redemption limit. A forwarded link can be accepted by another eligible Google account. Replacing the link does not disable people who already accepted it; manage those members individually.
+
+## When it goes wrong
+
+**An older invitation has no saved context.** The host should create a new sharing snapshot for new recipients. Existing members and their conversations remain under their existing access rules, including revoke and restore. An invitation with existing members cannot be silently upgraded to the host's current history. An unused legacy entry can acquire its first snapshot when the host replaces its invitation link.
+
+**The context is too large or unavailable.** Use a shorter, regular conversation with the necessary context. Fork ancestry, unreadable encrypted rows, and a snapshot beyond the host's replay budget are rejected before a new child is launched.
+
+**The host cannot finish preparation after an upgrade.** Update the server, UI, and host CLI together. An older daemon cannot finish the updated preparation protocol. Keep the existing data directory and follow the deployment's database upgrade procedure.
+
+**Encrypted access is not ready.** Restore or connect the recipient's account keys. A legacy encrypted source without a per-session key requires a new source session. If the host's account creation mode differs from the saved source mode, use a source in the current mode; the host will not downgrade an encrypted copy.
+
+**A member cannot approve a tool request.** Approval belongs to the host. Changing the member's access switch does not delegate tool approval.
 
 ## Related
 
-- [Friends](/accounts/friends) — the direct-sharing prerequisite
-- [Inbox and approvals](/sessions/inbox-and-approvals)
-- [Session read and unread state](/organize/session-read-state)
+- [Google OIDC configuration](/self-hosting/auth-oidc#google-keyed-accounts-with-e2ee)
 - [Encryption model](/security/encryption)
+- [Session permissions](/sessions/permissions)
+- [Device linking and restore](/accounts/device-linking-and-restore)

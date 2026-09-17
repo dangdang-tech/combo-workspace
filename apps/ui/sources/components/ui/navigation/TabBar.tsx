@@ -4,16 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { t } from '@/text';
 import { Typography } from '@/constants/Typography';
-import { useInboxHasContent } from '@/hooks/inbox/useInboxHasContent';
-import { useInboxAvailable } from '@/hooks/inbox/useInboxAvailable';
-import { useFriendsEnabled } from '@/hooks/server/useFriendsEnabled';
 import { Text } from '@/components/ui/text/Text';
 import { FloatingTabBarSurface } from '@/components/ui/navigation/FloatingTabBarSurface';
-import { TabBadge } from '@/components/ui/navigation/tabBadge/TabBadge';
 import { resolveTabBarMetrics } from '@/components/ui/navigation/tabBarMetrics';
-import { useFriendRequests, useSetting } from '@/sync/domains/state/storage';
+import { useSetting } from '@/sync/domains/state/storage';
 import type { TabType } from './tabTypes';
-import { resolveTabBarTabs } from './resolveTabBarTabs';
 import { Icon, type IconName } from '@/components/ui/icons/Icon';
 
 
@@ -74,30 +69,12 @@ const styles = StyleSheet.create((theme) => ({
 export const TabBar = React.memo(({ activeTab, onTabPress, trailingAccessory }: TabBarProps) => {
     const { theme } = useUnistyles();
     const insets = useSafeAreaInsets();
-    const friendsEnabled = useFriendsEnabled();
-    const friendRequests = useFriendRequests();
-    const inboxEnabled = useInboxAvailable();
-    const inboxHasContent = useInboxHasContent();
-    const friendsBadgeEnabled = useSetting('tabBarFriendsBadgeEnabled');
-    const inboxBadgeEnabled = useSetting('tabBarInboxBadgeEnabled');
     const metrics = resolveTabBarMetrics(useSetting('tabBarSize'), useSetting('tabBarShowLabels'));
 
-    const tabs: { key: TabType; label: string }[] = React.useMemo(() => {
-        const tabKeys = resolveTabBarTabs({ inboxEnabled, friendsEnabled });
-        return tabKeys.map((key) => {
-            switch (key) {
-                case 'inbox':
-                    return { key, label: t('tabs.inbox') };
-                case 'friends':
-                    return { key, label: t('tabs.friends') };
-                case 'settings':
-                    return { key, label: t('tabs.settings') };
-                case 'sessions':
-                default:
-                    return { key: 'sessions', label: t('tabs.sessions') };
-            }
-        });
-    }, [friendsEnabled, inboxEnabled]);
+    const tabs: { key: TabType; label: string }[] = [
+        { key: 'sessions', label: t('tabs.sessions') },
+        { key: 'settings', label: t('tabs.settings') },
+    ];
 
     return (
         <FloatingTabBarSurface bottomInset={insets.bottom} trailingAccessory={trailingAccessory}>
@@ -115,6 +92,9 @@ export const TabBar = React.memo(({ activeTab, onTabPress, trailingAccessory }: 
                                 paddingHorizontal: metrics.tabPaddingHorizontal,
                             }]}
                             onPress={() => onTabPress(tab.key)}
+                            accessibilityRole="tab"
+                            accessibilityLabel={tab.label}
+                            accessibilityState={{ selected: isActive }}
                             hitSlop={8}
                         >
                             {isActive ? <View pointerEvents="none" style={[styles.activePill, { borderRadius: metrics.activePillRadius }]} /> : null}
@@ -124,12 +104,6 @@ export const TabBar = React.memo(({ activeTab, onTabPress, trailingAccessory }: 
                                     metrics.iconSize,
                                     isActive ? theme.colors.text.primary : theme.colors.text.secondary,
                                 )}
-                                {tab.key === 'friends' && friendsBadgeEnabled && friendRequests.length > 0 && (
-                                    <TabBadge variant="count" value={friendRequests.length} />
-                                )}
-                                {tab.key === 'inbox' && inboxBadgeEnabled && inboxHasContent ? (
-                                    <TabBadge variant="dot" />
-                                ) : null}
                             </View>
                             {metrics.showLabels ? (
                                 <Text
@@ -152,15 +126,7 @@ export const TabBar = React.memo(({ activeTab, onTabPress, trailingAccessory }: 
     );
 });
 
-// Match the app's cockpit-bar line icons (all Phosphor, same weight):
-// mailbox for Inbox, chat for Sessions, sliders for Settings, people for Friends.
 function renderMainTabIcon(key: TabType, size: number, color: string): React.ReactNode {
-    const name: IconName = key === 'inbox'
-        ? 'mailbox'
-        : key === 'settings'
-            ? 'sliders-horizontal'
-            : key === 'friends'
-                ? 'users'
-                : 'chats-circle';
+    const name: IconName = key === 'settings' ? 'sliders-horizontal' : 'chats-circle';
     return <Icon name={name} size={size} color={color} />;
 }

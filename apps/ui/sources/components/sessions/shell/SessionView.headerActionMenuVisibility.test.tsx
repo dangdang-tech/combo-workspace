@@ -255,6 +255,7 @@ vi.mock('@/utils/system/versionUtils', () => ({
 }));
 
 installSessionShellCommonModuleMocks({
+  featureEnabled: () => ({ useFeatureEnabled: (id: string) => id === 'sharing.sessionEntries' && executionRunsFeatureState.enabled }),
   reactNative: async () => {
     const { createReactNativeWebMock } = await import('@/dev/testkit/mocks/reactNative');
     const module = await createReactNativeWebMock({
@@ -497,21 +498,6 @@ describe('SessionView header action menu visibility', () => {
     });
   });
 
-  it('withholds the runs destination entirely when execution runs are unsupported for the session', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    executionRunsFeatureState.enabled = true;
-    sessionExecutionRunsSupportedState.supported = false;
-    executionRunsBackendsState.backends = null;
-    const screen = await renderSessionView();
-
-    // Asserted in the folded header, where the runs destination lives: at a width that does not
-    // fold, no header surface offers runs at all and the absence would prove nothing.
-    expect(findPressableByAccessibilityLabel(screen, 'session.openRuns')).toBeUndefined();
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).not.toContain('header.openRuns');
-  });
 
   it('uses stable display target for workspace presentation instead of live reachable target', async () => {
     sessionState.session = {
@@ -673,349 +659,24 @@ describe('SessionView header action menu visibility', () => {
     vi.useRealTimers();
   });
 
-  it('offers the runs destination when the viewed session server supports execution runs', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    executionRunsFeatureState.enabled = false;
-    sessionExecutionRunsSupportedState.supported = true;
-    sessionExecutionRunsSupportedState.serverId = 'server-2';
-    executionRunsBackendsState.backends = {
-      codex: { available: true },
-    };
 
-    const screen = await renderSessionView('server-2');
 
-    // Support is resolved against the viewed session's server, not the active one: the mocked hook
-    // only answers true for `server-2`, so a wrongly scoped read drops the item.
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).toContain('header.openRuns');
-    expect(findPressableByAccessibilityLabel(screen, 'session.openRuns')).toBeUndefined();
-  });
 
-  it('keeps background activity out of the header without hiding execution runs', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(1_000_000));
-    windowDimensionsState.width = 420;
-    sessionExecutionRunsSupportedState.supported = true;
-    sessionState.session = {
-      ...sessionState.session,
-      active: true,
-      presence: 'online',
-      thinking: false,
-      latestTurnStatus: 'completed',
-      latestTurnStatusObservedAt: 999_000,
-      runtimeActivityState: 'active',
-      runtimeActivityRevision: 1,
-      runtimeActivityActiveCount: 1,
-      runtimeActivityObservedAt: 999_000,
-    };
 
-    const screen = await renderSessionView();
 
-    expect(screen.findByTestId('session-header-background-activity-status')).toBeNull();
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).toContain('header.openRuns');
-  });
 
-  it('routes to session automations through blur-safe navigation', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    executionRunsFeatureState.enabled = false;
-    sessionExecutionRunsSupportedState.supported = false;
-    executionRunsBackendsState.backends = null;
-    sessionMessagesState.messages = [];
-    automationsSupportState.enabled = true;
-    automationsEnabledCountState.count = 2;
-    routerPushSpy.mockReset();
-    navigateWithBlurOnWebSpy.mockClear();
 
-    const screen = await renderSessionView();
-    const openAutomationsButton = findPressableByAccessibilityLabel(screen, 'session.openAutomations');
 
-    expect(openAutomationsButton).toBeDefined();
 
-    pressTestInstance(openAutomationsButton, 'session.openAutomations');
 
-    expect(navigateWithBlurOnWebSpy).toHaveBeenCalledTimes(1);
-    expect(routerPushSpy).toHaveBeenCalledWith('/session/s1/automations?serverId=server-1');
-  });
 
-  it('shows automations for the viewed session server even when the active server differs', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    executionRunsFeatureState.enabled = false;
-    sessionExecutionRunsSupportedState.supported = false;
-    executionRunsBackendsState.backends = null;
-    sessionMessagesState.messages = [];
-    automationsSupportState.enabled = true;
-    automationsSupportState.serverId = 'server-2';
-    automationsEnabledCountState.count = 1;
 
-    const screen = await renderSessionView('server-2');
-    const openAutomationsButton = findPressableByAccessibilityLabel(screen, 'session.openAutomations');
 
-    expect(openAutomationsButton).toBeDefined();
-  });
 
-  it('folds runs and automations buttons into the header action menu when the header is narrow', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    // Panes ON: transcript navigation is offered only where the pane it lives in can be drawn, so a
-    // switched-off multi-pane setting would withhold it for an unrelated reason.
-    multiPaneSettingState.enabled = true;
-    executionRunsFeatureState.enabled = true;
-    sessionExecutionRunsSupportedState.supported = true;
-    executionRunsBackendsState.backends = null;
-    automationsSupportState.enabled = true;
 
-    const screen = await renderSessionView();
 
-    const openRunsButton = findPressableByAccessibilityLabel(screen, 'session.openRuns');
-    const openAutomationsButton = findPressableByAccessibilityLabel(screen, 'session.openAutomations');
-    const openSubagentsButton = findPressableByAccessibilityLabel(screen, 'session.openSubagents');
-    expect(openRunsButton).toBeUndefined();
-    expect(openAutomationsButton).toBeUndefined();
-    expect(openSubagentsButton).toBeUndefined();
 
-    expect(headerActionMenuSpy).toHaveBeenCalled();
-    const props = headerActionMenuSpy.mock.calls.at(0)?.[0] as any;
-    const extraIds = getHeaderExtraItemIds(props);
-    expect(extraIds).toContain('header.openRuns');
-    expect(extraIds).toContain('header.openAutomations');
-    expect(extraIds).toContain('header.openSubagents');
-    expect(extraIds).toContain('header.openTranscriptNavigation');
-  });
 
-  it('renders a direct transcript navigation header button when header actions are not folded', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 800;
-    multiPaneSettingState.enabled = true;
-
-    const screen = await renderSessionView();
-    const openNavigationButton = findPressableByAccessibilityLabel(screen, 'session.openTranscriptNavigation');
-
-    expect(openNavigationButton).toBeDefined();
-  });
-
-  it('opens the navigation right-panel tab from the folded header action menu', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    multiPaneSettingState.enabled = true;
-
-    await renderSessionView();
-
-    expect(getLastHeaderActionMenuProps().onSelectExtraItem('header.openTranscriptNavigation')).toBe(true);
-    expect(openRightSpy).toHaveBeenCalledWith({ tabId: 'navigation' });
-    expect(setRightTabSpy).toHaveBeenCalledWith('navigation');
-  });
-
-  it('switches to the cockpit navigation surface from the folded header action menu when cockpit owns the session', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    const switchSurface = vi.fn();
-    cockpitRegistrationState.registration = {
-      sessionId: 's1',
-      switchSurface,
-    };
-
-    await renderSessionView();
-
-    expect(getLastHeaderActionMenuProps().onSelectExtraItem('header.openTranscriptNavigation')).toBe(true);
-    expect(switchSurface).toHaveBeenCalledWith('navigation');
-    expect(openRightSpy).not.toHaveBeenCalled();
-    expect(setRightTabSpy).not.toHaveBeenCalled();
-  });
-
-  it('keeps folded header action menu items stable across unrelated session header updates', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    executionRunsFeatureState.enabled = true;
-    sessionExecutionRunsSupportedState.supported = true;
-    executionRunsBackendsState.backends = null;
-    automationsSupportState.enabled = true;
-
-    const screen = await renderSessionView();
-    const firstExtraItems = getLastHeaderActionMenuProps().extraItems;
-
-    headerActionMenuSpy.mockClear();
-    sessionState.session = {
-      ...sessionState.session,
-      thinking: true,
-      latestTurnStatus: 'running',
-    };
-    await screen.update(<SessionView id="s1" />);
-
-    expect(getLastHeaderActionMenuProps().extraItems).toBe(firstExtraItems);
-  });
-
-  it('offers switching from default cockpit to classic on phones', async () => {
-    responsiveState.deviceType = 'phone';
-    mobileWorkspaceExperienceState.value = undefined;
-
-    await renderSessionView();
-
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).toContain('header.openMobileWorkspaceClassic');
-  });
-
-  it('offers switching from explicit classic to cockpit on phones', async () => {
-    responsiveState.deviceType = 'phone';
-    mobileWorkspaceExperienceState.value = 'classic';
-
-    await renderSessionView();
-
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).toContain('header.openMobileWorkspaceCockpit');
-  });
-
-  it('does not offer the mobile cockpit toggle on tablets', async () => {
-    responsiveState.deviceType = 'tablet';
-    mobileWorkspaceExperienceState.value = undefined;
-
-    await renderSessionView();
-
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).not.toContain('header.openMobileWorkspaceClassic');
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).not.toContain('header.openMobileWorkspaceCockpit');
-  });
-
-  it('updates the mobile workspace experience when the header toggle is selected', async () => {
-    responsiveState.deviceType = 'phone';
-    mobileWorkspaceExperienceState.value = undefined;
-    await renderSessionView();
-
-    expect(getLastHeaderActionMenuProps().onSelectExtraItem('header.openMobileWorkspaceClassic')).toBe(true);
-    expect(mobileWorkspaceExperienceState.setValue).toHaveBeenCalledWith('classic');
-
-    standardCleanup();
-    headerActionMenuSpy.mockClear();
-    mobileWorkspaceExperienceState.setValue.mockReset();
-    mobileWorkspaceExperienceState.value = 'classic';
-    await renderSessionView();
-
-    expect(getLastHeaderActionMenuProps().onSelectExtraItem('header.openMobileWorkspaceCockpit')).toBe(true);
-    expect(mobileWorkspaceExperienceState.setValue).toHaveBeenCalledWith('cockpit');
-  });
-
-  it('dismisses the keyboard before opening cockpit from the session header toggle', async () => {
-    responsiveState.deviceType = 'phone';
-    mobileWorkspaceExperienceState.value = 'classic';
-    await renderSessionView();
-
-    expect(getLastHeaderActionMenuProps().onSelectExtraItem('header.openMobileWorkspaceCockpit')).toBe(true);
-
-    expect(keyboardDismissSpy).toHaveBeenCalledTimes(1);
-    expect(mobileWorkspaceExperienceState.setValue).toHaveBeenCalledWith('cockpit');
-  });
-
-  it('keeps the runs destination available when the transcript already contains execution-run signals', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    executionRunsFeatureState.enabled = true;
-    sessionExecutionRunsSupportedState.supported = true;
-    executionRunsBackendsState.backends = null;
-    sessionMessagesState.messages = [
-      {
-        kind: 'tool-call',
-        tool: { name: 'SubAgentRun', input: { runId: 'run_1' }, result: { runId: 'run_1' } },
-      },
-    ];
-
-    await renderSessionView();
-
-    // No launchable backend, but the session already ran one: an absent backend list must not
-    // withdraw the destination that the transcript proves is populated.
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).toContain('header.openRuns');
-  });
-
-  it('renders a header subagents button when the transcript contains subagent activity', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    executionRunsFeatureState.enabled = false;
-    sessionExecutionRunsSupportedState.supported = false;
-    executionRunsBackendsState.backends = null;
-    sessionMessagesState.messages = [
-      {
-        id: 'tool-msg-1',
-        kind: 'tool-call',
-        createdAt: 1,
-        tool: {
-          name: 'Task',
-          id: 'toolu_task_1',
-          input: { name: 'Investigate regression', team_name: 'qa-team', agent_id: 'alpha@qa-team' },
-          result: { tool_use_result: { team_name: 'qa-team', agent_id: 'alpha@qa-team', name: 'alpha' } },
-          state: 'running',
-        },
-      },
-    ];
-
-    const screen = await renderSessionView();
-    const openSubagentsButton = findPressableByAccessibilityLabel(screen, 'session.openSubagents');
-
-    expect(openSubagentsButton).toBeDefined();
-  });
-
-  it('withholds the header subagents indicator before any agent is active while still offering the destination', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    executionRunsFeatureState.enabled = true;
-    sessionExecutionRunsSupportedState.supported = true;
-    executionRunsBackendsState.backends = {
-      codex: {
-        available: true,
-        intents: ['review', 'plan', 'delegate'],
-      },
-    };
-    sessionMessagesState.messages = [];
-
-    const screen = await renderSessionView();
-
-    // The icon is a live indicator: `activeCount` is its whole condition, so a session that can
-    // launch agents but is running none shows nothing. The destination is not lost — it is a
-    // header-menu item, which is where a place to go belongs.
-    expect(findPressableByAccessibilityLabel(screen, 'session.openSubagents')).toBeUndefined();
-
-    windowDimensionsState.width = 420;
-    await screen.update(<SessionView id="s1" />);
-
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).toContain('header.openSubagents');
-  });
-
-  it('renders SessionHeaderActionMenu even when automations and execution runs are disabled', async () => {
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    executionRunsFeatureState.enabled = false;
-    sessionExecutionRunsSupportedState.supported = false;
-    executionRunsBackendsState.backends = null;
-    headerActionMenuSpy.mockClear();
-    await renderSessionView();
-
-    expect(headerActionMenuSpy).toHaveBeenCalled();
-  });
-
-  it('offers and handles the attached Claude terminal action when supported', async () => {
-    attachedTerminalState.available = true;
-    await renderSessionView();
-
-    const props = getLastHeaderActionMenuProps();
-    expect(getHeaderExtraItemIds(props)).toContain('header.openAttachedClaudeTerminal');
-    expect(props.onSelectExtraItem('header.openAttachedClaudeTerminal')).toBe(true);
-    expect(attachedTerminalState.open).toHaveBeenCalledTimes(1);
-  });
 
   /**
    * The one reachability cell this whole corridor turns on. Below 520pt the agents GLYPH is folded
@@ -1023,57 +684,8 @@ describe('SessionView header action menu visibility', () => {
    * to open is structurally hidden there. Two tests asserted the item is OFFERED; nothing ever
    * SELECTED it, so the destination rested on reading a one-line handler.
    */
-  it('pushes the agents screen when the folded subagents item is selected on a phone', async () => {
-    // A native phone, panes ON: the layout — not a disabled setting — is what has no room for a pane.
-    platformState.os = 'android';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    multiPaneSettingState.enabled = true;
-    sessionExecutionRunsSupportedState.supported = true;
 
-    await renderSessionView();
 
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).toContain('header.openSubagents');
-    expect(getLastHeaderActionMenuProps().onSelectExtraItem('header.openSubagents')).toBe(true);
-    expect(routerPushSpy).toHaveBeenCalledWith('/session/s1/agents?serverId=server-1');
-    expect(openRightSpy).not.toHaveBeenCalled();
-  });
-
-  it('opens the agents tab from the same folded item where the layout can host a right pane', async () => {
-    // Same item, same width, same press — web normalizes to `tablet` in the pane host, so a narrow
-    // browser window still draws an overlay right pane. If the item pushed a route unconditionally
-    // this would fail, which is what makes the phone assertion above mean something.
-    platformState.os = 'web';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    multiPaneSettingState.enabled = true;
-    sessionExecutionRunsSupportedState.supported = true;
-
-    await renderSessionView();
-
-    expect(getLastHeaderActionMenuProps().onSelectExtraItem('header.openSubagents')).toBe(true);
-    expect(openRightSpy).toHaveBeenCalledWith({ tabId: 'agents' });
-    expect(setRightTabSpy).toHaveBeenCalledWith('agents');
-    expect(routerPushSpy).not.toHaveBeenCalledWith('/session/s1/agents?serverId=server-1');
-  });
-
-  it('does not offer transcript navigation on a phone layout that cannot draw the pane it lives in', async () => {
-    // Navigation exists only as a right-pane tab or a cockpit surface — there is no screen to fall
-    // back to — so on a classic phone the honest answer is no offer, not a dead menu row.
-    platformState.os = 'android';
-    responsiveState.deviceType = 'phone';
-    responsiveState.isLandscape = false;
-    windowDimensionsState.width = 420;
-    multiPaneSettingState.enabled = true;
-
-    await renderSessionView();
-
-    expect(getHeaderExtraItemIds(getLastHeaderActionMenuProps())).not.toContain('header.openTranscriptNavigation');
-    expect(getLastHeaderActionMenuProps().onSelectExtraItem('header.openTranscriptNavigation')).toBe(false);
-    expect(openRightSpy).not.toHaveBeenCalled();
-  });
 
   it('renders a raised landscape back button on Android phones when the top header is hidden', async () => {
     platformState.os = 'android';
@@ -1088,4 +700,28 @@ describe('SessionView header action menu visibility', () => {
     expect(routerPushSpy).not.toHaveBeenCalled();
     expect(routerBackSpy).toHaveBeenCalledTimes(1);
   });
+  it.each([390, 1200])('opens scoped invitations from the owner header at width %s', async (width) => {
+    windowDimensionsState.width = width;
+    sessionState.session = { ...sessionState.session, accessLevel: undefined, metadata: { machineId: 'm1' } };
+    executionRunsFeatureState.enabled = true;
+    const screen = await renderSessionView('server-owner');
+    const share = screen.findByTestId('session-header-share-button');
+    expect(share).toBeTruthy();
+    pressTestInstance(share!);
+    expect(routerPushSpy).toHaveBeenCalledWith('/session/s1/entry-sharing?serverId=server-owner');
+    expect(headerActionMenuSpy).not.toHaveBeenCalled();
+    expect(findPressableByAccessibilityLabel(screen, 'sessionInfo.title')).toBeTruthy();
+  });
+
+  it.each([
+    { accessLevel: 'edit', metadata: null },
+    { accessLevel: undefined, metadata: { sharedSessionEntryId: 'entry-1' } },
+  ])('does not offer resharing to a guest or child conversation', async (session) => {
+    sessionState.session = { ...sessionState.session, ...session };
+    executionRunsFeatureState.enabled = true;
+    const screen = await renderSessionView();
+    expect(screen.findAllByTestId('session-header-share-button')).toHaveLength(0);
+    expect(headerActionMenuSpy).not.toHaveBeenCalled();
+  });
+
 });

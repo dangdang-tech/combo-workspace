@@ -5,7 +5,7 @@ import { Item } from '@/components/ui/lists/Item';
 import { ItemGroup } from '@/components/ui/lists/ItemGroup';
 import { Modal } from '@/modal';
 import { t } from '@/text';
-import { createSharedEntryClient, type SharedEntry, type SharedEntryMember } from '@/sync/api/social/apiSharedEntries';
+import { createSharedEntryClient, SharedEntryError, type SharedEntry, type SharedEntryMember } from '@/sync/api/social/apiSharedEntries';
 import { getActiveServerSnapshot, getServerProfileById } from '@/sync/domains/server/serverProfiles';
 import { sharedEntryErrorMessage } from './sharedEntryPresentation';
 
@@ -20,7 +20,9 @@ export function SharedEntryManagement(props: SharedEntryManagementProps) {
 
 function SharedEntryManagementScope({ sourceSessionId, machineId, title, serverId }: SharedEntryManagementProps) {
     const client = useMemo(() => createSharedEntryClient(serverId), [serverId]);
+    const [entries, setEntries] = useState<SharedEntry[]>([]);
     const [entry, setEntry] = useState<SharedEntry | null>(null);
+    const selectedEntryId = useRef<string | null>(null);
     const [members, setMembers] = useState<SharedEntryMember[]>([]);
     const [inviteToken, setInviteToken] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -39,11 +41,14 @@ function SharedEntryManagementScope({ sourceSessionId, machineId, title, serverI
         finally { if (isCurrent()) { inFlight.current = false; setBusy(false); } }
     }, []);
     const load = useCallback(async (isCurrent: () => boolean) => {
-        const next = (await client.list()).find(item => item.sourceSessionId === sourceSessionId) ?? null;
+        const nextEntries = (await client.list()).filter(item => item.sourceSessionId === sourceSessionId);
         if (!isCurrent()) return;
+        const next = nextEntries.find(item => item.id === selectedEntryId.current) ?? nextEntries[0] ?? null;
         const nextMembers = next ? await client.members(next.id) : [];
         if (!isCurrent()) return;
-        setEntry(next); setMembers(nextMembers); setLoaded(true);
+        if (next?.id !== selectedEntryId.current) { setInviteToken(null); setCopied(false); }
+        selectedEntryId.current = next?.id ?? null;
+        setEntries(nextEntries); setEntry(next); setMembers(nextMembers); setLoaded(true);
     }, [client, sourceSessionId]);
     useEffect(() => {
         mounted.current = true;
@@ -52,13 +57,22 @@ function SharedEntryManagementScope({ sourceSessionId, machineId, title, serverI
         return () => { mounted.current = false; generation.current += 1; };
     }, [load, run]);
     const create = async () => run(async (isCurrent) => {
-        const name = await Modal.prompt(t('sharedEntry.name'), t('sharedEntry.description'), {
-            defaultValue: title, confirmText: t('sharedEntry.create'), cancelText: t('common.cancel'),
+        const name = await Modal.prompt(t('sharedEntry.name'), t(entry ? 'sharedEntry.createFreshDetail' : 'sharedEntry.description'), {
+            defaultValue: title, confirmText: t(entry ? 'sharedEntry.createFresh' : 'sharedEntry.create'), cancelText: t('common.cancel'),
         });
         if (!isCurrent() || !name?.trim()) return;
         const created = await client.create({ title: name.trim(), sourceSessionId, machineId });
         if (!isCurrent()) return;
-        setEntry(created.entry); setInviteToken(created.inviteToken); setCopied(false);
+        selectedEntryId.current = created.entry.id;
+        setEntries(previous => [created.entry, ...previous.filter(item => item.id !== created.entry.id)]);
+        setEntry(created.entry); setMembers([]); setInviteToken(created.inviteToken); setCopied(false);
+    });
+    const selectEntry = (next: SharedEntry) => run(async (isCurrent) => {
+        if (next.id === selectedEntryId.current) return;
+        const nextMembers = await client.members(next.id);
+        if (!isCurrent()) return;
+        selectedEntryId.current = next.id;
+        setEntry(next); setMembers(nextMembers); setInviteToken(null); setCopied(false);
     });
     const copy = async () => {
         if (!inviteToken) return;
@@ -77,20 +91,27 @@ function SharedEntryManagementScope({ sourceSessionId, machineId, title, serverI
             {!loaded && busy ? <Item title={t('common.loading')} showChevron={false} /> : null}
             {loaded && !entry ? <Item testID="shared-entry-create" title={t('sharedEntry.create')} disabled={busy || !machineId} onPress={() => void create()} /> : null}
             {entry ? <>
+                {!entry.hasContextSnapshot ? <Item testID="shared-entry-snapshot-missing" title={t('sharedEntry.snapshotMissing')} showChevron={false} /> : null}
                 {inviteToken ? <Item testID="shared-entry-copy" title={copied ? t('sharedEntry.copied') : t('sharedEntry.copy')} disabled={busy} onPress={() => void copy()} /> : null}
                 <Item testID="shared-entry-rotate" title={t('sharedEntry.rotate')} subtitle={t('sharedEntry.rotateDetail')} disabled={busy} onPress={() => void run(async (isCurrent) => {
                     const token = await client.rotateInvite(entry.id);
                     if (!isCurrent()) return;
                     setInviteToken(token); setCopied(false);
                 })} />
+                <Item testID="shared-entry-create-fresh" title={t('sharedEntry.createFresh')} subtitle={t('sharedEntry.createFreshDetail')} disabled={busy || !machineId} onPress={() => void create()} />
             </> : null}
             {error ? <Item testID="shared-entry-management-error" title={sharedEntryErrorMessage(error)} showChevron={false} /> : null}
             <Item testID="shared-entry-members-refresh" title={t('sharedEntry.refresh')} disabled={busy} onPress={() => void run(load)} />
         </ItemGroup>
+        {entries.length > 1 ? <ItemGroup title={t('sharedEntry.previousInvitations')}>
+            {entries.map(item => <Item key={item.id} testID={`shared-entry-select-${item.id}`} title={item.title}
+                subtitle={new Date(item.createdAt).toLocaleString()} selected={item.id === entry?.id} showChevron={false}
+                disabled={busy} onPress={() => void selectEntry(item)} />)}
+        </ItemGroup> : null}
         {entry ? <ItemGroup title={t('sharedEntry.members')}>
             {members.length === 0 ? <Item title={t('sharedEntry.noMembers')} showChevron={false} /> : members.map(member => <Item
                 key={member.id} testID={`shared-entry-member-${member.id}`} title={member.username || member.userId}
-                subtitle={`${t(member.enabled ? 'sharedEntry.canUse' : 'sharedEntry.disabled')} · ${t(member.enabled ? 'sharedEntry.disable' : 'sharedEntry.enable')}${member.enabled && ['pending', 'provisioning'].includes(member.status) ? ` · ${t('sharedEntry.preparing')}` : member.status === 'failed' ? ` · ${t('sharedEntry.preparationFailed')}` : ''}`}
+                subtitle={`${t(member.enabled ? 'sharedEntry.canUse' : 'sharedEntry.disabled')} · ${t(member.enabled ? 'sharedEntry.disable' : 'sharedEntry.enable')}${member.enabled && ['pending', 'provisioning'].includes(member.status) ? ` · ${t('sharedEntry.preparing')}` : member.status === 'failed' ? ` · ${member.errorCode?.startsWith('context_snapshot_') ? sharedEntryErrorMessage(new SharedEntryError(member.errorCode, 409)) : t('sharedEntry.preparationFailed')}` : ''}`}
                 disabled={busy} onPress={() => void run(async (isCurrent) => {
                     const updated = await client.setMemberEnabled(entry.id, member.id, !member.enabled);
                     if (!isCurrent()) return;

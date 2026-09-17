@@ -593,8 +593,8 @@ export const ca: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
-        title: "Entrada al projecte compartit",
-        description: "Cada usuari de Google convidat comença una conversa buida pròpia. Tothom utilitza els mateixos fitxers del projecte a l’amfitrió. L’amfitrió paga l’ús del model.",
+        title: "Comparteix la conversa",
+        description: "Cada usuari de Google convidat rep el context desat en crear la invitació i continua en la seva pròpia conversa. Els fitxers del projecte són compartits i l’amfitrió paga l’ús del model.",
         create: "Crea una invitació",
         name: "Nom de l’entrada",
         members: "Membres",
@@ -622,6 +622,13 @@ export const ca: TranslationStructure = {
         refresh: "Actualitza l’estat",
         loadingFailed: "No s’ha pogut comprovar l’accés. Actualitza abans d’enviar.",
         unavailable: "Les entrades compartides no estan disponibles per a aquesta sessió.",
+        contextSnapshotRequired: "Aquesta invitació no té context desat. Demana a l’amfitrió que creï una nova instantània per compartir.",
+        contextSnapshotTooLarge: "La conversa és massa llarga per copiar-la. Comparteix una conversa més curta.",
+        contextSnapshotUnavailable: "No es pot copiar aquest context. Comparteix una conversa normal sense historial bifurcat.",
+        createFresh: "Crea una nova instantània per compartir",
+        createFreshDetail: "Desa el context actual en una nova invitació. Els membres existents conserven les seves converses.",
+        previousInvitations: "Altres invitacions",
+        snapshotMissing: "Aquesta invitació antiga no té context de conversa desat.",
     },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
@@ -9293,7 +9300,7 @@ settingsSession: {
         // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
         brandTaglineLine1: "Un projecte compartit.",
         brandTaglineLine2: "La teva conversa amb IA.",
-        brandSubTagline: "Treballeu amb Codex al mateix directori de projecte. Cadascú comença una conversa nova i comparteix els canvis als fitxers.",
+        brandSubTagline: "Comparteix una conversa amb el seu context. Continua pel teu compte amb Codex; els fitxers del projecte són compartits.",
         brandTrustStrip: "FITXERS COMPARTITS · CONVERSES SEPARADES · ALLOTJAMENT PROPI",
         frontDoorSelectedServer: "Servidor seleccionat",
         frontDoorHostRequirement: "Les tasques s’executen amb l’amfitrió en línia. Les peticions sense connexió es rebutgen i no entren a la cua.",

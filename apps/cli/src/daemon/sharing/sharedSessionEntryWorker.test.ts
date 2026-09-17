@@ -9,7 +9,7 @@ vi.mock('axios', async (importOriginal) => {
 });
 
 const assignment = { entryId: 'entry', memberId: 'member', sourceSessionId: 'source', sessionId: 'child',
-  encryptionMode: 'plain', recipient: { userId: 'user', signingPublicKey: null, contentPublicKeyB64: null, contentPublicKeySigB64: null } };
+  encryptionMode: 'plain', sourceSnapshot: { v: 1, session: session('source'), messages: [] }, recipient: { userId: 'user', signingPublicKey: null, contentPublicKeyB64: null, contentPublicKeySigB64: null } };
 function session(id: string) {
   return { id, seq: 0, createdAt: 1, updatedAt: 1, active: true, activeAt: 1, encryptionMode: 'plain',
     metadata: JSON.stringify({ path: '/same', machineId: 'machine', flavor: 'codex', sharedSessionEntryId: 'entry' }),
@@ -33,7 +33,7 @@ describe('shared entry daemon polling', () => {
   it('finishes the canonical member allocation with the existing private child', async () => {
     await poll();
     expect(vi.mocked(axios.post).mock.calls.map(([url, body]) => [String(url).split('/shared-session-entries')[1], body]))
-      .toEqual([['/claim', {}], ['/member/complete', { sessionId: 'child' }]]);
+      .toEqual([['/claim', {}], ['/member/complete', { sessionId: 'child', contextSnapshotVersion: 1 }]]);
     expect(launches).toHaveLength(0);
   });
 
@@ -53,7 +53,7 @@ describe('shared entry daemon polling', () => {
   });
 
   it('reports a bounded error for malformed source metadata without sending private exception details', async () => {
-    vi.mocked(axios.get).mockResolvedValue({ status: 200, data: { session: { ...session('source'), metadata: '{}' } } });
+    vi.mocked(axios.post).mockResolvedValue({ data: { assignment: { ...assignment, sessionId: null, sourceSnapshot: { v: 1, session: { ...session('source'), metadata: '{}' }, messages: [] } } } });
     await poll();
     expect(vi.mocked(axios.post).mock.calls.at(-1)?.slice(0, 2)).toEqual([
       expect.stringContaining('/member/fail'), { errorCode: 'source_session_invalid' },

@@ -31,6 +31,8 @@ const emptyStateState = vi.hoisted(() => ({
     hasHiddenInactiveSessions: false,
 }));
 
+const voiceFeatureState = vi.hoisted(() => ({ enabled: false }));
+
 const directSessionsFeatureState = vi.hoisted(() => ({
     enabled: false,
 }));
@@ -162,7 +164,7 @@ vi.mock('@/hooks/server/useFeatureDecision', () => ({
 }));
 
 vi.mock('@/hooks/server/useFeatureEnabled', () => ({
-    useFeatureEnabled: () => false,
+    useFeatureEnabled: (featureId: string) => featureId === 'voice' && voiceFeatureState.enabled,
 }));
 
 vi.mock('@/hooks/ui/useTabState', () => ({
@@ -277,6 +279,7 @@ describe('MainView sidebar actions', () => {
         sessionListHookState.visibleSessionListPaneStateOptions = [];
         emptyStateState.hasHiddenInactiveSessions = false;
         directSessionsFeatureState.enabled = false;
+        voiceFeatureState.enabled = false;
         localSettingsState.sessionsListStorageTab = 'persisted';
         platformState.isTablet = true;
         routerState.pathname = '/';
@@ -328,7 +331,17 @@ describe('MainView sidebar actions', () => {
             },
         });
         expect(renderedHeaderRight.findAllByType('FABWide')).toHaveLength(0);
+        expect(() => renderedHeaderRight.findByProps({ testID: 'main-header-action-operations' })).toThrow();
+        expect(renderedHeaderRight.findAllByType('Pressable')).toHaveLength(1);
         expect(tree!.findAllByType('TabBar')).toHaveLength(0);
+    });
+
+    it('keeps the phone session list without mounting voice navigation', async () => {
+        platformState.isTablet = false;
+        voiceFeatureState.enabled = true;
+        const screen = await renderScreen(<MainView variant="phone" />);
+        expect(screen.tree.findAllByType('VoiceSurface')).toHaveLength(0);
+        expect(screen.tree.findAllByType('SessionsListWrapper')).toHaveLength(1);
     });
 
     it('does not subscribe to sidebar session-list derivations in phone mode', async () => {
@@ -486,24 +499,24 @@ describe('MainView sidebar actions', () => {
         expect(() => renderedHeaderRight.findByProps({ testID: 'main-header-start-new-session' })).not.toThrow();
     });
 
-    it('renders direct session storage tabs in the sidebar empty state when direct sessions are enabled', async () => {
+    it('keeps the sidebar on shared-capable persisted sessions despite a stale direct preference', async () => {
         directSessionsFeatureState.enabled = true;
         localSettingsState.sessionsListStorageTab = 'direct';
 
         let tree: renderer.ReactTestRenderer | null = null;
         tree = (await renderScreen(<MainView variant="sidebar" />)).tree;
 
-        expect(() => tree!.findByProps({ testID: 'sessions-list-storage-tab:direct' })).not.toThrow();
+        expect(() => tree!.findByProps({ testID: 'sessions-list-storage-tab:direct' })).toThrow();
     });
 
-    it('renders the browse direct sessions action in the sidebar empty state when the direct tab is active', async () => {
+    it('does not offer direct-session browsing from the sidebar', async () => {
         directSessionsFeatureState.enabled = true;
         localSettingsState.sessionsListStorageTab = 'direct';
 
         let tree: renderer.ReactTestRenderer | null = null;
         tree = (await renderScreen(<MainView variant="sidebar" />)).tree;
 
-        expect(() => tree!.findByProps({ testID: 'direct-sessions-browse-button' })).not.toThrow();
+        expect(() => tree!.findByProps({ testID: 'direct-sessions-browse-button' })).toThrow();
     });
 
     it('shows the hidden inactive sessions notice when hide inactive sessions empties the sidebar', async () => {

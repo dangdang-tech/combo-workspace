@@ -41,6 +41,7 @@ export function startSharedSessionEntryWorker(params: SharedSessionEntryWorkerPa
 
 const ClaimResponseSchema = z.object({ assignment: z.object({
   entryId: z.string().min(1), memberId: z.string().min(1), sourceSessionId: z.string().min(1),
+  sourceSnapshot: z.unknown().optional(),
   sessionId: z.string().min(1).nullable(), encryptionMode: z.enum(['plain', 'e2ee']),
   recipient: z.object({ userId: z.string().min(1), signingPublicKey: z.string().nullable(),
     contentPublicKeyB64: z.string().nullable(), contentPublicKeySigB64: z.string().nullable() }),
@@ -48,6 +49,7 @@ const ClaimResponseSchema = z.object({ assignment: z.object({
 
 const deterministicErrors = new Set([
   'encryption_upgrade_required', 'recipient_key_invalid', 'source_session_invalid',
+  'context_snapshot_required', 'context_snapshot_too_large', 'context_snapshot_unavailable',
   'child_session_invalid', 'session_encryption_mismatch', 'session_key_unavailable',
 ]);
 

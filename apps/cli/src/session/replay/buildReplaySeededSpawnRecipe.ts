@@ -1,4 +1,4 @@
-import type { HappierReplayStrategy } from '@happier-dev/agents';
+import type { HappierReplayDialogItem, HappierReplayStrategy } from '@happier-dev/agents';
 import {
   SPAWN_SESSION_ERROR_CODES,
   type LlmTaskRunnerConfigV1,
@@ -6,6 +6,7 @@ import {
   type SpawnSessionErrorCode,
 } from '@happier-dev/protocol';
 
+import type { ReplayTranscriptSnapshot } from '@/session/replay/hydrateReplayDialogFromForkChain';
 import { configuration } from '@/configuration';
 import type { Credentials } from '@/persistence';
 import { resolveReplaySeedDraft } from '@/session/replay/resolveReplaySeedDraft';
@@ -38,19 +39,21 @@ export type ReplaySeededSpawnRecipe = Readonly<{
   /** Resolved exact cutoff; this becomes immutable child lineage. */
   cutoffSeqInclusive: number;
   seedText: string;
+  dialog: readonly HappierReplayDialogItem[];
   /** Canonical creation metadata: caller overlay first, canonical envelopes last. */
   metadata: Record<string, unknown>;
 }>;
 
 export type BuildReplaySeededSpawnRecipeResult =
   | Readonly<{ ok: true; recipe: ReplaySeededSpawnRecipe }>
-  | Readonly<{ ok: false; errorCode: SpawnSessionErrorCode; errorMessage: string }>;
+  | Readonly<{ ok: false; errorCode: SpawnSessionErrorCode; errorMessage: string; snapshotError?: 'context_snapshot_too_large' | 'context_snapshot_unavailable' }>;
 
 export type BuildReplaySeededSpawnRecipeParams = Readonly<{
   credentials: Credentials;
   /** Working directory used for seed retrieval, not for creation placement. */
   cwd: string;
   source: ReplaySeededSpawnRecipeSource;
+  sourceSnapshot?: ReplayTranscriptSnapshot;
   /**
    * Catalog Agent id recorded as the child's fork hint. The predecessor's
    * persisted vocabulary is `providerHint.providerId`; the successor renamed it
@@ -102,6 +105,7 @@ export async function buildReplaySeededSpawnRecipe(
         ? { upToSeqInclusive: params.source.forkPoint.upToSeqInclusive }
         : {}),
     },
+    ...(params.sourceSnapshot ? { sourceSnapshot: params.sourceSnapshot } : {}),
     strategy: params.strategy,
     // A caller-supplied count is a released contract and still binds; absent,
     // the character budget is the only bound.
@@ -121,13 +125,14 @@ export async function buildReplaySeededSpawnRecipe(
       ok: false,
       errorCode: SPAWN_SESSION_ERROR_CODES.INVALID_REQUEST,
       errorMessage: 'Unable to hydrate replay dialog from transcript.',
+      ...(params.sourceSnapshot ? { snapshotError: 'context_snapshot_unavailable' as const } : {}),
     };
   }
   // A Replay-seeded SPAWN exists to carry context into a new Session, so an
   // empty source leaves it with no reason to exist. (The same-Session
   // transition answers this differently: it has already stopped the source, and
   // an empty source is simply nothing to carry.)
-  if (resolvedSeed.status === 'no_source_dialog') {
+  if (resolvedSeed.status === 'no_source_dialog' && !params.sourceSnapshot) {
     return {
       ok: false,
       errorCode: SPAWN_SESSION_ERROR_CODES.INVALID_REQUEST,
@@ -135,11 +140,16 @@ export async function buildReplaySeededSpawnRecipe(
     };
   }
 
-  const seedText = resolvedSeed.seedDraft;
+  if (params.sourceSnapshot && resolvedSeed.status === 'seeded' && !resolvedSeed.complete) {
+    return { ok: false, errorCode: SPAWN_SESSION_ERROR_CODES.INVALID_REQUEST,
+      errorMessage: 'Shared context snapshot exceeds the replay budget or is incomplete.',
+      snapshotError: resolvedSeed.historyIncomplete ? 'context_snapshot_unavailable' : 'context_snapshot_too_large' };
+  }
+  const seedText = resolvedSeed.status === 'seeded' ? resolvedSeed.seedDraft : '';
 
   const cutoffSeqInclusive = typeof params.lineageCutoffSeqInclusive === 'number'
     ? params.lineageCutoffSeqInclusive
-    : resolvedSeed.sourceCutoffSeqInclusive;
+    : resolvedSeed.status === 'seeded' ? resolvedSeed.sourceCutoffSeqInclusive : params.sourceSnapshot?.session.seq ?? 0;
   const nowMs = typeof params.nowMs === 'number' ? params.nowMs : Date.now();
   const requestId = typeof params.requestId === 'string' && params.requestId.trim().length > 0
     ? params.requestId.trim()
@@ -150,6 +160,7 @@ export async function buildReplaySeededSpawnRecipe(
     recipe: {
       cutoffSeqInclusive,
       seedText,
+      dialog: resolvedSeed.status === 'seeded' ? resolvedSeed.dialog : [],
       metadata: {
         ...(params.extraMetadata ?? {}),
         forkV1: {

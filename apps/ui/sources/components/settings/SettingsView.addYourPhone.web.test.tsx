@@ -234,44 +234,21 @@ describe('SettingsView (web)', () => {
         vi.unstubAllGlobals();
     });
 
-    it('renders an “Add your phone” shortcut that routes to /settings/add-phone', async () => {
-        windowDimensions = { width: 1600, height: 900 };
+    it.each([
+        { width: 1600, height: 900 },
+        { width: 390, height: 844 },
+        { width: 480, height: 700 },
+    ])('keeps device pairing within Account at $width px', async (dimensions) => {
+        windowDimensions = dimensions;
         vi.resetModules();
         routerPushSpy.mockClear();
         const { SettingsView } = await import('./SettingsView');
-
-        const screen = await renderSettingsView(<SettingsView />);
-
-        expect(screen.findRow('settings-add-your-phone-shortcut')).toBeTruthy();
-        screen.pressRow('settings-add-your-phone-shortcut');
-        expect(routerPushSpy).toHaveBeenCalledTimes(1);
-        expect(routerPushSpy).toHaveBeenCalledWith('/settings/add-phone');
-    });
-
-    it('hides “Add your phone” on phone-sized web', async () => {
-        windowDimensions = { width: 360, height: 800 };
-        vi.stubGlobal('navigator', { maxTouchPoints: 5, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)' } as any);
-        vi.resetModules();
-        routerPushSpy.mockClear();
-
-        const { SettingsView } = await import('./SettingsView');
-
         const screen = await renderSettingsView(<SettingsView />);
 
         expect(screen.findRow('settings-add-your-phone-shortcut')).toBeNull();
-    });
-
-    it('shows “Add your phone” on desktop web even when the viewport is narrow', async () => {
-        windowDimensions = { width: 480, height: 700 };
-        vi.stubGlobal('navigator', { maxTouchPoints: 0, userAgent: 'Mozilla/5.0 (X11; Linux x86_64)' } as any);
-        vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) } as any);
-        vi.resetModules();
-        routerPushSpy.mockClear();
-
-        const { SettingsView } = await import('./SettingsView');
-
-        const screen = await renderSettingsView(<SettingsView />);
-
-        expect(screen.findRow('settings-add-your-phone-shortcut')).toBeTruthy();
+        expect(screen.findRow('settings-connect-terminal-scan')).toBeNull();
+        expect(screen.findRow('settings-connect-terminal-enter-url')).toBeNull();
+        await screen.pressRowByTitle('settings.account');
+        expect(routerPushSpy).toHaveBeenCalledWith('/settings/account');
     });
 });

@@ -652,8 +652,8 @@ export const pt: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
-        title: "Entrada do projeto compartilhado",
-        description: "Cada usuário Google convidado inicia sua própria conversa vazia. Todos usam os mesmos arquivos do projeto no host. O host paga pelo uso do modelo.",
+        title: "Partilhar conversa",
+        description: "Cada utilizador Google convidado recebe o contexto guardado ao criar o convite e continua na sua própria conversa. Os ficheiros do projeto são partilhados e o anfitrião paga a utilização do modelo.",
         create: "Criar convite",
         name: "Nome da entrada",
         members: "Membros",
@@ -681,6 +681,13 @@ export const pt: TranslationStructure = {
         refresh: "Atualizar status",
         loadingFailed: "Não foi possível verificar o acesso. Atualize antes de enviar.",
         unavailable: "As entradas compartilhadas não estão disponíveis para esta sessão.",
+        contextSnapshotRequired: "Este convite não tem contexto guardado. Pede ao anfitrião para criar uma nova captura para partilha.",
+        contextSnapshotTooLarge: "A conversa é demasiado longa para copiar. Partilha uma conversa mais curta.",
+        contextSnapshotUnavailable: "Não é possível copiar este contexto. Partilha uma conversa normal sem histórico ramificado.",
+        createFresh: "Criar nova captura para partilha",
+        createFreshDetail: "Guarda o contexto atual num novo convite. Os membros existentes mantêm as suas conversas.",
+        previousInvitations: "Outros convites",
+        snapshotMissing: "Este convite antigo não tem contexto de conversa guardado.",
     },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
@@ -10044,7 +10051,7 @@ settingsSession: {
     // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
     brandTaglineLine1: "Um projeto partilhado.",
     brandTaglineLine2: "A tua conversa com IA.",
-    brandSubTagline: "Trabalhem com o Codex na mesma pasta de projeto. Cada pessoa começa uma conversa nova e partilha as alterações aos ficheiros.",
+    brandSubTagline: "Partilha uma conversa com o seu contexto. Continua de forma independente com o Codex; os ficheiros do projeto são partilhados.",
     brandTrustStrip: "FICHEIROS PARTILHADOS · CONVERSAS SEPARADAS · AUTOALOJÁVEL",
     frontDoorSelectedServer: "Servidor selecionado",
     frontDoorHostRequirement: "As tarefas são executadas com o anfitrião online. Os pedidos offline são rejeitados, sem entrar em fila.",

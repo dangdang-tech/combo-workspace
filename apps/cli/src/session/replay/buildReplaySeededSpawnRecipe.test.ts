@@ -118,4 +118,16 @@ describe('buildReplaySeededSpawnRecipe', () => {
     });
     expect(result.recipe.metadata).not.toHaveProperty('sessionMediaContinuityV1');
   });
+  it('refuses a shared snapshot beyond the canonical prompt budget instead of silently trimming its context', async () => {
+    const result = await buildReplaySeededSpawnRecipe({ credentials, cwd: '/repo',
+      source: { sourceSessionId: 'frozen', forkPoint: { type: 'seq', upToSeqInclusive: 1 } },
+      sourceSnapshot: { session: { id: 'frozen', seq: 1, metadata: JSON.stringify({ path: '/repo' }), encryptionMode: 'plain', dataEncryptionKey: null },
+        messages: [{ seq: 1, createdAt: 1, content: { t: 'plain', v: { role: 'user', content: { type: 'text', text: 'a'.repeat(5_000) } } } }] },
+      providerHintAgentId: 'codex', strategy: 'recent_messages', maxSeedChars: 1_024,
+    });
+    expect(result).toMatchObject({ ok: false, snapshotError: 'context_snapshot_too_large' });
+    expect(fetchSessionByIdCompat).not.toHaveBeenCalled();
+    expect(fetchEncryptedTranscriptMessagesPage).not.toHaveBeenCalled();
+  });
+
 });

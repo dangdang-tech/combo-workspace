@@ -7,7 +7,10 @@ const accessSchema = z.object({
     entryId: z.string(), title: z.string(), memberId: z.string(), status: statusSchema,
     sessionId: z.string().nullable(), hostOnline: z.boolean(), errorCode: z.string().nullable(),
 }).refine((access) => access.status !== 'ready' || Boolean(access.sessionId));
-const entrySchema = z.object({ id: z.string(), title: z.string(), sourceSessionId: z.string(), machineId: z.string(), createdAt: z.number() });
+const entrySchema = z.object({
+    id: z.string(), title: z.string(), sourceSessionId: z.string(), machineId: z.string(), createdAt: z.number(),
+    hasContextSnapshot: z.boolean().default(false),
+});
 const memberSchema = z.object({ id: z.string(), userId: z.string(), username: z.string().nullable(), status: statusSchema, enabled: z.boolean(), sessionId: z.string().nullable(), errorCode: z.string().nullable() });
 export type SharedEntryAccess = z.infer<typeof accessSchema>;
 export type SharedEntry = z.infer<typeof entrySchema>;

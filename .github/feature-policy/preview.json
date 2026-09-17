@@ -1,6 +1,21 @@
 {
   "buildPolicy": {
-    "allow": [],
+    "allow": [
+      "connectedServices",
+      "sharing.session",
+      "sharing.sessionEntries",
+      "sharing.contentKeys",
+      "sharing.pendingQueueV2",
+      "sharing.pendingDeliveryState",
+      "sessions",
+      "sessions.drafts",
+      "machines",
+      "auth.recovery.providerReset",
+      "auth.login.keyChallenge",
+      "auth.ui.recoveryKeyReminder",
+      "auth.pairing.desktopQrMobileScan",
+      "app.ui.sessionGettingStartedGuidance"
+    ],
     "deny": []
   }
 }

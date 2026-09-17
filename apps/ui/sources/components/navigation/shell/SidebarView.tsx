@@ -3,11 +3,9 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useHeaderHeight } from '@/utils/platform/responsive';
-import { VoiceSurface } from '@/components/voice/surface/VoiceSurface';
 import { MainView } from './MainView';
 import { StyleSheet } from 'react-native-unistyles';
 import { PopoverScope } from '@/components/ui/popover';
-import { useFeatureEnabled } from '@/hooks/server/useFeatureEnabled';
 import { config } from '@/config';
 import { isStackContext } from '@/sync/domains/server/serverContext';
 import { isUsingCustomServer } from '@/sync/domains/server/serverConfig';
@@ -19,14 +17,11 @@ import { useResolvedDesktopWindowControls } from './desktopChrome/useResolvedDes
 import { useDesktopSidebarHistoryNavigationAvailability } from './desktopChrome/useDesktopSidebarHistoryNavigationAvailability';
 import { useSidebarHeaderActions } from './desktopChrome/useSidebarHeaderActions';
 import { useChromeSafeAreaInsets } from '@/components/ui/layout/useChromeSafeAreaInsets';
-import type { InboxContentModel } from '@/components/inbox/useInboxContentModel';
 
 export type SidebarViewProps = Readonly<{
     sidebarWidthPx?: number | null;
     desktopWindowControls?: React.ReactNode;
     desktopUpdateIndicator?: React.ReactNode;
-    inboxModel?: InboxContentModel | null;
-    inboxEnabled?: boolean;
 }>;
 
 const stylesheet = StyleSheet.create((theme) => ({
@@ -48,7 +43,6 @@ export const SidebarView = React.memo((props: SidebarViewProps) => {
     const popoverBoundaryRef = React.useRef<any>(null);
     const showEnvironmentBadge = useSetting('showEnvironmentBadge');
     const [, setSidebarCollapsed] = useLocalSettingMutable('sidebarCollapsed');
-    const voiceEnabled = useFeatureEnabled('voice');
     const { headerActions, topUtilityActions, renderHeaderOverflowVisual } = useSidebarHeaderActions();
     const navigationAvailability = useDesktopSidebarHistoryNavigationAvailability();
     const resolvedDesktopWindowControls = useResolvedDesktopWindowControls({
@@ -112,10 +106,7 @@ export const SidebarView = React.memo((props: SidebarViewProps) => {
                     popoverBoundaryRef={popoverBoundaryRef}
                     desktopWindowControls={resolvedDesktopWindowControls}
                     desktopUpdateIndicator={props.desktopUpdateIndicator}
-                    inboxModel={props.inboxModel}
-                    inboxEnabled={props.inboxEnabled}
                 />
-                {voiceEnabled ? <VoiceSurface variant="sidebar" /> : null}
                 <MainView variant="sidebar" />
             </PopoverScope>
         </View>

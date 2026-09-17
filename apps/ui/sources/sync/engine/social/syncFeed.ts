@@ -2,6 +2,8 @@ import type { FeedItem } from '@/sync/domains/social/feedTypes';
 import type { AuthCredentials } from '@/auth/storage/tokenStorage';
 import type { UserProfile } from '@/sync/domains/social/friendTypes';
 import { fetchFeed as fetchFeedApi } from '@/sync/api/social/apiFeed';
+import { getActiveServerSnapshot } from '@/sync/domains/server/serverRuntime';
+import { resolveRuntimeFeatureDecisionOrThrow } from '@/sync/domains/features/featureDecisionInputs';
 
 export async function handleNewFeedPostUpdate(params: {
     feedUpdate: {
@@ -119,6 +121,10 @@ export async function fetchAndApplyFeed(params: {
     const { credentials, getFeedItems, getFeedHead, assumeUsers, getUsers, applyFeedItems, log } = params;
     const shouldContinue = params.shouldContinue ?? (() => true);
     if (!shouldContinue()) return;
+
+    const { serverId } = getActiveServerSnapshot();
+    const decision = await resolveRuntimeFeatureDecisionOrThrow({ featureId: 'social.friends', serverId });
+    if (!shouldContinue() || decision.state !== 'enabled') return;
 
     try {
         log.log('📰 Fetching feed...');

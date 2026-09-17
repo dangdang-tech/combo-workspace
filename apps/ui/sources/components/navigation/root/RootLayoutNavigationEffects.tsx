@@ -14,7 +14,6 @@ import {
 } from '@/sync/domains/server/url/bootstrapActiveServerFromWebLocation';
 import { buildTerminalConnectWebHref } from '@/utils/path/terminalConnectUrl';
 import { useWebInitialRouteReconcile } from '@/hooks/ui/useWebInitialRouteReconcile';
-import { useHappierVoiceSupport } from '@/hooks/server/useHappierVoiceSupport';
 import { buildScopedSessionRouteHref } from '@/hooks/session/sessionRouteServerScope';
 import { useNotificationResponseRouting } from '@/activity/notifications/runtime/useNotificationResponseRouting';
 import { Modal } from '@/modal';
@@ -83,7 +82,6 @@ export function RootLayoutNavigationEffects(): React.ReactElement | null {
         auto?: string | string[];
     }>();
     const debugRouterEnabled = process.env.EXPO_PUBLIC_DEBUG === '1';
-    const happierVoiceSupported = useHappierVoiceSupport();
     const activeServerAccountScope = useActiveServerAccountScope();
     const isTerminalConnectRoute = segments.includes('terminal') && segments.includes('connect');
 
@@ -220,36 +218,6 @@ export function RootLayoutNavigationEffects(): React.ReactElement | null {
 
         pendingTerminalHandledRef.current = false;
     }, [activeServerAccountScope, auth.isAuthenticated, isTerminalConnectRoute]);
-
-    // Server capability gating: if the server doesn't support Happier Voice (misconfigured/disabled),
-    // default the user's voice mode to off (they can still choose BYO ElevenLabs in settings).
-    React.useEffect(() => {
-        if (!auth.isAuthenticated) return;
-        if (happierVoiceSupported !== false) return;
-        let cancelled = false;
-        fireAndForget((async () => {
-            try {
-                // Defer loading sync/storage modules until needed to keep module evaluation light.
-                const [{ storage }, { applySystemSettings }] = await Promise.all([
-                    import('@/sync/domains/state/storage'),
-                    import('@/sync/store/settingsWriters'),
-                ]);
-
-                if (cancelled) return;
-                const voice = (storage.getState().settings as any)?.voice ?? null;
-                const providerId = voice?.providerId ?? 'off';
-                const billingMode = voice?.adapters?.realtime_elevenlabs?.billingMode ?? 'happier';
-                if (providerId !== 'realtime_elevenlabs') return;
-                if (billingMode !== 'happier') return;
-                applySystemSettings({ voice: { ...voice, providerId: 'off' } });
-            } catch {
-                // Non-fatal: feature gating should never crash the root layout.
-            }
-        })(), { tag: 'RootLayout.happierVoiceGate' });
-        return () => {
-            cancelled = true;
-        };
-    }, [auth.isAuthenticated, happierVoiceSupported]);
 
     if (debugRouterEnabled && Platform.OS === 'web') {
         return (

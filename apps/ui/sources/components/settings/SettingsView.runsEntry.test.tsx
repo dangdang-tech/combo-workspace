@@ -247,106 +247,26 @@ describe('SettingsView (runs entry)', () => {
         return screen;
     }
 
-    it('includes a Runs entry that routes to /runs when execution runs are enabled', async () => {
+    it('keeps only core destinations even when optional features are enabled', async () => {
+        mockFeatureEnabled = () => true;
+        automationsSupportState.enabled = true;
+        automationsSupportState.discoverable = true;
+        automationsSupportState.blockedBy = null;
         const screen = await renderSettingsViewUnderTest();
-        expect(screen.findRowByTitle('runs.title')).toBeTruthy();
+        const destinations = screen.tree.findAllByType('Item' as any)
+            .filter((item) => typeof item.props.onPress === 'function')
+            .map((item) => item.props.title);
 
-        await screen.pressRowByTitle('runs.title');
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/runs');
+        expect(destinations).toEqual(['settings.account', 'settings.machines']);
     });
 
-    it('includes a Transcript entry that routes to /settings/session/transcript', async () => {
-        const screen = await renderSettingsViewUnderTest();
-        expect(screen.findRowByTitle('settings.transcript')).toBeTruthy();
-
-        await screen.pressRowByTitle('settings.transcript');
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/settings/session/transcript');
-    });
-
-    it('keeps the automations entry discoverable when only local feature flags are off and routes to Features', async () => {
+    it('does not expose an automations enablement detour when local policy disables it', async () => {
         automationsSupportState.enabled = false;
         automationsSupportState.discoverable = true;
         automationsSupportState.blockedBy = 'local_policy';
-
-        const screen = await renderSettingsViewUnderTest();
-        const automationsItem = screen.findRowByTitle('settings.automations');
-        expect(automationsItem).toBeTruthy();
-        expect(automationsItem?.props?.subtitle).toBe('settingsFeatures.expAutomationsSubtitle');
-
-        await screen.pressRowByTitle('settings.automations');
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/settings/features');
-    });
-
-    it('includes a Permissions entry that routes to /settings/session/permissions', async () => {
-        const screen = await renderSettingsViewUnderTest();
-        expect(screen.findRowByTitle('settings.permissions')).toBeTruthy();
-
-        await screen.pressRowByTitle('settings.permissions');
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/settings/session/permissions');
-    });
-
-    it('includes a Subagents entry that routes to /settings/sub-agent', async () => {
-        const screen = await renderSettingsViewUnderTest();
-        expect(screen.findRowByTitle('subAgentGuidance.settings.groupTitle')).toBeTruthy();
-
-        await screen.pressRowByTitle('subAgentGuidance.settings.groupTitle');
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/settings/sub-agent');
-    });
-
-    it('includes a Connected services entry that routes through the settings stack', async () => {
-        mockFeatureEnabled = (featureId) => featureId === 'connectedServices';
-        const screen = await renderSettingsViewUnderTest();
-        expect(screen.findRowByTitle('settings.connectedServices')).toBeTruthy();
-
-        await screen.pressRowByTitle('settings.connectedServices');
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/settings/connected-services');
-    });
-
-    it('includes an Actions entry that routes to /settings/actions', async () => {
-        const screen = await renderSettingsViewUnderTest();
-        expect(screen.findRowByTitle('common.actions')).toBeTruthy();
-
-        await screen.pressRowByTitle('common.actions');
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/settings/actions');
-    });
-
-    it("omits the What's New entry when changelog UI is disabled by build policy", async () => {
-        const previousDeny = process.env.EXPO_PUBLIC_HAPPIER_BUILD_FEATURES_DENY;
-        process.env.EXPO_PUBLIC_HAPPIER_BUILD_FEATURES_DENY = 'app.ui.changelog';
-        vi.resetModules();
-
-        try {
-            const screen = await renderSettingsViewUnderTest();
-            expect(screen.findRowByTitle('settings.whatsNew')).toBeNull();
-        } finally {
-            if (previousDeny === undefined) delete process.env.EXPO_PUBLIC_HAPPIER_BUILD_FEATURES_DENY;
-            else process.env.EXPO_PUBLIC_HAPPIER_BUILD_FEATURES_DENY = previousDeny;
-        }
-    });
-
-    it('hides feature-gated entries when disabled by feature policy', async () => {
-        mockFeatureEnabled = (featureId) => featureId === 'execution.runs';
         const screen = await renderSettingsViewUnderTest();
 
-        expect(screen.findRowByTitle('settings.voiceAssistant')).toBeNull();
-        expect(screen.findRowByTitle('settings.filesSourceControl')).toBeNull();
-        expect(screen.findRowByTitle('settings.memorySearch')).toBeNull();
-    });
-
-    it('shows feature-gated entries when voice, source control, and memory search are enabled', async () => {
-        mockFeatureEnabled = (featureId) =>
-            ['execution.runs', 'voice', 'scm.writeOperations', 'memory.search'].includes(featureId);
-        const screen = await renderSettingsViewUnderTest();
-
-        expect(screen.findRowByTitle('settings.voiceAssistant')).toBeTruthy();
-        expect(screen.findRowByTitle('settings.filesSourceControl')).toBeTruthy();
-        expect(screen.findRowByTitle('settings.memorySearch')).toBeTruthy();
+        expect(screen.findRowByTitle('settings.automations')).toBeNull();
+        expect(screen.findRowByTitle('settings.featuresTitle')).toBeNull();
     });
 });

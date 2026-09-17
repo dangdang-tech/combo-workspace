@@ -226,30 +226,13 @@ describe('app stack modal header close buttons', () => {
         stackNavigationState.routes = [{ key: 'current-route' }];
     });
 
-    it('exposes a native close affordance for the new-session modal', async () => {
+    it('uses the simple composer presentation on native even with an old wizard preference', async () => {
         const { default: RootLayout } = await import('@/app/(app)/_layout');
-
         const screen = await renderScreen(<RootLayout />);
-
         const options = getStackScreenOptions(screen, 'new/index');
-        const headerRight = options.headerRight as (() => React.ReactNode) | undefined;
-        expect(headerRight).toBeTypeOf('function');
-
-        const renderedHeader = await renderScreen(<>{headerRight?.()}</>);
-        const closeButton = renderedHeader.tree.root
-            .findAllByProps({ testID: 'new-session-cancel' })
-            .find((node) => node.props.accessibilityRole === 'button');
-        expect(closeButton).toBeTruthy();
-
-        expect(closeButton?.props.accessibilityLabel).toBe('common.cancel');
-        await pressTestInstanceAsync(closeButton!);
-        expect(safeRouterBackSpy).toHaveBeenCalledWith({
-            router: expect.objectContaining({
-                back: routerBackSpy,
-            }),
-            navigation: stackNavigationMock,
-            fallbackHref: '/',
-        });
+        expect(options.headerShown).toBe(false);
+        expect(options.presentation).toBe('transparentModal');
+        expect(options.gestureEnabled).toBe(false);
     });
 
     it('prevents a direct desktop-web modal backdrop dismissal and exposes a deterministic close', async () => {
@@ -308,23 +291,6 @@ describe('app stack modal header close buttons', () => {
         expect(renderedHeader.tree.root.findAllByProps({ testID: 'new-session-cancel' })).toHaveLength(0);
     });
 
-    it('dismisses the keyboard when the native new-session header title is pressed', async () => {
-        const { default: RootLayout } = await import('@/app/(app)/_layout');
 
-        const screen = await renderScreen(<RootLayout />);
-
-        const options = getStackScreenOptions(screen, 'new/index');
-        const headerTitle = options.headerTitle as (() => React.ReactNode) | undefined;
-        expect(headerTitle).toBeTypeOf('function');
-
-        const renderedHeaderTitle = await renderScreen(<>{headerTitle?.()}</>);
-        const dismissTarget = renderedHeaderTitle.tree.root
-            .findAllByProps({ testID: 'new-session-header-keyboard-dismiss' })
-            .at(0);
-        expect(dismissTarget).toBeTruthy();
-
-        await pressTestInstanceAsync(dismissTarget!);
-        expect(keyboardDismissSpy).toHaveBeenCalledTimes(1);
-    });
 
 });

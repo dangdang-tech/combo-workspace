@@ -426,8 +426,8 @@ export const en = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
-        title: "Shared workspace entry",
-        description: "Each invited Google user starts their own blank conversation. Everyone uses the same project files on the host. The host pays for model usage.",
+        title: "Share conversation",
+        description: "Each invited Google user receives the chat context saved when this invitation was created, then continues in their own conversation. Project files are shared; the host pays for model usage.",
         create: "Create invitation",
         name: "Entry name",
         members: "Members",
@@ -455,6 +455,13 @@ export const en = {
         refresh: "Refresh status",
         loadingFailed: "Could not check access. Refresh before sending.",
         unavailable: "Shared entries are unavailable for this session.",
+        contextSnapshotRequired: "This invitation has no saved context. Ask the host to create a new sharing snapshot.",
+        contextSnapshotTooLarge: "The conversation is too long to copy. Share a shorter conversation.",
+        contextSnapshotUnavailable: "This context cannot be copied. Share a regular conversation without a forked history.",
+        createFresh: "Create new sharing snapshot",
+        createFreshDetail: "Save the current chat context in a new invitation. Existing members keep their conversations.",
+        previousInvitations: "Other invitations",
+        snapshotMissing: "This older invitation has no saved chat context.",
     },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
@@ -9378,7 +9385,7 @@ settingsSession: {
         // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
         brandTaglineLine1: "One shared project.",
         brandTaglineLine2: "Your own AI conversation.",
-        brandSubTagline: "Work with Codex in the same project directory. Everyone starts with a fresh conversation; file changes are shared.",
+        brandSubTagline: "Share a conversation with its context. Continue independently with Codex; project files are shared.",
         brandTrustStrip: "SHARED FILES · SEPARATE CONVERSATIONS · SELF-HOSTABLE",
         frontDoorSelectedServer: "Selected server",
         frontDoorHostRequirement: "Tasks run while the host is online. Offline requests are rejected, not queued.",

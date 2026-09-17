@@ -117,29 +117,21 @@ describe('SettingsView keyboard shortcuts entry', () => {
         shared.connectedServices = [];
     });
 
-    it('routes to keyboard shortcut settings from the general settings group', async () => {
+    it('keeps keyboard customization out of core sharing settings', async () => {
         const { SettingsView } = await import('./SettingsView');
         const screen = await renderSettingsView(<SettingsView />);
 
-        expect(screen.findRow('settings-keyboard-shortcuts-row')).not.toBeNull();
-
-        screen.pressRow('settings-keyboard-shortcuts-row');
-
-        expect(shared.routerPushSpy).toHaveBeenCalledWith('/settings/keyboard');
+        expect(screen.findRow('settings-keyboard-shortcuts-row')).toBeNull();
     });
 
-    it('routes a hidden connected projection to the canonical service detail owner', async () => {
+    it('does not restore AI provider settings when developer mode and a service are enabled', async () => {
         shared.devModeEnabled = true;
         shared.connectedServices = ['anthropic'];
         const { SettingsView } = await import('./SettingsView');
         const screen = await renderSettingsView(<SettingsView />);
 
-        expect(screen.findRowByTitle('Anthropic')).not.toBeNull();
-        await screen.pressRowByTitle('Anthropic');
-
-        expect(shared.routerPushSpy).toHaveBeenCalledWith({
-            pathname: '/settings/connected-services/[serviceId]',
-            params: { serviceId: 'anthropic' },
-        });
+        expect(screen.findRowByTitle('Anthropic')).toBeNull();
+        expect(screen.findRowByTitle('settings.supportUs')).toBeNull();
+        expect(screen.findRowByTitle('settings.account')).not.toBeNull();
     });
 });

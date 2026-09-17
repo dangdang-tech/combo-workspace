@@ -31,8 +31,12 @@ import { __resetProviderAccountUsageSnapshotCache } from '@/sync/domains/connect
 
 const stableCredentials = { token: 't', secret: Buffer.from(new Uint8Array(32).fill(3)).toString('base64url') } as const;
 let currentCredentials: Readonly<{ token: string; secret: string }> = stableCredentials;
+const useFeatureEnabledSpy = vi.fn((_featureId: string) => true);
 vi.mock('@/auth/context/AuthContext', () => ({
   useAuth: () => ({ credentials: currentCredentials }),
+}));
+vi.mock('@/hooks/server/useFeatureEnabled', () => ({
+  useFeatureEnabled: (featureId: string) => useFeatureEnabledSpy(featureId),
 }));
 
 const {
@@ -262,6 +266,7 @@ describe('useConnectedServiceQuotaSnapshot', () => {
     pinnedFixture.value = {};
     currentCredentials = stableCredentials;
     vi.clearAllMocks();
+    useFeatureEnabledSpy.mockReturnValue(true);
     fetchAccountEncryptionModeSpy.mockResolvedValue({ mode: 'e2ee', updatedAt: 0 });
     getConnectedServiceQuotaSnapshotPlainSpy.mockResolvedValue(null);
     getConnectedServiceQuotaSnapshotSealedSpy.mockResolvedValue(null);
@@ -290,6 +295,57 @@ describe('useConnectedServiceQuotaSnapshot', () => {
     expect(hook.getCurrent().canRefresh).toBe(false);
     await hook.getCurrent().refresh();
     expect(requestConnectedServiceQuotaSnapshotRefreshSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not load or manually refresh when the quotas feature is disabled even if the caller enables observations', async () => {
+    useFeatureEnabledSpy.mockImplementation((featureId) => featureId !== 'connectedServices.quotas');
+    const hook = await renderHook(() => useConnectedServiceQuotaSnapshot({
+      serviceId: 'openai-codex', profileId: 'work', enabled: true,
+    }));
+
+    await act(async () => { await hook.getCurrent().refresh(); });
+    expect(fetchAccountEncryptionModeSpy).not.toHaveBeenCalled();
+    expect(getConnectedServiceQuotaSnapshotPlainSpy).not.toHaveBeenCalled();
+    expect(getConnectedServiceQuotaSnapshotSealedSpy).not.toHaveBeenCalled();
+    expect(requestConnectedServiceQuotaSnapshotRefreshSpy).not.toHaveBeenCalled();
+    expect(requestConnectedServiceQuotaSnapshotRefreshV3Spy).not.toHaveBeenCalled();
+    expect(hook.getCurrent()).toEqual(expect.objectContaining({
+      snapshot: null, loading: false, canRefresh: false, canConsumeRecoveryCredit: false,
+    }));
+  });
+
+  it('releases quota observation when the feature closes and resumes polling only after it reopens', async () => {
+    vi.useFakeTimers();
+    fetchAccountEncryptionModeSpy.mockResolvedValue({ mode: 'plain', updatedAt: 0 });
+    let resolvePlain!: (value: Awaited<ReturnType<typeof getConnectedServiceQuotaSnapshotPlain>>) => void;
+    getConnectedServiceQuotaSnapshotPlainSpy.mockReturnValueOnce(new Promise((resolve) => { resolvePlain = resolve; }));
+    let renders = 0;
+    const hook = await renderHook(() => {
+      renders += 1;
+      return useConnectedServiceQuotaSnapshot({ serviceId: 'anthropic', profileId: 'work' });
+    });
+    expect(getConnectedServiceQuotaSnapshotPlainSpy).toHaveBeenCalledTimes(1);
+
+    useFeatureEnabledSpy.mockImplementation((featureId) => featureId !== 'connectedServices.quotas');
+    await hook.rerender();
+    const rendersAfterDisable = renders;
+    await act(async () => { resolvePlain(snapshotFor('work', Date.now())); });
+    await flushHookEffects({ turns: 3 });
+    expect(renders).toBe(rendersAfterDisable);
+    expect(hook.getCurrent()).toEqual(expect.objectContaining({
+      snapshot: null, loading: false, canRefresh: false,
+    }));
+    await flushHookEffects({ cycles: 1, advanceTimersMs: 300_000 });
+    expect(getConnectedServiceQuotaSnapshotPlainSpy).toHaveBeenCalledTimes(1);
+
+    getConnectedServiceQuotaSnapshotPlainSpy.mockResolvedValue(snapshotFor('work', Date.now()));
+    useFeatureEnabledSpy.mockReturnValue(true);
+    await hook.rerender();
+    expect(getConnectedServiceQuotaSnapshotPlainSpy).toHaveBeenCalledTimes(2);
+    expect(hook.getCurrent().canRefresh).toBe(true);
+    await flushHookEffects({ cycles: 1, advanceTimersMs: 60_000 });
+    expect(getConnectedServiceQuotaSnapshotPlainSpy).toHaveBeenCalledTimes(3);
+    await hook.unmount();
   });
 
   it('does not restart an equivalent automatic load while the first quota request is unresolved', async () => {

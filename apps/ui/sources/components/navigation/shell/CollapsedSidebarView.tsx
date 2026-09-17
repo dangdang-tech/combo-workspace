@@ -18,9 +18,6 @@ import { useResolvedDesktopWindowControls } from './desktopChrome/useResolvedDes
 import { runGuardedNavigation } from '@/utils/navigation/runGuardedNavigation';
 import { fireAndForget } from '@/utils/system/fireAndForget';
 import type { AppUpdateStatusTagProps } from '@/components/ui/feedback/AppUpdateStatusTag';
-import { ActionOperationActivityButton } from '@/components/inbox/actionOperations/ActionOperationActivityButton';
-import { InboxPopoverButton } from '@/components/inbox/InboxPopoverButton';
-import type { InboxContentModel } from '@/components/inbox/useInboxContentModel';
 
 export type CollapsedSidebarViewProps = Readonly<{
     desktopWindowControls?: React.ReactNode;
@@ -28,8 +25,6 @@ export type CollapsedSidebarViewProps = Readonly<{
     focusModeActive?: boolean;
     onExitFocusMode?: () => void;
     onRequestExpand?: () => void;
-    inboxModel?: InboxContentModel | null;
-    inboxEnabled?: boolean;
 }>;
 
 const styles = StyleSheet.create((theme) => ({
@@ -143,19 +138,6 @@ export const CollapsedSidebarView = React.memo((props: CollapsedSidebarViewProps
                     {resolvedDesktopWindowControls}
                 </DesktopShellWindowControlsHost>
                 {renderUpdateIndicatorWithFallback(props.desktopUpdateIndicator, logoButton)}
-                {props.inboxEnabled && props.inboxModel ? (
-                    <InboxPopoverButton
-                        model={props.inboxModel}
-                        buttonSize={32}
-                        iconSize={DESKTOP_SIDEBAR_CHROME_ICON_GLYPH_SIZE_PX}
-                        testID="collapsed-sidebar-inbox-button"
-                    />
-                ) : null}
-                <ActionOperationActivityButton
-                    testID="collapsed-sidebar-action-operations"
-                    buttonSize={32}
-                    iconSize={DESKTOP_SIDEBAR_CHROME_ICON_GLYPH_SIZE_PX}
-                />
                 {Platform.OS === 'web' ? (
                     <Pressable
                         testID="sidebar-expand-button"

@@ -44,7 +44,9 @@ vi.mock('@/hooks/server/useFriendsEnabled', () => ({
 }));
 
 describe('useSidebarHeaderActions', () => {
-    it('exposes only implemented sidebar header actions when social and inbox actions are unavailable', async () => {
+    it('exposes only settings and new session even when social and inbox are available', async () => {
+        shellFeatureState.friendsEnabled = true;
+        shellFeatureState.inboxAvailable = true;
         const { useSidebarHeaderActions } = await import('./useSidebarHeaderActions');
 
         const hook = await renderHook(() => useSidebarHeaderActions());

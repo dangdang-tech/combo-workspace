@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { useAuth } from '@/auth/context/AuthContext';
 import { resolveAuthCredentialsScopeKey } from '@/auth/storage/resolveAuthCredentialsScopeKey';
+import { useFeatureEnabled } from '@/hooks/server/useFeatureEnabled';
 import { connectedServiceProfileKey } from '@/sync/domains/connectedServices/connectedServiceProfilePreferences';
 import { shouldHideQuotaForCredentialStatus } from '@/sync/domains/connectedServices/shouldHideQuotaForCredentialStatus';
 import {
@@ -67,7 +68,8 @@ export function useConnectedServiceQuotaSnapshot(params: Readonly<{
     enabled?: boolean;
 }>): UseConnectedServiceQuotaSnapshotResult {
     const { serviceId, profileId } = params;
-    const enabled = params.enabled !== false;
+    const quotasEnabled = useFeatureEnabled('connectedServices.quotas');
+    const enabled = quotasEnabled && params.enabled !== false;
     const auth = useAuth();
     const credentials = auth.credentials;
 

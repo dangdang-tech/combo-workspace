@@ -3,8 +3,9 @@ import tweetnacl from 'tweetnacl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetServerFeaturesClientForTests } from '@/features/serverFeaturesClient';
 import { deriveBoxPublicKeyFromSeed, openEncryptedDataKeyEnvelopeV1, sealEncryptedDataKeyEnvelopeV1 } from '@happier-dev/protocol';
-import { decodeBase64, encodeBase64, encrypt, getRandomBytes } from '@/api/encryption';
+import { decodeBase64, decodeBase64 as decode, decrypt, encodeBase64, encrypt, getRandomBytes } from '@/api/encryption';
 import type { Credentials } from '@/persistence';
+import { openSessionDataEncryptionKey } from '@/api/client/openSessionDataEncryptionKey';
 import type { SpawnDaemonSessionRequest } from '@/rpc/handlers/spawnSessionOptionsContract';
 import { provisionSharedSession, type SharedSessionAssignment } from './provisionSharedSession';
 
@@ -58,22 +59,51 @@ describe('provisionSharedSession', () => {
   let childMode: 'plain' | 'e2ee' | null;
   let online: boolean;
   let launches: SpawnDaemonSessionRequest[];
+  let createdChild: ReturnType<typeof row> | null;
+  let snapshotMetadata: Record<string, unknown>;
+  let imported: Array<{ content: unknown; localId: string }>;
   beforeEach(() => {
-    vi.clearAllMocks(); resetServerFeaturesClientForTests(); mode = 'e2ee'; accountMode = null; sourceExtra = {}; childMode = null; online = true; launches = [];
+    vi.clearAllMocks(); resetServerFeaturesClientForTests(); mode = 'e2ee'; accountMode = null; sourceExtra = {}; childMode = null; online = true; launches = []; createdChild = null; snapshotMetadata = {}; imported = [];
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ features: {}, capabilities: { encryption: { storagePolicy: 'optional', allowAccountOptOut: true, defaultAccountMode: 'e2ee' } } })));
     vi.mocked(axios.get).mockImplementation(async (url) => ({ status: 200, data: String(url).endsWith('/v1/account/encryption')
       ? { mode: accountMode ?? mode, updatedAt: 1 }
-      : { session: String(url).endsWith('/source') ? row('source', mode, sourceExtra) : row('child', childMode ?? mode) } }));
+      : { session: String(url).endsWith('/source') ? row('source', mode, sourceExtra) : (createdChild ?? row('child', childMode ?? mode, { sharedSessionEntryId: 'entry' })) } }));
+    vi.mocked(axios.post).mockImplementation(async (url, body: any) => {
+      if (String(url).endsWith('/v1/sessions')) {
+        createdChild ??= { ...row('child', childMode ?? mode), ...body, encryptionMode: childMode ?? mode };
+        return { status: 200, data: { session: createdChild, resolution: 'created' } };
+      }
+      if (String(url).endsWith('/messages')) {
+        if (!imported.some(item => item.localId === body.localId)) imported.push(body);
+        return { status: 200, data: { didWrite: true, message: { id: body.localId, seq: imported.length, localId: body.localId, createdAt: 1 } } };
+      }
+      throw new Error('Unexpected POST');
+    });
     vi.mocked(axios.patch).mockImplementation(async () => ({ status: 200, data: { success: true, metadata: { version: 2 } } }));
   });
   afterEach(() => { vi.unstubAllGlobals(); resetServerFeaturesClientForTests(); });
+  function snapshot() {
+    const source = { ...row('source', mode, { ...sourceExtra, ...snapshotMetadata }), seq: 2 };
+    return { v: 1 as const, session: source, messages: [
+      { seq: 1, createdAt: 1, content: stored({ role: 'user', content: { type: 'text', text: 'BEFORE_SHARE_QUESTION' } }) },
+      { seq: 2, createdAt: 2, content: stored({ role: 'agent', content: { type: 'text', text: 'BEFORE_SHARE_ANSWER' } }) },
+    ] };
+  }
+  function stored(payload: unknown) {
+    return mode === 'plain' ? { t: 'plain' as const, v: payload } : { t: 'encrypted' as const, c: encodeBase64(encrypt(new Uint8Array(32).fill(11), 'dataKey', payload)) };
+  }
+  function childPayload(value: any) {
+    if (value.t === 'plain') return value.v;
+    const key = openSessionDataEncryptionKey({ credential: credentials, encryptedDataEncryptionKeyBase64: createdChild!.dataEncryptionKey });
+    return decrypt(key!, 'dataKey', decode(value.c));
+  }
   function run(overrides: Partial<Parameters<typeof provisionSharedSession>[0]> = {}) {
-    return provisionSharedSession({ credentials, machineId: 'machine', assignment, isOnline: () => online,
+    return provisionSharedSession({ credentials, machineId: 'machine', isOnline: () => online,
       directTransport: { spawn: async (request) => { launches.push(request); return { success: true, sessionId: 'child' }; } },
-      ...overrides });
+      ...overrides, assignment: { ...assignment, ...overrides.assignment, sourceSnapshot: Object.prototype.hasOwnProperty.call(overrides.assignment ?? {}, 'sourceSnapshot') ? overrides.assignment!.sourceSnapshot : snapshot() } });
   }
 
-  it('creates an empty independent session in the same directory and wraps only its key for the recipient', async () => {
+  it('forks the frozen share-time context into an independent child and wraps only its key for the recipient', async () => {
     const result = await run();
     expect(result.sessionId).toBe('child');
     expect(launches).toHaveLength(1);
@@ -81,12 +111,78 @@ describe('provisionSharedSession', () => {
       backendTarget: { kind: 'builtInAgent', agentId: 'codex' }, transcriptStorage: 'persisted' });
     expect(launches[0]).not.toHaveProperty('resume');
     expect(launches[0]).not.toHaveProperty('pendingFirstInput');
-    expect(openEncryptedDataKeyEnvelopeV1({ envelope: decodeBase64(result.encryptedDataKey!),
-      recipientSecretKeyOrSeed: recipientSeed })).toEqual(childKey);
+    expect(createdChild).not.toBeNull();
+    const recipientChildKey = openEncryptedDataKeyEnvelopeV1({ envelope: decodeBase64(result.encryptedDataKey!),
+      recipientSecretKeyOrSeed: recipientSeed });
+    expect(recipientChildKey).toEqual(openSessionDataEncryptionKey({ credential: credentials, encryptedDataEncryptionKeyBase64: createdChild!.dataEncryptionKey }));
+    expect(recipientChildKey).not.toEqual(new Uint8Array(32).fill(11));
+    expect(launches[0].existingSessionId).toBe('child');
+    const metadata = decrypt(recipientChildKey!, 'dataKey', decode(createdChild!.metadata)) as any;
+    expect(metadata.replaySeedV1.seedText).toContain('BEFORE_SHARE_QUESTION');
+    expect(metadata.replaySeedV1.seedText).toContain('BEFORE_SHARE_ANSWER');
+    expect(metadata.forkV1).toMatchObject({ parentSessionId: 'source', parentCutoffSeqInclusive: 2 });
+    expect(imported.map(item => childPayload(item.content).content.text)).toEqual(['BEFORE_SHARE_QUESTION', 'BEFORE_SHARE_ANSWER']);
+    expect(vi.mocked(axios.get).mock.calls.some(([url]) => String(url).endsWith('/messages'))).toBe(false);
     expect(openEncryptedDataKeyEnvelopeV1({ envelope: decodeBase64(result.encryptedDataKey!),
       recipientSecretKeyOrSeed: new Uint8Array(32).fill(99) })).toBeNull();
-    const patched = vi.mocked(axios.patch).mock.calls[0]?.[1] as { metadata: { ciphertext: string } };
-    expect(patched.metadata.ciphertext).not.toContain('/same-project');
+    expect(createdChild!.metadata).not.toContain('/same-project');
+    expect(imported.every(item => !JSON.stringify(item.content).includes('BEFORE_SHARE'))).toBe(true);
+  });
+
+  it('inherits the frozen owner model and excludes later source metadata and same-seq message updates', async () => {
+    snapshotMetadata = { modelOverrideV1: { v: 1, modelId: 'frozen-model', updatedAt: 1 }, summary: { text: 'Frozen title', updatedAt: 1 } };
+    vi.mocked(axios.get).mockImplementation(async (url) => ({ status: 200, data: String(url).endsWith('/v1/account/encryption')
+      ? { mode, updatedAt: 1 } : { session: String(url).endsWith('/source') ? row('source', mode, { summary: { text: 'PRIVATE_AFTER_SHARE', updatedAt: 2 } }) : (createdChild ?? row('child', mode)) } }));
+    await run();
+    expect(launches[0]).toMatchObject({ modelId: 'frozen-model', modelUpdatedAt: 1 });
+    const key = openSessionDataEncryptionKey({ credential: credentials, encryptedDataEncryptionKeyBase64: createdChild!.dataEncryptionKey });
+    const metadata = decrypt(key!, 'dataKey', decode(createdChild!.metadata));
+    expect(JSON.stringify(metadata)).not.toContain('PRIVATE_AFTER_SHARE');
+    expect(JSON.stringify(imported.map(item => childPayload(item.content)))).not.toContain('PRIVATE_AFTER_SHARE');
+  });
+
+  it('rejoins the same creation identity and imports each frozen turn once after an ambiguous import response', async () => {
+    const originalPost = vi.mocked(axios.post).getMockImplementation()!;
+    let interrupted = false;
+    vi.mocked(axios.post).mockImplementation(async (...args) => {
+      const response = await originalPost(...args);
+      if (String(args[0]).endsWith('/messages') && !interrupted) { interrupted = true; throw new Error('lost import acknowledgement'); }
+      return response;
+    });
+    await expect(run()).rejects.toThrow('lost import acknowledgement');
+    const childId = createdChild!.id;
+    const firstCiphertext = JSON.stringify(imported[0]);
+    const result = await run();
+    expect(result.sessionId).toBe(childId);
+    expect(imported).toHaveLength(2);
+    expect(JSON.stringify(imported[0])).toBe(firstCiphertext);
+    expect(launches.every(launch => launch.existingSessionId === childId && launch.spawnNonce === 'shared-entry:member-a')).toBe(true);
+    expect(vi.mocked(axios.post).mock.calls.filter(([url]) => String(url).endsWith('/v1/sessions')).map(([, body]) => (body as any).tag))
+      .toEqual(['shared-entry:member-a', 'shared-entry:member-a']);
+  });
+
+  it('rejects an invitation without an immutable snapshot before any network call or launch', async () => {
+    await expect(run({ assignment: { ...assignment, sourceSnapshot: null } })).rejects.toMatchObject({ code: 'context_snapshot_required' });
+    expect(axios.get).not.toHaveBeenCalled(); expect(axios.post).not.toHaveBeenCalled(); expect(launches).toHaveLength(0);
+  });
+
+  it('refuses fork ancestry outside the snapshot instead of fetching live parent history', async () => {
+    snapshotMetadata = { forkV1: { v: 1, parentSessionId: 'private-parent', parentCutoffSeqInclusive: 4 } };
+    await expect(run()).rejects.toMatchObject({ code: 'context_snapshot_unavailable' });
+    expect(axios.get).not.toHaveBeenCalled(); expect(launches).toHaveLength(0);
+  });
+
+  it('fails closed when an encrypted snapshot turn cannot be opened', async () => {
+    const frozen = snapshot(); frozen.messages[0].content = { t: 'encrypted', c: 'corrupt' };
+    await expect(run({ assignment: { ...assignment, sourceSnapshot: frozen } })).rejects.toMatchObject({ code: 'context_snapshot_unavailable' });
+    expect(launches).toHaveLength(0); expect(imported).toHaveLength(0);
+  });
+
+  it('allows a genuinely empty frozen source and does not invent a user prompt', async () => {
+    const frozen = snapshot(); frozen.messages = []; frozen.session.seq = 0;
+    const result = await run({ assignment: { ...assignment, sourceSnapshot: frozen } });
+    expect(result.sessionId).toBe('child'); expect(imported).toHaveLength(0);
+    expect(launches[0]).not.toHaveProperty('pendingFirstInput');
   });
 
   it('rejects a substituted recipient key before spawning', async () => {
@@ -107,8 +203,8 @@ describe('provisionSharedSession', () => {
     expect(launches).toHaveLength(0);
   });
 
-  it('rechecks connectivity after metadata retrieval and never launches while disconnected', async () => {
-    vi.mocked(axios.get).mockImplementation(async () => { online = false; return { status: 200, data: { session: row('source') } }; });
+  it('rechecks connectivity after account policy retrieval and never launches while disconnected', async () => {
+    vi.mocked(axios.get).mockImplementation(async () => { online = false; return { status: 200, data: { mode, updatedAt: 1 } }; });
     await expect(run()).rejects.toMatchObject({ code: 'host_offline' });
     expect(launches).toHaveLength(0);
   });
@@ -117,7 +213,7 @@ describe('provisionSharedSession', () => {
     mode = 'plain';
     const result = await run({ assignment: { ...assignment, encryptionMode: 'plain', recipient: {
       userId: 'user-a', signingPublicKey: null, contentPublicKeyB64: null, contentPublicKeySigB64: null } } });
-    expect(result).toEqual({ sessionId: 'child' });
+    expect(result).toMatchObject({ sessionId: 'child' });
   });
 
   it.each(['plain', 'e2ee'] as const)('refuses source %s before spawning when current account creation mode differs', async (sourceMode) => {
@@ -138,8 +234,31 @@ describe('provisionSharedSession', () => {
 
   it('refuses to share a child whose storage mode differs from the source', async () => {
     childMode = 'plain';
-    await expect(run()).rejects.toMatchObject({ code: 'session_encryption_mismatch' });
+    await expect(run({ assignment: { ...assignment, sessionId: 'child' } })).rejects.toMatchObject({ code: 'session_encryption_mismatch' });
   });
+
+  it.each(['plain', 'e2ee'] as const)('restores a legacy %s member only to its existing child without fetching or copying source history', async (existingMode) => {
+    mode = existingMode;
+    createdChild = row('child', existingMode, { sharedSessionEntryId: 'entry', summary: { text: 'Existing member conversation', updatedAt: 3 } });
+    const originalMetadata = createdChild.metadata;
+    const result = await run({ assignment: { ...assignment, sessionId: 'child', encryptionMode: existingMode, sourceSnapshot: null } });
+    expect(result).toMatchObject({ sessionId: 'child', contextSnapshotVersion: 1 });
+    expect(launches).toHaveLength(0); expect(imported).toHaveLength(0);
+    expect(createdChild.metadata).toBe(originalMetadata);
+    expect(vi.mocked(axios.get).mock.calls.map(([url]) => String(url))).toEqual([expect.stringMatching(/\/v2\/sessions\/child$/)]);
+    expect(axios.post).not.toHaveBeenCalled(); expect(axios.patch).not.toHaveBeenCalled();
+    if (existingMode === 'e2ee') {
+      expect(openEncryptedDataKeyEnvelopeV1({ envelope: decodeBase64(result.encryptedDataKey!), recipientSecretKeyOrSeed: recipientSeed })).toEqual(childKey);
+    }
+  });
+
+  it.each([{ machineId: 'other-machine', sharedSessionEntryId: 'entry' }, { sharedSessionEntryId: 'other-entry' }, {}])(
+    'rejects an unrelated legacy child before resealing its key: %j', async (metadata) => {
+      createdChild = row('child', mode, metadata);
+      await expect(run({ assignment: { ...assignment, sessionId: 'child', sourceSnapshot: null } })).rejects.toMatchObject({ code: 'child_session_invalid' });
+      expect(launches).toHaveLength(0); expect(axios.post).not.toHaveBeenCalled();
+    },
+  );
 
   it('re-enabling a member reuses its existing session instead of creating a new context', async () => {
     const result = await run({ assignment: { ...assignment, sessionId: 'child' } });

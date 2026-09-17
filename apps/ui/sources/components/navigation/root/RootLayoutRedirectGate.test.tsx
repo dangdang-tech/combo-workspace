@@ -141,4 +141,37 @@ describe('RootLayoutRedirectGate', () => {
             await screen.unmount();
         }
     });
+
+    it.each([
+        ['inbox'], ['automations'], ['settings', 'voice'], ['settings', 'features'],
+        ['settings', 'connected-services', 'profile'], ['session', '[id]', 'sharing'],
+        ['session', '[id]', 'files'], ['desktop', 'pet-overlay'], ['share', '[token]'],
+        ['new', 'pick', 'profile'], ['dev'], ['direct', 'browse'], ['zen'],
+    ])('redirects an obsolete product route before mounting it: %j', async (...segments) => {
+        setNav('/' + segments.join('/'), ['(app)', ...segments]);
+        const shell: Counter = { n: 0 };
+        const screen = await renderScreen(
+            <RootLayoutRedirectGate><ShellProbe counter={shell} /></RootLayoutRedirectGate>,
+        );
+        expect(screen.findAllByType('Redirect' as never)).toHaveLength(1);
+        expect(shell.n).toBe(0);
+        await screen.unmount();
+    });
+
+    it.each([
+        ['new'], ['new', 'pick', 'machine'], ['new', 'pick', 'path'],
+        ['settings', 'account'], ['settings', 'machines', 'add'], ['machine', '[id]'],
+        ['session', '[id]'], ['session', '[id]', 'entry-sharing'],
+        ['session', '[id]', 'message', '[messageId]'], ['session', 'archived'],
+        ['invite', '[token]'], ['terminal', 'connect'], ['restore', 'lost-access'], ['oauth', '[provider]'],
+    ])('preserves a core product route: %j', async (...segments) => {
+        setNav('/' + segments.join('/'), ['(app)', ...segments]);
+        const shell: Counter = { n: 0 };
+        const screen = await renderScreen(
+            <RootLayoutRedirectGate><ShellProbe counter={shell} /></RootLayoutRedirectGate>,
+        );
+        expect(screen.findAllByType('Redirect' as never)).toHaveLength(0);
+        expect(shell.n).toBe(1);
+        await screen.unmount();
+    });
 });

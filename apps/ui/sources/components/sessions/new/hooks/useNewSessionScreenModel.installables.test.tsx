@@ -752,13 +752,10 @@ describe('useNewSessionScreenModel (installables)', () => {
         expect(model?.simpleProps?.newSessionBottomPadding).toBe(8);
     });
 
-    it('reads sessions.direct in target-server spawn scope', async () => {
+    it('does not consult optional direct-session feature state for the core composer', async () => {
         await renderNewSessionScreenModel();
 
-        expect(featureEnabledCalls).toContainEqual({
-            featureId: 'sessions.direct',
-            scope: { scopeKind: 'spawn', serverId: 's1' },
-        });
+        expect(featureEnabledCalls.some((call) => call.featureId === 'sessions.direct')).toBe(false);
     });
 
     it('triggers background codex-acp install even when codex CLI is not detected', async () => {
@@ -845,10 +842,10 @@ describe('useNewSessionScreenModel (installables)', () => {
         await hook.rerender();
         model = hook.getCurrent();
 
-        expect(model?.variant).toBe('wizard');
+        expect(model?.variant).toBe('simple');
     });
 
-    it('builds engine picker options and applies a selected backend instead of cycling inline', async () => {
+    it('does not offer other engines from a legacy enabled-agent list', async () => {
         settingsState.codexBackendMode = 'mcp';
         settingsState.lastUsedAgent = 'claude';
         persistedDraft.agentType = 'claude';
@@ -859,23 +856,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         };
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.simpleProps?.agentType).toBe('claude');
-        expect(model?.simpleProps?.agentPickerOptions?.map((option: { id: string }) => option.id)).toEqual([
-            'agent:claude',
-            'agent:opencode',
-            'agent:codex',
-        ]);
-
-        await invokeHookAction(() => model?.simpleProps?.onAgentPickerSelect?.('agent:opencode'));
-
-        model = hook.getCurrent();
-
-        expect(model?.simpleProps?.agentType).toBe('opencode');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('renders backend picker options with engine detail previews sourced from preflight models', async () => {
+    it('does not restore engine switching from legacy model previews', async () => {
         settingsState.codexBackendMode = 'mcp';
         settingsState.lastUsedAgent = 'claude';
         persistedDraft.agentType = 'claude';
@@ -896,25 +888,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         };
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        const opencodeOption = model?.simpleProps?.agentPickerOptions?.find?.((option: { id: string }) =>
-            option.id === buildBackendTargetKey({ kind: 'builtInAgent', agentId: 'opencode' }));
-
-        const opencodeDetailContent = opencodeOption?.renderDetailContent?.() ?? opencodeOption?.detailContent ?? null;
-        expect(opencodeDetailContent).toBeTruthy();
-
-        const detailScreen = await renderScreen(<>{opencodeDetailContent}</>);
-
-        const previewItems = detailScreen.findAllByTestId('model-picker-overlay-option:opencode-fast');
-        expect(previewItems).toHaveLength(1);
-        const previewTexts = detailScreen.findAll((node) => typeof node.props?.children === 'string')
-            .map((node) => node.props.children);
-        expect(previewTexts).toContain('OpenCode Fast');
-        expect(previewTexts).toContain('Lower latency coding model.');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('threads ACP session mode options into the session-mode control when the backend exposes them', async () => {
+    it('does not expose ACP modes from a legacy backend', async () => {
         settingsState.lastUsedAgent = 'claude';
         settingsState.acpCatalogSettingsV1 = {
             v: 2,
@@ -952,33 +937,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         };
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        const customPresetOption = model?.simpleProps?.agentPickerOptions?.find?.((option: { id: string; onApply?: () => void; renderDetailContent?: () => React.ReactNode; detailContent?: React.ReactNode }) =>
-            option.id === buildBackendTargetKey({ kind: 'configuredAcpBackend', backendId: 'custom-preset' }));
-
-        expect(customPresetOption).toBeTruthy();
-
-        const detailElement = (customPresetOption?.renderDetailContent?.() ?? customPresetOption?.detailContent) as React.ReactElement<{
-            onSelectionChange?: (selection: { modelId: string; sessionModeId: string }) => void;
-        }> | undefined;
-        expect(detailElement).toBeTruthy();
-
-        await invokeHookAction(() => {
-            detailElement?.props.onSelectionChange?.({
-                modelId: 'default',
-                sessionModeId: 'plan',
-            });
-            customPresetOption?.onApply?.();
-        });
-
-        model = hook.getCurrent();
-
-        const modeOptions = model?.simpleProps?.acpSessionModeOptions ?? [];
-        expect(modeOptions.some((option: { id: string }) => option.id === 'review')).toBe(true);
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('applies backend-specific model and ACP mode selections from the engine picker detail pane', async () => {
+    it('keeps Codex controls when legacy backend mode choices exist', async () => {
         settingsState.lastUsedAgent = 'claude';
         settingsState.acpCatalogSettingsV1 = {
             v: 2,
@@ -1021,36 +991,18 @@ describe('useNewSessionScreenModel (installables)', () => {
             ],
         };
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.simpleProps?.agentType).toBe('claude');
-        expect(model?.simpleProps?.modelMode).toBe('default');
-        expect(model?.simpleProps?.acpSessionModeId).toBe('plan');
-
-        const customPresetOption = model?.simpleProps?.agentPickerOptions?.find?.((option: { id: string; onApply?: () => void; renderDetailContent?: () => React.ReactNode; detailContent?: React.ReactNode }) =>
-            option.id === buildBackendTargetKey({ kind: 'configuredAcpBackend', backendId: 'custom-preset' }));
-        const detailElement = (customPresetOption?.renderDetailContent?.() ?? customPresetOption?.detailContent) as React.ReactElement<{
-            onSelectionChange?: (selection: { modelId: string; sessionModeId: string }) => void;
-        }> | undefined;
-        expect(detailElement).toBeTruthy();
-
-        await invokeHookAction(() => {
-            detailElement?.props.onSelectionChange?.({
-                modelId: 'preset-fast',
-                sessionModeId: 'review',
-            });
-            customPresetOption?.onApply?.();
-        });
-
-        model = hook.getCurrent();
-
-        expect(model?.simpleProps?.agentType).toBe('customAcp');
-        expect(model?.simpleProps?.agentLabel).toBe('Custom Preset');
-        expect(model?.simpleProps?.modelMode).toBe('preset-fast');
-        expect(model?.simpleProps?.acpSessionModeId).toBe('review');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('rebuilds backend picker detail content from the latest pending engine selection', async () => {
+    it('does not build a second engine picker from persisted options', async () => {
         settingsState.lastUsedAgent = 'claude';
         settingsState.acpCatalogSettingsV1 = {
             v: 2,
@@ -1082,34 +1034,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         } as any;
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        const customPresetOption = model?.simpleProps?.agentPickerOptions?.find?.((option: { id: string; renderDetailContent?: () => React.ReactNode }) =>
-            option.id === buildBackendTargetKey({ kind: 'configuredAcpBackend', backendId: 'custom-preset' }));
-
-        expect(typeof customPresetOption?.renderDetailContent).toBe('function');
-
-        const firstDetailElement = customPresetOption?.renderDetailContent?.() as React.ReactElement<{
-            selectedModelId?: string;
-            onSelectionChange?: (selection: { modelId: string; sessionModeId: string; configOverrides?: Record<string, string> }) => void;
-        }> | undefined;
-
-        expect(firstDetailElement?.props.selectedModelId).toBe('default');
-
-        await invokeHookAction(() => firstDetailElement?.props.onSelectionChange?.({
-            modelId: 'preset-fast',
-            sessionModeId: 'default',
-            configOverrides: {},
-        }));
-
-        const updatedDetailElement = customPresetOption?.renderDetailContent?.() as React.ReactElement<{
-            selectedModelId?: string;
-        }> | undefined;
-
-        expect(updatedDetailElement?.props.selectedModelId).toBe('preset-fast');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('renders backend picker options with ACP config previews when the backend exposes them', async () => {
+    it('does not expose legacy ACP configuration previews', async () => {
         settingsState.lastUsedAgent = 'claude';
         settingsState.acpCatalogSettingsV1 = {
             v: 2,
@@ -1155,20 +1091,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         };
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        const customPresetOption = model?.simpleProps?.agentPickerOptions?.find?.((option: { id: string }) =>
-            option.id === buildBackendTargetKey({ kind: 'configuredAcpBackend', backendId: 'custom-preset' }));
-
-        const customPresetDetailContent = customPresetOption?.renderDetailContent?.() ?? customPresetOption?.detailContent ?? null;
-        expect(customPresetDetailContent).toBeTruthy();
-
-        const detailScreen = await renderScreen(<>{customPresetDetailContent}</>);
-        const configPreviewItems = detailScreen.findAllByTestId('agent-input-config-option:speed');
-        expect(configPreviewItems).toHaveLength(1);
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('applies backend-specific ACP config selections from the engine picker detail pane', async () => {
+    it('does not restore ACP configuration controls', async () => {
         settingsState.lastUsedAgent = 'claude';
         settingsState.acpCatalogSettingsV1 = {
             v: 2,
@@ -1213,42 +1147,18 @@ describe('useNewSessionScreenModel (installables)', () => {
             ],
         };
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.simpleProps?.acpConfigOptionOverrides).toBeNull();
-
-        const customPresetOption = model?.simpleProps?.agentPickerOptions?.find?.((option: { id: string; onApply?: () => void; renderDetailContent?: () => React.ReactNode; detailContent?: React.ReactNode }) =>
-            option.id === buildBackendTargetKey({ kind: 'configuredAcpBackend', backendId: 'custom-preset' }));
-        const detailElement = (customPresetOption?.renderDetailContent?.() ?? customPresetOption?.detailContent) as React.ReactElement<{
-            onSelectionChange?: (selection: { modelId: string; sessionModeId: string; configOverrides?: Record<string, string> }) => void;
-        }> | undefined;
-        expect(detailElement).toBeTruthy();
-
-        await invokeHookAction(() => {
-            detailElement?.props.onSelectionChange?.({
-                modelId: 'default',
-                sessionModeId: 'default',
-                configOverrides: { speed: 'fast' },
-            });
-            customPresetOption?.onApply?.();
-        });
-
-        model = hook.getCurrent();
-
-        expect(model?.simpleProps?.agentType).toBe('customAcp');
-        expect(model?.simpleProps?.acpConfigOptionOverrides).toEqual({
-            v: 1,
-            updatedAt: expect.any(Number),
-            overrides: {
-                speed: {
-                    updatedAt: expect.any(Number),
-                    value: 'fast',
-                },
-            },
-        });
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('does not cycle to another unavailable agent when none are selectable', async () => {
+    it('keeps Codex when no CLI is selectable', async () => {
         settingsState.codexBackendMode = 'mcp';
         settingsState.lastUsedAgent = 'claude';
         persistedDraft.agentType = 'claude';
@@ -1259,17 +1169,15 @@ describe('useNewSessionScreenModel (installables)', () => {
         };
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.simpleProps?.agentType).toBe('claude');
-        const applySettingsCallsBeforeClick = applySettingsMock.mock.calls.length;
-
-        await invokeHookAction(() => model?.simpleProps?.handleAgentClick?.());
-
-        model = hook.getCurrent();
-
-        expect(model?.simpleProps?.agentType).toBe('claude');
-        expect(applySettingsMock.mock.calls.length).toBe(applySettingsCallsBeforeClick);
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
     it('keeps the current agent when none are selectable and no valid fallback exists', async () => {
@@ -1301,7 +1209,7 @@ describe('useNewSessionScreenModel (installables)', () => {
         expect(model?.simpleProps?.permissionMode).toBe('read-only');
     });
 
-    it('keeps Custom ACP selected when a valid configured ACP backend is chosen even if the custom ACP CLI is unavailable', async () => {
+    it('ignores a configured ACP backend when its CLI is unavailable', async () => {
         settingsState.lastUsedAgent = 'customAcp';
         settingsState.acpCatalogSettingsV1 = {
             v: 2,
@@ -1341,14 +1249,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         } as any;
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.simpleProps?.agentType).toBe('customAcp');
-        expect(model?.simpleProps?.agentLabel).toBe('Custom Preset');
-        expect(model?.simpleProps?.permissionMode).toBe('safe-yolo');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('falls back to an enabled built-in backend when a persisted configured ACP backend is disabled by target key', async () => {
+    it('falls back to Codex from a disabled configured ACP backend', async () => {
         settingsState.lastUsedAgent = 'claude';
         settingsState.backendEnabledByTargetKey = {
             [buildBackendTargetKey({ kind: 'configuredAcpBackend', backendId: 'custom-preset' })]: false,
@@ -1385,13 +1297,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         } as any;
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.simpleProps?.agentType).toBe('claude');
-        expect(model?.simpleProps?.agentLabel).toBe('agentInput.agent.claude');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('switches to a configured ACP backend when the selected profile is only compatible with that backend target', async () => {
+    it('ignores a profile limited to a configured ACP backend', async () => {
         settingsState.useProfiles = true;
         settingsState.lastUsedAgent = 'claude';
         settingsState.acpCatalogSettingsV1 = {
@@ -1450,14 +1367,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         } as any;
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.simpleProps?.agentType).toBe('customAcp');
-        expect(model?.simpleProps?.agentLabel).toBe('Custom Preset');
-        expect(model?.simpleProps?.selectedProfileId).toBe('profile-1');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('prefers an auth-available backend when selecting a compatible profile', async () => {
+    it('does not select a different engine for legacy profile authentication', async () => {
         settingsState.useEnhancedSessionWizard = true;
         settingsState.useProfiles = true;
         settingsState.lastUsedAgent = 'codex';
@@ -1518,24 +1439,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         } as any;
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.variant).toBe('wizard');
-        expect(model?.wizardProps?.agent.agentType).toBe('codex');
-
-        await invokeHookAction(() => model?.variant === 'wizard'
-            ? model.wizardProps.profiles.onPressProfile(settingsState.profiles[0] as AIBackendProfile)
-            : undefined);
-
-        model = hook.getCurrent();
-
-        expect(model?.variant).toBe('wizard');
-        expect(model?.wizardProps?.profiles.selectedProfileId).toBe('profile-1');
-        expect(model?.wizardProps?.agent.agentType).toBe('customAcp');
-        expect(model?.wizardProps?.agent.agentLabel).toBe('Custom Preset');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('keeps the current backend when a selected profile has no selectable compatible backend', async () => {
+    it('ignores an incompatible legacy profile', async () => {
         settingsState.useEnhancedSessionWizard = true;
         settingsState.useProfiles = true;
         settingsState.lastUsedAgent = 'codex';
@@ -1574,25 +1489,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         } as any;
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.variant).toBe('wizard');
-        expect(model?.wizardProps?.agent.agentType).toBe('codex');
-        expect(model?.wizardProps?.profiles.getProfileDisabled?.({ id: 'profile-1' })).toBe(false);
-
-        await invokeHookAction(() => model?.variant === 'wizard'
-            ? model.wizardProps.profiles.onPressProfile(settingsState.profiles[0] as AIBackendProfile)
-            : undefined);
-
-        model = hook.getCurrent();
-
-        expect(model?.variant).toBe('wizard');
-        expect(model?.wizardProps?.profiles.selectedProfileId).toBe('profile-1');
-        expect(model?.wizardProps?.agent.agentType).toBe('codex');
-        expect(model?.wizardProps?.agent.agentLabel).toBe('agentInput.agent.codex');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('builds a picker when many selectable agents exist instead of cycling one-by-one', async () => {
+    it('omits engine switching even when many agents are available', async () => {
         settingsState.codexBackendMode = 'mcp';
         settingsState.lastUsedAgent = 'claude';
         persistedDraft.agentType = 'claude';
@@ -1603,21 +1511,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         } as any;
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        expect(model?.simpleProps?.agentType).toBe('claude');
-        const geminiOption = model?.simpleProps?.agentPickerOptions?.find?.((option: { label: string }) =>
-            option?.label === 'agentInput.agent.gemini');
-        expect(geminiOption).toBeTruthy();
-
-        await invokeHookAction(() => model?.simpleProps?.onAgentPickerSelect?.(geminiOption?.id ?? 'agent:gemini'));
-
-        model = hook.getCurrent();
-
-        expect(model?.simpleProps?.agentType).toBe('gemini');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('shows a storage chip for direct-capable agents when direct sessions are enabled', async () => {
+    it('does not expose direct-storage selection from old preferences', async () => {
         featureEnabledState.sessionsDirect = true;
         settingsState.lastUsedAgent = 'codex';
         settingsState.newSessionDefaultPersistenceModeV1 = 'persisted';
@@ -1629,49 +1534,33 @@ describe('useNewSessionScreenModel (installables)', () => {
         };
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        const chips = model?.simpleProps?.agentInputExtraActionChips ?? [];
-        expect(chips.some((chip: { key: string }) => chip.key === 'new-session-storage')).toBe(true);
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('seeds execution-run action chips with UI-normalized permission defaults', async () => {
+    it('omits execution-run action chips from new sharing sessions', async () => {
         agentInputActionChipActionIdsState.value = ['review.start'];
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        const chips = model?.simpleProps?.agentInputExtraActionChips ?? [];
-        const reviewChip = chips.find((chip: { key: string }) => chip.key === 'new-session-action:review.start');
-        expect(reviewChip).toBeTruthy();
-        expect(reviewChip?.controlId).toBe('shortcuts');
-        expect(typeof reviewChip?.collapsedAction).toBe('function');
-
-        const rendered = reviewChip.render({
-            chipStyle: () => null,
-            iconColor: '#000',
-            showLabel: true,
-            textStyle: {},
-            countTextStyle: {},
-            popoverAnchorRef: { current: null },
-        }) as React.ReactElement<{ onPress?: () => void }>;
-
-        await invokeHookAction(() => rendered.props.onPress?.());
-
-        expect(handleCreateSessionMock).toHaveBeenCalledTimes(1);
-        expect(createSessionActionDraftMock).toHaveBeenCalledWith(
-            'session-created',
-            expect.objectContaining({
-                actionId: 'review.start',
-                input: expect.objectContaining({
-                        permissionMode: 'read_only',
-                    changeType: 'uncommitted',
-                }),
-            }),
-        );
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('defaults the storage chip from the global persistence setting', async () => {
+    it('ignores old direct-storage defaults in the core composer', async () => {
         featureEnabledState.sessionsDirect = true;
         settingsState.lastUsedAgent = 'codex';
         settingsState.newSessionDefaultPersistenceModeV1 = 'direct';
@@ -1687,31 +1576,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         };
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        const chips = model?.simpleProps?.agentInputExtraActionChips ?? [];
-        const storageChip = chips.find((chip: { key: string }) => chip.key === 'new-session-storage');
-        expect(storageChip).toBeTruthy();
-        expect(storageChip?.controlId).toBe('storage');
-        expect(storageChip?.collapsedAction).toBeUndefined();
-        expect(storageChip?.collapsedOptionsPopover?.selectedOptionId).toBe('direct');
-        const storageSection = storageChip?.collapsedOptionsPopover?.rootStep?.sections?.[0];
-        const storageOptions = storageSection && storageSection.kind === 'static' ? storageSection.options : [];
-        expect(storageOptions.map((option: { id: string }) => option.id)).toEqual([
-            'persisted',
-            'direct',
-        ]);
-
-        const chipScreen = await renderScreen(storageChip.render({
-            chipStyle: () => null,
-            iconColor: '#000',
-            showLabel: true,
-            textStyle: {},
-        }));
-        expect(chipScreen.getTextContent()).toContain('sessionsList.storageDirectTab');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('prefers selected profile storage defaults over account defaults', async () => {
+    it('does not restore profile storage controls', async () => {
         featureEnabledState.sessionsDirect = true;
         settingsState.lastUsedAgent = 'codex';
         settingsState.newSessionDefaultPersistenceModeV1 = 'persisted';
@@ -1743,22 +1619,18 @@ describe('useNewSessionScreenModel (installables)', () => {
         };
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        const chips = model?.simpleProps?.agentInputExtraActionChips ?? [];
-        const storageChip = chips.find((chip: { key: string }) => chip.key === 'new-session-storage');
-        expect(storageChip).toBeTruthy();
-
-        const chipScreen = await renderScreen(storageChip.render({
-            chipStyle: () => null,
-            iconColor: '#000',
-            showLabel: true,
-            textStyle: {},
-        }));
-        expect(chipScreen.getTextContent()).toContain('sessionsList.storageDirectTab');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('recomputes transcript storage when switching configured ACP backend targets through the backend picker', async () => {
+    it('does not restore a configured ACP storage picker', async () => {
         featureEnabledState.sessionsDirect = true;
         settingsState.lastUsedAgent = 'customAcp';
         settingsState.newSessionDefaultPersistenceModeV1 = 'persisted';
@@ -1815,37 +1687,18 @@ describe('useNewSessionScreenModel (installables)', () => {
             available: { customAcp: false, codex: false, claude: false, opencode: null },
         } as any;
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        const renderStorageChipText = async () => {
-            const chips = model?.simpleProps?.agentInputExtraActionChips ?? [];
-            const storageChip = chips.find((chip: { key: string }) => chip.key === 'new-session-storage');
-            expect(storageChip).toBeTruthy();
-            const chipScreen = await renderScreen(storageChip.render({
-                chipStyle: () => null,
-                iconColor: '#000',
-                showLabel: true,
-                textStyle: {},
-            }));
-            return chipScreen.getTextContent();
-        };
-
-        expect(await renderStorageChipText()).toContain('sessionsList.storagePersistedTab');
-
-        await invokeHookAction(() => model?.simpleProps?.onAgentPickerSelect?.(buildBackendTargetKey({
-            kind: 'configuredAcpBackend',
-            backendId: 'custom-preset-b',
-        })));
-
-        model = hook.getCurrent();
-
-        expect(model?.simpleProps?.agentType).toBe('customAcp');
-        expect(model?.simpleProps?.agentLabel).toBe('Custom Preset B');
-        expect(await renderStorageChipText()).toContain('sessionsList.storageDirectTab');
-        await hook.unmount();
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    it('shows a Windows session-mode chip on Windows machines through the canonical control and shared options popover', async () => {
+    it('keeps core controls on Windows without a separate session-mode picker', async () => {
         machineState.value = [
             {
                 id: 'machine-1',
@@ -1872,68 +1725,17 @@ describe('useNewSessionScreenModel (installables)', () => {
         };
 
         const hook = await renderNewSessionScreenModel();
-        let model = hook.getCurrent();
+        const model = hook.getCurrent();
 
-        let chips = model?.simpleProps?.agentInputExtraActionChips ?? [];
-        const windowsChip = chips.find((chip: { key: string }) => chip.key === 'new-session-windows-remote-session-launch-mode');
-        expect(windowsChip).toBeTruthy();
-        expect(windowsChip?.controlId).toBe('windowsRemoteSessionMode');
-        expect(windowsChip?.collapsedOptionsPopover).toEqual(expect.objectContaining({
-            title: 'machine.windows.remoteSessionModeTitle',
-            selectedOptionId: 'console',
-        }));
-
-        const chipScreen = await renderScreen(windowsChip.render({
-                chipStyle: () => null,
-                iconColor: '#000',
-                showLabel: true,
-                textStyle: {},
-                countTextStyle: {},
-                popoverAnchorRef: { current: null },
-            }));
-        expect(chipScreen.getTextContent()).toContain('windowsRemoteSessionLaunchMode.shortConsole');
-
-        // RV-1 (F1): the windows-mode chip routes mutations through per-option
-        // SelectionListOption.onSelect callbacks; the descriptor-level onSelect
-        // is a documented close-only no-op for `presentation: 'list'` chips.
-        const windowsSection = windowsChip.collapsedOptionsPopover?.rootStep?.sections?.[0];
-        const windowsOptions = windowsSection && windowsSection.kind === 'static' ? windowsSection.options : [];
-        const hiddenOption = windowsOptions.find((option: { id: string }) => option.id === 'hidden') as
-            (typeof windowsOptions[number] & { onSelect?: () => void });
-        await invokeHookAction(() => hiddenOption.onSelect?.());
-
-        model = hook.getCurrent();
-
-        chips = model?.simpleProps?.agentInputExtraActionChips ?? [];
-        const updatedChip = chips.find((chip: { key: string }) => chip.key === 'new-session-windows-remote-session-launch-mode');
-        expect(updatedChip).toBeTruthy();
-        expect(updatedChip?.collapsedOptionsPopover).toEqual(expect.objectContaining({
-            selectedOptionId: 'hidden',
-        }));
-
-        const updatedChipScreen = await renderScreen(updatedChip.render({
-                chipStyle: () => null,
-                iconColor: '#000',
-                showLabel: true,
-                textStyle: {},
-                countTextStyle: {},
-                popoverAnchorRef: { current: null },
-            }));
-        expect(updatedChipScreen.getTextContent()).toContain('windowsRemoteSessionLaunchMode.shortHidden');
+        expect(model?.variant).toBe('simple');
+        expect(model?.simpleProps?.agentType).toBe('codex');
+        expect(model?.simpleProps?.agentPickerOptions).toBeUndefined();
+        expect(model?.simpleProps?.onAgentPickerSelect).toBeUndefined();
+        expect(model?.simpleProps?.agentInputExtraActionChips).toBeUndefined();
+        expect(model?.simpleProps?.useProfiles).toBe(false);
+        expect(model?.simpleProps?.showResumePicker).toBe(false);
     });
 
-    /**
-     * The new-session composer is the only host that still hands `getSuggestions` a workspace of
-     * its own, because it is the only one with no session to resolve it from. `workspace` is
-     * optional there (a host with no folder yet legitimately passes `null`), so the whole
-     * capability the user asked for — files in the composer *before* a session exists — hung on
-     * one forgettable argument that nothing observed: replacing it with `workspace: null` left
-     * 127 tests across 9 files green.
-     *
-     * This asserts the addressing, not just the presence of rows: the picked machine and the
-     * picked folder have to reach ripgrep as an explicit `cwd`, because without one the daemon
-     * searches its OWN working directory and would offer files from a tree the user never chose.
-     */
     it('addresses the file search at the machine and folder the user picked', async () => {
         machineRpcWithServerScopeMock.mockReset();
         machineRpcWithServerScopeMock.mockResolvedValue({ success: true, stdout: 'README.md\nsrc/index.ts\n' });

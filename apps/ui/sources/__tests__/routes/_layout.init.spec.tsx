@@ -308,12 +308,16 @@ vi.mock('@/track/useTrackScreens', () => ({
     useTrackScreens: () => {},
 }));
 
-vi.mock('@/realtime/RealtimeProvider', () => {
-    const React = require('react');
-    return {
-        RealtimeProvider: ({ children }: { children: React.ReactNode }) => React.createElement('RealtimeProvider', null, children),
-    };
-});
+// Keep the real RealtimeProvider so this contract sees its actual voice-runtime mount.
+vi.mock('@/voice/session/VoiceSessionRuntime', () => ({
+    VoiceSessionRuntime: () => React.createElement('VoiceSessionRuntime'),
+}));
+vi.mock('@/realtime/resolveRealtimeVoiceSessionComponent', () => ({
+    resolveRealtimeVoiceSessionComponent: () => null,
+}));
+vi.mock('@/onboarding/showcase', () => ({
+    OnboardingShowcaseAutoShowMount: () => React.createElement('OnboardingShowcaseAutoShowMount'),
+}));
 
 vi.mock('@/components/web/FaviconPermissionIndicator', () => {
     const React = require('react');
@@ -440,11 +444,10 @@ describe('app/_layout init resilience', () => {
         return screen;
     }
 
-    it('wraps the root layout with Sentry.wrap', async () => {
+    it('keeps Sentry wrapping disabled in the core product even with a DSN', async () => {
         process.env.EXPO_PUBLIC_SENTRY_DSN = 'https://examplePublicKey@o0.ingest.sentry.io/0';
         await import('@/app/_layout');
-        expect(sentryWrapMock).toHaveBeenCalledTimes(1);
-        expect(typeof sentryWrapMock.mock.calls[0]?.[0]).toBe('function');
+        expect(sentryWrapMock).not.toHaveBeenCalled();
     });
 
     it('does not wrap the root layout with Sentry.wrap when EXPO_PUBLIC_SENTRY_DSN is unset', async () => {
@@ -500,19 +503,16 @@ describe('app/_layout init resilience', () => {
         }));
     });
 
-    it('uses app variant as the default Sentry environment when EXPO_PUBLIC_SENTRY_ENVIRONMENT is unset', async () => {
+    it('keeps crash reporting disabled for the preview variant', async () => {
         process.env.EXPO_PUBLIC_SENTRY_DSN = 'https://examplePublicKey@o0.ingest.sentry.io/0';
         mockedConfigVariant = 'preview';
 
         await renderRootLayout();
 
-        expect(sentryInitMock).toHaveBeenCalledTimes(1);
-        expect(sentryInitMock.mock.calls[0]?.[0]).toEqual(expect.objectContaining({
-            environment: 'preview',
-        }));
+        expect(sentryInitMock).not.toHaveBeenCalled();
     });
 
-    it('initializes Sentry when EXPO_PUBLIC_SENTRY_DSN is configured', async () => {
+    it('does not enable Sentry or replay from inherited environment variables', async () => {
         process.env.EXPO_PUBLIC_SENTRY_DSN = 'https://examplePublicKey@o0.ingest.sentry.io/0';
         process.env.EXPO_PUBLIC_SENTRY_ENABLE_LOGS = '1';
         process.env.EXPO_PUBLIC_SENTRY_ENABLE_REPLAY = '1';
@@ -521,14 +521,8 @@ describe('app/_layout init resilience', () => {
 
         await renderRootLayout();
 
-        expect(sentryMobileReplayIntegrationMock).toHaveBeenCalledTimes(1);
-        expect(sentryInitMock).toHaveBeenCalledTimes(1);
-        expect(sentryInitMock.mock.calls[0]?.[0]).toEqual(expect.objectContaining({
-            dsn: 'https://examplePublicKey@o0.ingest.sentry.io/0',
-            enableLogs: true,
-            replaysSessionSampleRate: 0.1,
-            replaysOnErrorSampleRate: 1,
-        }));
+        expect(sentryMobileReplayIntegrationMock).not.toHaveBeenCalled();
+        expect(sentryInitMock).not.toHaveBeenCalled();
     });
 
     it('continues boot when native font loading fails', async () => {
@@ -558,6 +552,25 @@ describe('app/_layout init resilience', () => {
         const boundary = screen.findByTestId('app-crash-recovery-boundary');
         expect(boundary).toBeTruthy();
         expect(boundary!.findAllByType('FaviconPermissionIndicator')).toHaveLength(1);
+    });
+
+    it('boots the authenticated core shell without starting a voice runtime', async () => {
+        mockedPlatformOS = 'web';
+        bootCredentialsState.value = { token: 'test-token', secret: 'test-secret' };
+        const screen = await renderSettledRootLayout();
+
+        expect(screen.findAllByType('VoiceSessionRuntime')).toHaveLength(0);
+        expect(screen.findAllByType('AuthProvider')).toHaveLength(1);
+        expect(screen.findAllByType('FaviconPermissionIndicator')).toHaveLength(1);
+        expect(syncRestoreMock).toHaveBeenCalled();
+        const { ActionOperationRuntime } = await import('@/sync/domains/actionOperations/actionOperationRuntime');
+        expect(screen.findAllByType(ActionOperationRuntime)).toHaveLength(1);
+    });
+
+    it('does not mount the automatic onboarding showcase in the core shell', async () => {
+        const screen = await renderSettledRootLayout();
+        expect(screen.findAllByType('OnboardingShowcaseAutoShowMount')).toHaveLength(0);
+        expect(screen.findByTestId('app-crash-recovery-boundary')).toBeTruthy();
     });
 
     it('warms chrome safe-area insets inside the root provider stack', async () => {

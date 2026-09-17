@@ -121,7 +121,7 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
         return {};
     }
 
-    it('passes modelOptions to AgentInput as modelOptionsOverride', async () => {
+    it('keeps model and machine selection while omitting non-core authoring controls', async () => {
         const { NewSessionSimplePanel } = await import('./NewSessionSimplePanel');
 
         AgentInputMock.mockClear();
@@ -161,11 +161,14 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
                             renderContent: () => null,
                         },
                         selectedPath: '',
-                        showResumePicker: false,
-                        resumeSessionId: null,
+                        showResumePicker: true,
+                        resumeSessionId: 'old-session',
+                        resumePopover: { renderContent: () => null },
                         isResumeSupportChecking: false,
-                        useProfiles: false,
-                        selectedProfileId: null,
+                        useProfiles: true,
+                        selectedProfileId: 'old-profile',
+                        profilePopover: { renderContent: () => null },
+                        agentInputExtraActionChips: [{ key: 'automation', render: () => null }],
                     }))).tree;
 
             expect(AgentInputMock).toHaveBeenCalled();
@@ -177,6 +180,13 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
                 { value: 'm1', label: 'Model 1', description: '' },
             ]);
             expect(typeof props.machinePopover?.renderContent).toBe('function');
+            expect(props.permissionMode).toBe('default');
+            expect(props.onAgentClick).toBeUndefined();
+            expect(props.onAgentPickerSelect).toBeUndefined();
+            expect(props.profilePopover).toBeUndefined();
+            expect(props.resumePopover).toBeUndefined();
+            expect(props.extraActionChips).toBeUndefined();
+            expect(props.onAttachmentsAdded).toBeUndefined();
         } finally {
             act(() => {
                 tree?.unmount();
@@ -418,7 +428,7 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
         }
     });
 
-    it('passes the shared profile popover to AgentInput and suppresses separate env/profile click handlers', async () => {
+    it('omits profile and environment controls supplied by an older caller', async () => {
         const { NewSessionSimplePanel } = await import('./NewSessionSimplePanel');
 
         AgentInputMock.mockClear();
@@ -463,10 +473,9 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
 
             expect(AgentInputMock).toHaveBeenCalled();
             const props = (AgentInputMock.mock.calls[0]?.[0] ?? {}) as any;
-            expect(props.profileId).toBe('profile-1');
-            expect(typeof props.profilePopover?.renderContent).toBe('function');
+            expect(props.profileId).toBeUndefined();
+            expect(props.profilePopover).toBeUndefined();
             expect(props.onProfileClick).toBeUndefined();
-            expect(props.envVarsCount).toBeUndefined();
             expect(props.envVarsPopover).toBeUndefined();
             expect(props.onEnvVarsClick).toBeUndefined();
         } finally {
@@ -476,7 +485,7 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
         }
     });
 
-    it('passes the core machine, path, and resume popover configs through to AgentInput when provided', async () => {
+    it('keeps machine and path selection while omitting resume', async () => {
         const { NewSessionSimplePanel } = await import('./NewSessionSimplePanel');
 
         AgentInputMock.mockClear();
@@ -522,7 +531,7 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
             const props = (AgentInputMock.mock.calls[0]?.[0] ?? {}) as any;
             expect(typeof props.machinePopover?.renderContent).toBe('function');
             expect(typeof props.pathPopover?.renderContent).toBe('function');
-            expect(typeof props.resumePopover?.renderContent).toBe('function');
+            expect(props.resumePopover).toBeUndefined();
         } finally {
             act(() => {
                 tree?.unmount();
@@ -530,7 +539,7 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
         }
     });
 
-    it('passes the resume popover config through to AgentInput when resume selection is available', async () => {
+    it('omits resume controls supplied by an older caller', async () => {
         const { NewSessionSimplePanel } = await import('./NewSessionSimplePanel');
 
         AgentInputMock.mockClear();
@@ -575,9 +584,8 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
 
             expect(AgentInputMock).toHaveBeenCalled();
             const props = (AgentInputMock.mock.calls[0]?.[0] ?? {}) as any;
-            expect(props.resumeSessionId).toBe('resume-42');
-            expect(props.resumePopover).toBeTruthy();
-            expect(typeof props.resumePopover?.renderContent).toBe('function');
+            expect(props.resumeSessionId).toBeUndefined();
+            expect(props.resumePopover).toBeUndefined();
             expect(props.onResumeClick).toBeUndefined();
         } finally {
             act(() => {
@@ -586,7 +594,7 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
         }
     });
 
-    it('passes ACP session mode overrides through to AgentInput when provided', async () => {
+    it('omits ACP session mode controls', async () => {
         const { NewSessionSimplePanel } = await import('./NewSessionSimplePanel');
 
         AgentInputMock.mockClear();
@@ -636,13 +644,10 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
 
             expect(AgentInputMock).toHaveBeenCalled();
             const props = (AgentInputMock.mock.calls[0]?.[0] ?? {}) as any;
-            expect(props.acpSessionModeOptionsOverride).toEqual([
-                { id: 'default', name: 'Default' },
-                { id: 'plan', name: 'Plan' },
-            ]);
-            expect(props.acpSessionModeSelectedIdOverride).toBeNull();
-            expect(props.acpSessionModeOptionsOverrideProbe?.phase).toBe('loading');
-            expect(typeof props.onAcpSessionModeChange).toBe('function');
+            expect(props.acpSessionModeOptionsOverride).toBeUndefined();
+            expect(props.acpSessionModeSelectedIdOverride).toBeUndefined();
+            expect(props.acpSessionModeOptionsOverrideProbe).toBeUndefined();
+            expect(props.onAcpSessionModeChange).toBeUndefined();
         } finally {
             act(() => {
                 tree?.unmount();
@@ -650,7 +655,7 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
         }
     });
 
-    it('passes ACP config option overrides through to AgentInput when provided', async () => {
+    it('omits ACP configuration controls', async () => {
         const { NewSessionSimplePanel } = await import('./NewSessionSimplePanel');
 
         AgentInputMock.mockClear();
@@ -714,30 +719,10 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
 
             expect(AgentInputMock).toHaveBeenCalled();
             const props = (AgentInputMock.mock.calls[0]?.[0] ?? {}) as any;
-            expect(props.acpConfigOptionsOverride).toEqual([
-                {
-                    id: 'speed',
-                    name: 'Speed',
-                    type: 'select',
-                    currentValue: 'standard',
-                    options: [
-                        { value: 'standard', name: 'Standard' },
-                        { value: 'fast', name: 'Fast' },
-                    ],
-                },
-            ]);
-            expect(props.acpConfigOptionOverridesOverride).toEqual({
-                v: 1,
-                updatedAt: 123,
-                overrides: {
-                    speed: { updatedAt: 123, value: 'fast' },
-                },
-            });
-            expect(props.acpConfigOptionsOverrideProbe).toEqual({ phase: 'idle', onRefresh: expect.any(Function) });
-            expect(typeof props.onSessionConfigOptionChange).toBe('function');
-
-            props.onSessionConfigOptionChange('speed', 'standard');
-            expect(onConfigChange).toHaveBeenCalledWith('speed', 'standard');
+            expect(props.acpConfigOptionsOverride).toBeUndefined();
+            expect(props.acpConfigOptionOverridesOverride).toBeUndefined();
+            expect(props.acpConfigOptionsOverrideProbe).toBeUndefined();
+            expect(props.onSessionConfigOptionChange).toBeUndefined();
         } finally {
             act(() => {
                 tree?.unmount();
@@ -745,7 +730,7 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
         }
     });
 
-    it('passes engine picker popover props through to AgentInput when provided', async () => {
+    it('omits engine switching controls', async () => {
         const { NewSessionSimplePanel } = await import('./NewSessionSimplePanel');
 
         AgentInputMock.mockClear();
@@ -795,12 +780,9 @@ describe('NewSessionSimplePanel (modelOptionsOverride)', () => {
             expect(AgentInputMock).toHaveBeenCalled();
             const props = (AgentInputMock.mock.calls[0]?.[0] ?? {}) as any;
             expect(props.agentPickerTitle).toBeUndefined();
-            expect(props.agentPickerSelectedOptionId).toBe('agent:claude');
-            expect(props.agentPickerOptions).toEqual([
-                { id: 'agent:claude', label: 'Claude' },
-                { id: 'agent:codex', label: 'Codex' },
-            ]);
-            expect(props.onAgentPickerSelect).toBe(onAgentPickerSelect);
+            expect(props.agentPickerSelectedOptionId).toBeUndefined();
+            expect(props.agentPickerOptions).toBeUndefined();
+            expect(props.onAgentPickerSelect).toBeUndefined();
         } finally {
             act(() => {
                 tree?.unmount();

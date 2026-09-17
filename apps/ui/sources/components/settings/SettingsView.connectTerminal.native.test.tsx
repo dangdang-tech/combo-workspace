@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { act, ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
-import { createDeferred, flushHookEffects, pressTestInstanceAsync, renderScreen } from '@/dev/testkit';
+import { renderScreen } from '@/dev/testkit';
 import { installSettingsViewCommonModuleMocks } from './settingsViewTestHelpers';
 
 
@@ -220,178 +220,37 @@ function findItemByTitle(tree: ReactTestRenderer, title: string) {
     return tree.findAllByType('Item' as any).find((item: any) => item?.props?.title === title);
 }
 
-async function flushDeferredSettingsDelay(delayMs = 0): Promise<void> {
-    await act(async () => {
-        if (vi.isFakeTimers()) {
-            await vi.advanceTimersByTimeAsync(delayMs);
-            return;
-        }
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
-    });
-    await flushHookEffects({ cycles: 1 });
-}
-
-async function flushAllDeferredSettingsSections(): Promise<void> {
-    await flushDeferredSettingsDelay();
-    await flushDeferredSettingsDelay(20);
-    await flushDeferredSettingsDelay(20);
-    await flushDeferredSettingsDelay(20);
-}
-
-describe('SettingsView (native connect terminal)', () => {
-    it('shows terminal connect actions on native platforms', async () => {
-        promptSpy.mockReset();
-        processAuthUrlSpy.mockReset();
+describe('SettingsView (native core sharing settings)', () => {
+    it('keeps account and machine access available without duplicate device pairing actions', async () => {
         vi.resetModules();
         const { SettingsView } = await import('./SettingsView');
+        const screen = await renderScreen(<SettingsView />);
+        const items = screen.tree.findAllByType('Item' as any);
 
-        let tree!: ReactTestRenderer;
-        tree = (await renderScreen(<SettingsView />)).tree;
-
-        const items = tree.findAllByType('Item' as any);
-        const scanItem = items.find((item: any) => item?.props?.testID === 'settings-connect-terminal-scan');
-        const manualItem = items.find((item: any) => item?.props?.testID === 'settings-connect-terminal-enter-url');
-
-        expect(scanItem).toBeTruthy();
-        expect(manualItem).toBeTruthy();
-
-        await act(async () => {
-            await pressTestInstanceAsync(scanItem!);
-        });
-
-        expect(connectTerminalSpy).toHaveBeenCalledTimes(1);
+        expect(items.find((item) => item.props.testID === 'settings-connect-terminal-scan')).toBeUndefined();
+        expect(items.find((item) => item.props.testID === 'settings-connect-terminal-enter-url')).toBeUndefined();
+        expect(findItemByTitle(screen.tree, 'settings.account')).toBeTruthy();
+        expect(findItemByTitle(screen.tree, 'settings.machines')).toBeTruthy();
     });
 
-    it('routes manually entered account URLs through the shared auth processor', async () => {
-        promptSpy.mockReset();
-        processAuthUrlSpy.mockReset();
-        promptSpy.mockResolvedValueOnce(' happier:///account?manual ');
-
-        vi.resetModules();
-        const { SettingsView } = await import('./SettingsView');
-
-        let tree!: ReactTestRenderer;
-        tree = (await renderScreen(<SettingsView />)).tree;
-
-        const items = tree.findAllByType('Item' as any);
-        const manualItem = items.find((item: any) => item?.props?.testID === 'settings-connect-terminal-enter-url');
-
-        expect(manualItem).toBeTruthy();
-
-        await act(async () => {
-            await pressTestInstanceAsync(manualItem!);
-        });
-
-        expect(promptSpy).toHaveBeenCalledTimes(1);
-        expect(processAuthUrlSpy).toHaveBeenCalledTimes(1);
-        expect(processAuthUrlSpy).toHaveBeenCalledWith('happier:///account?manual');
-    });
-
-    it('waits for native interactions before showing below-fold settings sections', async () => {
+    it('renders core settings immediately and does not add optional sections after interactions', async () => {
         interactionManagerMockState.runAfterInteractions.mockClear();
-        let releaseInteractions: (() => void) | null = null;
-        interactionManagerMockState.runAfterInteractions.mockImplementationOnce((fn: () => void) => {
-            releaseInteractions = fn;
-            return { cancel: () => {} };
-        });
-
+        requestReviewMockState.canRequestReview.mockClear();
         vi.resetModules();
         const { SettingsView } = await import('./SettingsView');
-
         vi.useFakeTimers();
         try {
             const screen = await renderScreen(<SettingsView />, { flushOptions: { cycles: 0 } });
+            const destinations = () => screen.tree.findAllByType('Item' as any)
+                .filter((item) => typeof item.props.onPress === 'function')
+                .map((item) => item.props.title);
 
-            await flushDeferredSettingsDelay(1000);
-
-            expect(interactionManagerMockState.runAfterInteractions).toHaveBeenCalledTimes(1);
-            expect(Boolean(findItemByTitle(screen.tree, 'settingsProviders.title'))).toBe(false);
-
-            await act(async () => {
-                releaseInteractions?.();
-            });
-            await flushDeferredSettingsDelay();
-
-            expect(findItemByTitle(screen.tree, 'settingsProviders.title')).toBeTruthy();
+            expect(destinations()).toEqual(['settings.account', 'settings.machines']);
+            await act(async () => { await vi.runAllTimersAsync(); });
+            expect(destinations()).toEqual(['settings.account', 'settings.machines']);
+            expect(requestReviewMockState.canRequestReview).not.toHaveBeenCalled();
         } finally {
             vi.useRealTimers();
-        }
-    });
-
-    it('defers below-fold settings sections until after interactions settle', async () => {
-        vi.resetModules();
-        const { SettingsView } = await import('./SettingsView');
-
-        vi.useFakeTimers();
-        try {
-            const screen = await renderScreen(<SettingsView />, { flushOptions: { cycles: 0 } });
-
-            expect(findItemByTitle(screen.tree, 'settings.account')).toBeTruthy();
-            expect(findItemByTitle(screen.tree, 'settings.appearance')).toBeTruthy();
-            expect(Boolean(findItemByTitle(screen.tree, 'settingsProviders.title'))).toBe(false);
-            expect(Boolean(findItemByTitle(screen.tree, 'settings.sessions'))).toBe(false);
-
-            await flushDeferredSettingsDelay();
-
-            expect(findItemByTitle(screen.tree, 'settingsProviders.title')).toBeTruthy();
-            expect(Boolean(findItemByTitle(screen.tree, 'settings.sessions'))).toBe(false);
-            expect(Boolean(findItemByTitle(screen.tree, 'settings.servers'))).toBe(false);
-            expect(Boolean(findItemByTitle(screen.tree, 'settings.github'))).toBe(false);
-
-            await flushDeferredSettingsDelay(20);
-
-            expect(findItemByTitle(screen.tree, 'settings.sessions')).toBeTruthy();
-            expect(Boolean(findItemByTitle(screen.tree, 'settings.servers'))).toBe(false);
-            expect(Boolean(findItemByTitle(screen.tree, 'settings.github'))).toBe(false);
-
-            await flushDeferredSettingsDelay(20);
-
-            expect(findItemByTitle(screen.tree, 'settings.servers')).toBeTruthy();
-            expect(Boolean(findItemByTitle(screen.tree, 'settings.github'))).toBe(false);
-
-            await flushDeferredSettingsDelay(20);
-
-            expect(findItemByTitle(screen.tree, 'settings.github')).toBeTruthy();
-        } finally {
-            vi.useRealTimers();
-        }
-    });
-
-    it('keeps unaffected settings row props stable when rate-us availability updates', async () => {
-        const rateUsAvailability = createDeferred<boolean>();
-        requestReviewMockState.canRequestReview.mockReset();
-        requestReviewMockState.canRequestReview.mockReturnValue(rateUsAvailability.promise);
-
-        vi.resetModules();
-        const { SettingsView } = await import('./SettingsView');
-
-        const screen = await renderScreen(<SettingsView />, { flushOptions: { cycles: 0 } });
-        await flushAllDeferredSettingsSections();
-
-        const stableRowTitles = [
-            'settings.account',
-            'settings.appearance',
-            'settingsProviders.title',
-            'settings.sessions',
-            'settings.servers',
-        ];
-        const iconsBefore = new Map<string, unknown>();
-        for (const title of stableRowTitles) {
-            const item = findItemByTitle(screen.tree, title);
-            expect(item).toBeTruthy();
-            iconsBefore.set(title, item!.props.icon);
-        }
-
-        await act(async () => {
-            rateUsAvailability.resolve(true);
-        });
-        await flushHookEffects();
-
-        expect(findItemByTitle(screen.tree, 'settings.rateUs')).toBeTruthy();
-        for (const title of stableRowTitles) {
-            const item = findItemByTitle(screen.tree, title);
-            expect(item).toBeTruthy();
-            expect(item!.props.icon).toBe(iconsBefore.get(title));
         }
     });
 });

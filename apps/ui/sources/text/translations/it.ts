@@ -601,8 +601,8 @@ export const it: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
-        title: "Accesso al progetto condiviso",
-        description: "Ogni utente Google invitato inizia una conversazione vuota personale. Tutti usano gli stessi file del progetto sull’host. L’host paga l’utilizzo del modello.",
+        title: "Condividi conversazione",
+        description: "Ogni utente Google invitato riceve il contesto salvato alla creazione dell’invito e prosegue nella propria conversazione. I file del progetto sono condivisi e l’host paga l’uso del modello.",
         create: "Crea invito",
         name: "Nome dell’accesso",
         members: "Membri",
@@ -630,6 +630,13 @@ export const it: TranslationStructure = {
         refresh: "Aggiorna stato",
         loadingFailed: "Impossibile verificare l’accesso. Aggiorna prima di inviare.",
         unavailable: "Gli accessi condivisi non sono disponibili per questa sessione.",
+        contextSnapshotRequired: "Questo invito non contiene un contesto salvato. Chiedi all’host di creare una nuova istantanea da condividere.",
+        contextSnapshotTooLarge: "La conversazione è troppo lunga da copiare. Condividi una conversazione più breve.",
+        contextSnapshotUnavailable: "Impossibile copiare questo contesto. Condividi una conversazione normale senza cronologia derivata.",
+        createFresh: "Crea una nuova istantanea da condividere",
+        createFreshDetail: "Salva il contesto attuale in un nuovo invito. I membri esistenti mantengono le proprie conversazioni.",
+        previousInvitations: "Altri inviti",
+        snapshotMissing: "Questo vecchio invito non contiene un contesto salvato.",
     },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
@@ -10254,7 +10261,7 @@ settingsSession: {
     // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
     brandTaglineLine1: "Un progetto condiviso.",
     brandTaglineLine2: "La tua conversazione con l’IA.",
-    brandSubTagline: "Usate Codex nella stessa cartella di progetto. Ognuno inizia una nuova conversazione; le modifiche ai file sono condivise.",
+    brandSubTagline: "Condividi una conversazione con il suo contesto. Prosegui autonomamente con Codex; i file del progetto sono condivisi.",
     brandTrustStrip: "FILE CONDIVISI · CONVERSAZIONI SEPARATE · SELF-HOSTING",
     frontDoorSelectedServer: "Server selezionato",
     frontDoorHostRequirement: "Le attività vengono eseguite con l’host online. Le richieste offline vengono rifiutate, non accodate.",

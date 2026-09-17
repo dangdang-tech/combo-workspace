@@ -2,11 +2,11 @@ import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react-test-renderer';
 
-import { flushHookEffects, renderScreen, standardCleanup } from '@/dev/testkit';
+import { createSessionFixture, flushHookEffects, renderScreen, standardCleanup } from '@/dev/testkit';
 import { createExpoRouterMock } from '@/dev/testkit/mocks/router';
 import { createStorageModuleMock } from '@/dev/testkit/mocks/storage';
 import type { LocalSettings } from '@/sync/domains/settings/localSettings';
-import { clearTempData, peekTempData, type NewSessionData } from '@/utils/sessions/tempDataStore';
+import { clearTempData } from '@/utils/sessions/tempDataStore';
 import { installSessionRouteCommonModuleMocks } from './sessionRouteTestHelpers';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -64,6 +64,10 @@ let resolvedServerId = 'server-1';
 let sessionHandoffFeatureEnabled = false;
 let sessionFoldersFeatureEnabled = false;
 let automationsEnabled = false;
+let sharingSupported = false;
+let sharedEntriesEnabled = false;
+let removedFeaturesEnabled = false;
+let terminalInfoEnabled = false;
 let serverFeaturesSnapshot: any = {
     status: 'ready',
     features: {
@@ -273,12 +277,14 @@ vi.mock('@/agents/catalog/catalog', async (importOriginal) => {
         resolveAgentIdFromFlavor: (flavor: string | null | undefined) => mockResolveAgentIdFromFlavor(flavor),
     };
 });
-vi.mock('@/hooks/session/useSessionSharingSupport', () => ({ useSessionSharingSupport: () => false }));
+vi.mock('@/hooks/session/useSessionSharingSupport', () => ({ useSessionSharingSupport: () => sharingSupported }));
 vi.mock('@/hooks/server/useAutomationsSupport', () => ({
     useAutomationsSupport: () => ({ enabled: automationsEnabled }),
 }));
 vi.mock('@/hooks/server/useFeatureEnabled', () => ({
     useFeatureEnabled: (featureId: string) => {
+        if (featureId === 'sharing.sessionEntries') return sharedEntriesEnabled;
+        if (removedFeaturesEnabled) return true;
         if (featureId === 'sessions.handoff') {
             return sessionHandoffFeatureEnabled;
         }
@@ -408,7 +414,11 @@ vi.mock('@/utils/sessions/sessionUtils', () => ({
 }));
 vi.mock('expo-clipboard', () => ({ setStringAsync: vi.fn() }));
 vi.mock('@/utils/system/versionUtils', () => ({ isVersionSupported: () => true, MINIMUM_CLI_VERSION: '0.0.0' }));
-vi.mock('@/utils/sessions/terminalSessionDetails', () => ({ getAttachCommandForSession: () => null, getTmuxFallbackReason: () => null, getTmuxTargetForSession: () => null }));
+vi.mock('@/utils/sessions/terminalSessionDetails', () => ({
+    getAttachCommandForSession: () => terminalInfoEnabled ? 'happier attach session-1' : null,
+    getTmuxFallbackReason: () => terminalInfoEnabled ? 'test fallback' : null,
+    getTmuxTargetForSession: () => terminalInfoEnabled ? 'test:0' : null,
+}));
 vi.mock('@/utils/errors/errors', () => ({ HappyError: class HappyError extends Error {} }));
 vi.mock('@/sync/domains/profiles/profileUtils', () => ({ resolveProfileById: () => null }));
 vi.mock('@/components/profiles/profileDisplay', () => ({ getProfileDisplayName: () => 'profile' }));
@@ -472,6 +482,11 @@ describe('/session/[id]/info', () => {
         sessionHandoffFeatureEnabled = false;
         sessionFoldersFeatureEnabled = false;
         automationsEnabled = false;
+        sharingSupported = false;
+        sharedEntriesEnabled = false;
+        removedFeaturesEnabled = false;
+        terminalInfoEnabled = false;
+        useSessionExecutionRunsSupportedSpy.mockReturnValue(false);
         serverFeaturesSnapshot = {
             status: 'ready',
             features: {
@@ -524,6 +539,109 @@ describe('/session/[id]/info', () => {
         return renderScreen(<Screen />);
     }
 
+    it.each([true, false])('keeps only sharing core details even when legacy capabilities are enabled (active=%s)', async (active) => {
+        localDevModeEnabled = true;
+        sharingSupported = true;
+        sharedEntriesEnabled = true;
+        automationsEnabled = true;
+        removedFeaturesEnabled = true;
+        terminalInfoEnabled = true;
+        useSessionExecutionRunsSupportedSpy.mockReturnValue(true);
+        machineRpcWithServerScopeSpy.mockResolvedValue({ ok: true });
+        readMachineTargetForSessionSpy.mockReturnValue({ machineId: 'machine-1', basePath: '/workspace/project' });
+        readDisplayMachineTargetForSessionSpy.mockReturnValue({ machineId: 'machine-1', basePath: '/workspace/project' });
+        mockAgentCore.resume = {
+            vendorResumeIdField: 'claudeSessionId',
+            uiVendorResumeIdLabelKey: 'sessionInfo.claudeCodeSessionId',
+            uiVendorResumeIdCopiedKey: 'sessionInfo.claudeCodeSessionIdCopied',
+        };
+        sessionIsConnected = active;
+        mockSession = createSessionFixture({
+            id: 'session-1',
+            active,
+            owner: 'owner-a',
+            accessLevel: undefined,
+            metadata: {
+                host: 'host-a',
+                path: '/workspace/project',
+                homeDir: '/workspace',
+                machineId: 'machine-1',
+                flavor: 'claude',
+                claudeSessionId: 'provider-session-1',
+                claudeTranscriptPath: '/tmp/provider-session.jsonl',
+                sessionLogPath: '/tmp/session.log',
+                version: '1.0.0',
+                os: 'darwin',
+                processId: 123,
+                terminal: { mode: 'tmux' },
+            },
+            agentState: { controlledByUser: true, requests: {} },
+        });
+
+        const screen = await renderInfoScreen();
+        await flushHookEffects({ cycles: 10 });
+
+        const allowedItems = new Set([
+            'sessionInfo.happySessionId', 'sessionInfo.connectionStatus', 'sessionInfo.created',
+            'sessionInfo.lastUpdated', 'sessionInfo.renameSession', 'session-shared-entry-management',
+            'sessionInfo.stopSession', 'sessionInfo.archiveSession', 'sessionInfo.deleteSession',
+            'sessionInfo.host', 'sessionInfo.path', 'sessionInfo.sessionStatus',
+        ]);
+        const itemIds = screen.findAllByType('Item' as any).map((node) => node.props.testID);
+        expect(itemIds.filter((id) => !allowedItems.has(id))).toEqual([]);
+        expect(screen.findByTestId('sessionInfo.happySessionId')?.props.copy).toBe('session-1');
+        expect(screen.findByTestId('sessionInfo.host')?.props.subtitle).toBe('host-a');
+        expect(screen.findByTestId('sessionInfo.path')?.props.subtitle).toBe('/workspace/project');
+        expect(screen.findByTestId('session-shared-entry-management')).not.toBeNull();
+        expect(useSessionExecutionRunsSupportedSpy).not.toHaveBeenCalled();
+        expect(machineRpcWithServerScopeSpy).not.toHaveBeenCalled();
+    });
+
+    it('opens entry sharing on the source session route server', async () => {
+        mockServerId = 'server-b';
+        sharedEntriesEnabled = true;
+        mockSession = createSessionFixture({ id: 'session-1', owner: 'owner-a', accessLevel: undefined });
+
+        const screen = await renderInfoScreen();
+        screen.pressByTestId('session-shared-entry-management');
+
+        expect(routerPushSpy).toHaveBeenCalledWith('/session/session-1/entry-sharing?serverId=server-b');
+    });
+
+    it.each([
+        { accessLevel: 'view' as const, active: true },
+        { accessLevel: 'edit' as const, active: true },
+        { accessLevel: 'view' as const, active: false },
+        { accessLevel: 'edit' as const, active: false },
+    ])('keeps managed $accessLevel guests outside entry management and lifecycle mutations (active=$active)', async ({ accessLevel, active }) => {
+        sharedEntriesEnabled = true;
+        sessionIsConnected = active;
+        mockSession = createSessionFixture({
+            id: 'session-1', active, owner: 'owner-a', accessLevel,
+            metadata: { host: 'host-a', path: '/workspace/project', sharedSessionEntryId: 'entry-1' },
+        });
+
+        const screen = await renderInfoScreen();
+
+        for (const id of ['session-shared-entry-management', 'sessionInfo.renameSession', 'sessionInfo.stopSession', 'sessionInfo.archiveSession', 'sessionInfo.deleteSession']) {
+            expect(screen.findByTestId(id)).toBeNull();
+        }
+        expect(screen.findByTestId('sessionInfo.happySessionId')).not.toBeNull();
+    });
+
+    it('does not offer entry management on the owner copy of a managed child session', async () => {
+        sharedEntriesEnabled = true;
+        mockSession = createSessionFixture({
+            id: 'session-1', owner: 'owner-a', accessLevel: undefined,
+            metadata: { host: 'host-a', path: '/workspace/project', sharedSessionEntryId: 'entry-1' },
+        });
+
+        const screen = await renderInfoScreen();
+
+        expect(screen.findByTestId('session-shared-entry-management')).toBeNull();
+        expect(screen.findByTestId('sessionInfo.renameSession')).not.toBeNull();
+    });
+
     function setSessionOwnerServer(serverId: string | null) {
         resolvedServerId = serverId ?? 'server-1';
         resolveServerIdForSessionIdFromLocalCacheSpy.mockReturnValue(serverId);
@@ -546,10 +664,6 @@ describe('/session/[id]/info', () => {
             labelsByLabelKey: {},
             ...overrides,
         };
-    }
-
-    function plainDisplay(value: Record<string, unknown>) {
-        return { t: 'plain', v: value };
     }
 
     it('shows loading while the route hydration is still in progress', async () => {
@@ -583,8 +697,9 @@ describe('/session/[id]/info', () => {
         expect(useSessionSpy).toHaveBeenCalledWith('session-2');
     });
 
-    it('keeps scoped route helpers stable when only volatile session fields change', async () => {
+    it('keeps the entry-sharing route scoped when only volatile session fields change', async () => {
         mockServerId = 'server-b';
+        sharedEntriesEnabled = true;
         mockSession = {
             id: 'session-1234567890abcdef',
             active: true,
@@ -597,7 +712,8 @@ describe('/session/[id]/info', () => {
 
         const Screen = (await import('@/app/(app)/session/[id]/info')).default;
         const screen = await renderScreen(<Screen />);
-        expect(createDefaultActionExecutorSpy).toHaveBeenCalledTimes(1);
+        screen.pressByTestId('session-shared-entry-management');
+        expect(routerPushSpy).toHaveBeenLastCalledWith('/session/session-1234567890abcdef/entry-sharing?serverId=server-b');
 
         mockSession = {
             ...mockSession,
@@ -608,7 +724,8 @@ describe('/session/[id]/info', () => {
 
         await screen.update(<Screen />);
 
-        expect(createDefaultActionExecutorSpy).toHaveBeenCalledTimes(1);
+        screen.pressByTestId('session-shared-entry-management');
+        expect(routerPushSpy).toHaveBeenLastCalledWith('/session/session-1234567890abcdef/entry-sharing?serverId=server-b');
     });
 
     it('derives status from the route session without duplicate store subscriptions', async () => {
@@ -735,334 +852,7 @@ describe('/session/[id]/info', () => {
         expect(useSessionExecutionRunsSupportedSpy).not.toHaveBeenCalled();
     });
 
-    it('routes forked child session opens through the shared fork completion helper with scoped hrefs', async () => {
-        mockServerId = 'server-b';
-        mockSession = {
-            id: 'session-1234567890abcdef',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {},
-        };
-
-        await renderInfoScreen();
-
-        const executorOptions = createDefaultActionExecutorSpy.mock.calls[0]?.[0] as any;
-        expect(executorOptions?.openSession).toEqual(expect.any(Function));
-
-        await executorOptions.openSession('child-session');
-
-        expect(completeSessionForkNavigationSpy).toHaveBeenCalledWith({
-            childSessionId: 'child-session',
-            parentSessionId: 'session-1234567890abcdef',
-            serverId: 'server-b',
-            navigate: expect.any(Function),
-        });
-
-        const helperParams = completeSessionForkNavigationSpy.mock.calls[0]?.[0] as any;
-        helperParams.navigate('next-child');
-        expect(routerNavigateSpy).toHaveBeenCalledWith('/session/next-child?serverId=server-b', expect.any(Object));
-    });
-
-    it('fails closed and hides the handoff quick action when direct peer truth is runtime-unknown and server-routed fallback would make the UI untruthful', async () => {
-        sessionHandoffFeatureEnabled = true;
-        serverFeaturesSnapshot = {
-            status: 'ready',
-            features: {
-                features: {
-                    sessions: {
-                        enabled: true,
-                        handoff: {
-                            enabled: true,
-                        },
-                    },
-                    machines: {
-                        enabled: true,
-                        transfer: {
-                            enabled: true,
-                            directPeer: {
-                                enabled: true,
-                            },
-                            serverRouted: {
-                                enabled: true,
-                            },
-                        },
-                    },
-                },
-                capabilities: {},
-            },
-        };
-        mockSession = {
-            id: 'session-1234567890abcdef',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                machineId: 'machine_source',
-                flavor: 'claude',
-                claudeSessionId: 'claude-session-1',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        const handoffItems = screen.findAllByType('Item' as any).filter((node: any) => node.props?.title === 'Hand off session');
-        expect(handoffItems).toHaveLength(0);
-    });
-
-    it('fails closed and hides the handoff quick action when the selected server only exposes direct-peer handoff transport', async () => {
-        sessionHandoffFeatureEnabled = true;
-        serverFeaturesSnapshot = {
-            status: 'ready',
-            features: {
-                features: {
-                    sessions: {
-                        enabled: true,
-                        handoff: {
-                            enabled: true,
-                        },
-                    },
-                    machines: {
-                        enabled: true,
-                        transfer: {
-                            enabled: true,
-                            directPeer: {
-                                enabled: true,
-                            },
-                            serverRouted: {
-                                enabled: false,
-                            },
-                        },
-                    },
-                },
-                capabilities: {},
-            },
-        };
-        mockSession = {
-            id: 'session-1234567890abcdef',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                machineId: 'machine_source',
-                flavor: 'claude',
-                claudeSessionId: 'claude-session-1',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        const handoffItems = screen.findAllByType('Item' as any).filter((node: any) => node.props?.title === 'Hand off session');
-        expect(handoffItems).toHaveLength(0);
-    });
-
-    it('shows the handoff quick action when server-routed transfer is the available transport', async () => {
-        sessionHandoffFeatureEnabled = true;
-        serverFeaturesSnapshot = {
-            status: 'ready',
-            features: {
-                features: {
-                    sessions: {
-                        enabled: true,
-                        handoff: {
-                            enabled: true,
-                        },
-                    },
-                    machines: {
-                        enabled: true,
-                        transfer: {
-                            enabled: true,
-                            directPeer: {
-                                enabled: false,
-                            },
-                            serverRouted: {
-                                enabled: true,
-                            },
-                        },
-                    },
-                },
-                capabilities: {},
-            },
-        };
-        mockSession = {
-            id: 'session-1234567890abcdef',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                machineId: 'machine_source',
-                flavor: 'claude',
-                claudeSessionId: 'claude-session-1',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        const handoffItems = screen.findAllByType('Item' as any).filter((node: any) => node.props?.title === 'Hand off session');
-        expect(handoffItems).toHaveLength(1);
-    });
-
-    it('reacts when machine-rpc direct-peer viability becomes available for the reachable machine target after metadata goes stale', async () => {
-        sessionHandoffFeatureEnabled = true;
-        resolvedServerId = 'server_reactive_info';
-        resolveServerIdForSessionIdFromLocalCacheSpy.mockReturnValue('server_reactive_info');
-        readMachineTargetForSessionSpy.mockReturnValue({
-            machineId: 'machine_rebound',
-            basePath: '/workspace/repo',
-        });
-        serverFeaturesSnapshot = {
-            status: 'ready',
-            features: {
-                features: {
-                    sessions: {
-                        enabled: true,
-                        handoff: {
-                            enabled: true,
-                        },
-                    },
-                    machines: {
-                        enabled: true,
-                        transfer: {
-                            enabled: true,
-                            directPeer: {
-                                enabled: true,
-                            },
-                            serverRouted: {
-                                enabled: false,
-                            },
-                        },
-                    },
-                },
-                capabilities: {},
-            },
-        };
-        mockSession = {
-            id: 'session-1234567890abcdef',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                machineId: 'machine_source',
-                flavor: 'claude',
-                claudeSessionId: 'claude-session-1',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        let handoffItems = screen.findAllByType('Item' as any).filter((node: any) => node.props?.title === 'Hand off session');
-        expect(handoffItems).toHaveLength(0);
-
-        const { recordCachedMachineRpcDirectRouteViable } = await import('@/sync/domains/transfers/runtime/transferRouteCache');
-        await act(async () => {
-            recordCachedMachineRpcDirectRouteViable({
-                serverId: 'server_reactive_info',
-                remoteMachineId: 'machine_rebound',
-            });
-        });
-        await flushHookEffects({ cycles: 10 });
-
-        handoffItems = screen.findAllByType('Item' as any).filter((node: any) => node.props?.title === 'Hand off session');
-        expect(handoffItems).toHaveLength(1);
-    });
-
-    it('falls back to the preferred session server when the local server cache misses and still surfaces handoff after a scoped reachability probe succeeds', async () => {
-        sessionHandoffFeatureEnabled = true;
-        resolvedServerId = 'server_preferred_info';
-        resolveServerIdForSessionIdFromLocalCacheSpy.mockReturnValue(null);
-        resolvePreferredServerIdForSessionIdSpy.mockReturnValue('server_preferred_info');
-        usePreferredServerIdForSessionSpy.mockReturnValue('server_preferred_info');
-        machineRpcWithServerScopeSpy.mockResolvedValue({ ok: true });
-        serverFeaturesSnapshot = {
-            status: 'ready',
-            features: {
-                features: {
-                    sessions: {
-                        enabled: true,
-                        handoff: {
-                            enabled: true,
-                        },
-                    },
-                    machines: {
-                        enabled: true,
-                        transfer: {
-                            enabled: true,
-                            directPeer: {
-                                enabled: true,
-                            },
-                            serverRouted: {
-                                enabled: false,
-                            },
-                        },
-                    },
-                },
-                capabilities: {},
-            },
-        };
-        mockSession = {
-            id: 'session-1234567890abcdef',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                machineId: 'machine_source',
-                flavor: 'claude',
-                claudeSessionId: 'claude-session-1',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        await flushHookEffects({ cycles: 10 });
-
-        const handoffItems = screen.findAllByType('Item' as any).filter((node: any) => node.props?.title === 'Hand off session');
-        expect(handoffItems).toHaveLength(1);
-    });
-
-    it('shows the provider resume surfaces when the vendor resume id only exists in agentRuntimeDescriptorV1', async () => {
-        mockResolveAgentIdFromFlavor.mockReturnValue('opencode');
-        mockAgentCore = {
-            resume: {
-                vendorResumeIdField: 'opencodeSessionId',
-                uiVendorResumeIdLabelKey: 'sessionInfo.openCodeSessionId',
-                uiVendorResumeIdCopiedKey: 'sessionInfo.openCodeSessionIdCopied',
-            },
-            displayNameKey: 'agents.opencode.displayName',
-            ui: { agentPickerIconName: 'code-slash-outline' },
-        };
-        mockSession = {
-            id: 'session-1234567890abcdef',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                flavor: 'opencode',
-                agentRuntimeDescriptorV1: {
-                    v: 1,
-                    providerId: 'opencode',
-                    provider: {
-                        backendMode: 'server',
-                        vendorSessionId: 'runtime-session-1234567890',
-                    },
-                },
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        expect(screen.findByTestId('sessionInfo.openCodeSessionId')).toBeTruthy();
-        expect(screen.findByTestId('sessionInfo.copyResumeCommand')).toBeTruthy();
-    });
-
-    it('infers the provider from agentRuntimeDescriptorV1 when flavor is missing', async () => {
+    it('infers the avatar provider from agentRuntimeDescriptorV1 when flavor is missing', async () => {
         mockAgentCore = {
             resume: {
                 vendorResumeIdField: 'opencodeSessionId',
@@ -1092,706 +882,12 @@ describe('/session/[id]/info', () => {
         };
 
         const screen = await renderInfoScreen();
-        expect(screen.findByTestId('sessionInfo.openCodeSessionId')).toBeTruthy();
         expect(mockResolveAgentIdFromFlavor).not.toHaveBeenCalled();
         const avatar = screen.findByTestId('session-info-avatar');
         if (!avatar) {
             throw new Error('expected session info avatar');
         }
         expect(avatar.props.flavor).toBe('opencode');
-    });
-
-    it('routes View Machine to the stable display target when live reachability differs', async () => {
-        readMachineTargetForSessionSpy.mockReturnValue({
-            machineId: 'machine-live-rpc',
-            basePath: '/workspace/repo',
-        });
-        readDisplayMachineTargetForSessionSpy.mockReturnValue({
-            machineId: 'machine-display',
-            basePath: '/workspace/repo',
-        });
-        mockSession = {
-            id: 'session-1',
-            active: true,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                machineId: 'machine-source',
-                path: '/workspace/repo',
-                flavor: 'claude',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        const viewMachineItem = screen.findByTestId('sessionInfo.viewMachine');
-        expect(viewMachineItem).toBeTruthy();
-        expect(viewMachineItem?.props.subtitleAccessory).toBeTruthy();
-        expect(viewMachineItem?.props.subtitleAccessory?.props.testID).toBe('sessionInfo.viewMachineTargetMachineId');
-        expect(viewMachineItem?.props.subtitleAccessory?.props.children).toBe('machine-display');
-        expect(screen.findByTestId('sessionInfo.path')).toBeTruthy();
-
-        screen.pressByTestId('sessionInfo.viewMachine');
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/machine/machine-display');
-    });
-
-    it('opens a new session seeded from the current session configuration', async () => {
-        mockServerId = 'server-b';
-        usePreferredServerIdForSessionSpy.mockImplementation(() => 'server-b');
-        readMachineTargetForSessionSpy.mockReturnValue({
-            machineId: 'machine-target',
-            basePath: '/workspace/repo',
-        });
-        readDisplayMachineTargetForSessionSpy.mockReturnValue({
-            machineId: 'machine-display',
-            basePath: '/workspace/display',
-        });
-        mockSession = {
-            id: 'session-1',
-            active: true,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            encryptionMode: 'plain',
-            metadata: {
-                machineId: 'machine-source',
-                path: '/workspace/source',
-                homeDir: '/workspace',
-                host: 'source.local',
-                flavor: 'codex',
-                profileId: 'profile-1',
-                transcriptStorage: 'direct',
-                codexBackendMode: 'appServer',
-                sessionModeOverrideV1: {
-                    v: 1,
-                    updatedAt: 100,
-                    modeId: 'plan',
-                },
-            },
-            permissionMode: 'safe-yolo',
-            permissionModeUpdatedAt: 101,
-            modelMode: 'gpt-5',
-            modelModeUpdatedAt: 102,
-        };
-
-        const screen = await renderInfoScreen();
-        screen.pressByTestId('session-info-new-session-same-setup');
-
-        const pushArg = routerPushSpy.mock.calls[0]?.[0] as any;
-        expect(pushArg).toEqual({
-            pathname: '/new',
-            params: {
-                draftId: expect.stringMatching(/^[0-9a-f-]{36}$/i),
-                dataId: expect.any(String),
-                machineId: 'machine-display',
-                directory: '/workspace/display',
-                spawnServerId: 'server-b',
-            },
-        });
-        const tempData = peekTempData<NewSessionData>(pushArg.params.dataId);
-        expect(tempData).toEqual(expect.objectContaining({
-            prompt: '',
-            replacePersistedDraftSelections: true,
-            machineId: 'machine-display',
-            directory: '/workspace/display',
-            agentType: 'codex',
-            backendTarget: { kind: 'builtInAgent', agentId: 'codex' },
-            selectedProfileId: 'profile-1',
-            transcriptStorage: 'direct',
-            permissionMode: 'safe-yolo',
-            modelMode: 'gpt-5',
-            codexBackendMode: 'appServer',
-            acpSessionModeId: 'plan',
-        }));
-    });
-
-    it('seeds a new session with the machine-visible workspace root when the display root is sandbox-local', async () => {
-        readMachineTargetForSessionSpy.mockReturnValue({
-            machineId: 'machine-1',
-            basePath: '/Users/alice/project',
-            agentBasePath: '/home/coder/project',
-        });
-        readDisplayMachineTargetForSessionSpy.mockReturnValue({
-            machineId: 'machine-1',
-            basePath: '/home/coder/project',
-        });
-        mockSession = {
-            id: 'session-1',
-            active: true,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                machineId: 'machine-1',
-                path: '/home/coder/project',
-                flavor: 'codex',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        screen.pressByTestId('session-info-new-session-same-setup');
-
-        const pushArg = routerPushSpy.mock.calls[0]?.[0] as any;
-        expect(pushArg.params).toEqual(expect.objectContaining({
-            machineId: 'machine-1',
-            directory: '/Users/alice/project',
-        }));
-        const tempData = peekTempData<NewSessionData>(pushArg.params.dataId);
-        expect(tempData).toEqual(expect.objectContaining({
-            machineId: 'machine-1',
-            directory: '/Users/alice/project',
-        }));
-    });
-
-    it('always shows the View session log action even when developer mode is disabled', async () => {
-        mockServerId = 'server-b';
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-        expect(screen.findByTestId('sessionInfo.viewSessionLogTitle')).toBeTruthy();
-        screen.pressByTestId('sessionInfo.viewSessionLogTitle');
-        expect(routerPushSpy).toHaveBeenCalledWith('/session/session-1/log?serverId=server-b');
-    });
-
-    it('routes session automations through the current route scope', async () => {
-        mockServerId = 'server-b';
-        automationsEnabled = true;
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-        screen.pressByTestId('sessionInfo.automationsTitle');
-
-        expect(routerPushSpy).toHaveBeenCalledWith('/session/session-1/automations?serverId=server-b');
-    });
-
-    it('forwards selected server scope when pressing mark-unread quick action', async () => {
-        mockServerId = 'server-b';
-        setSessionOwnerServer('server-b');
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 2,
-            latestTurnStatus: 'completed',
-            archivedAt: null,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-        await screen.pressByTestIdAsync('session-info-mark-unread');
-
-        expect(sessionReadStateSpy).toHaveBeenCalledWith('session-1', 'unread', { serverId: 'server-b' });
-    });
-
-    it('forwards selected server scope when pressing mark-read quick action', async () => {
-        mockServerId = 'server-b';
-        setSessionOwnerServer('server-b');
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 1,
-            latestTurnStatus: 'completed',
-            archivedAt: null,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-        await screen.pressByTestIdAsync('session-info-mark-read');
-
-        expect(sessionReadStateSpy).toHaveBeenCalledWith('session-1', 'read', { serverId: 'server-b' });
-    });
-
-    it('surfaces pin and tag actions from the session view quick actions', async () => {
-        mockServerId = 'server-b';
-        setSessionOwnerServer('server-b');
-        pinnedSessionKeysV1 = ['server-b:legacy-pinned'];
-        sessionTagsV1 = { 'server-b:session-1': ['legacy'] };
-        resetSessionOrganizationProjection({
-            tagAssignmentsBySessionId: {
-                'session-1': ['existing'],
-            },
-        });
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            owner: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 1,
-            latestTurnStatus: 'completed',
-            archivedAt: null,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-
-        await screen.pressByTestIdAsync('session-info-session-pin');
-        expect(setPinnedSessionKeysV1Spy).not.toHaveBeenCalled();
-        expect(sessionOrganizationOps.setSessionPin).toHaveBeenCalledWith({
-            credentials: { token: 'token' },
-            serverId: 'server-b',
-            serverUrl: 'https://server.example.test',
-            sessionId: 'session-1',
-            pinned: true,
-        });
-
-        await screen.pressByTestIdAsync('session-info-session-tags-edit');
-        expect(modalPromptSpy).toHaveBeenCalledWith(
-            'sessionsList.selectionSetTagsPromptTitle',
-            'sessionsList.selectionTagsPromptMessage',
-            expect.objectContaining({ defaultValue: 'existing' }),
-        );
-        expect(setSessionTagsV1Spy).not.toHaveBeenCalled();
-        expect(sessionOrganizationOps.setSessionTagAssignments).toHaveBeenCalledWith({
-            credentials: { token: 'token' },
-            serverId: 'server-b',
-            serverUrl: 'https://server.example.test',
-            sessionId: 'session-1',
-            tags: ['urgent', 'review'],
-        });
-    });
-
-    it('surfaces the attention standing action from the session view quick actions', async () => {
-        mockServerId = 'server-b';
-        setSessionOwnerServer('server-b');
-        sessionListAttentionPromotionMode = 'global';
-        resetSessionOrganizationProjection();
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            owner: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 2,
-            latestTurnStatus: 'completed',
-            archivedAt: null,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-
-        expect(screen.findByTestId('session-info-session-clear-attention-standing')).toBeNull();
-        await screen.pressByTestIdAsync('session-info-session-set-attention-standing');
-
-        expect(sessionOrganizationOps.sessionSetAttentionStandingWithServerScope).toHaveBeenCalledWith(
-            'session-1',
-            true,
-            { serverId: 'server-b' },
-        );
-    });
-
-    it('offers to remove a stored standing session from Needs attention', async () => {
-        mockServerId = 'server-b';
-        setSessionOwnerServer('server-b');
-        sessionListAttentionPromotionMode = 'global';
-        resetSessionOrganizationProjection({
-            attentionStandingsBySessionId: {
-                'session-1': { sessionId: 'session-1', standing: true, updatedAt: 5 },
-            },
-        });
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            owner: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 2,
-            latestTurnStatus: 'completed',
-            archivedAt: null,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-
-        expect(screen.findByTestId('session-info-session-set-attention-standing')).toBeNull();
-        await screen.pressByTestIdAsync('session-info-session-clear-attention-standing');
-
-        expect(sessionOrganizationOps.sessionSetAttentionStandingWithServerScope).toHaveBeenCalledWith(
-            'session-1',
-            false,
-            { serverId: 'server-b' },
-        );
-    });
-
-    it('hides the attention standing action while the attention band is off', async () => {
-        mockServerId = 'server-b';
-        setSessionOwnerServer('server-b');
-        sessionListAttentionPromotionMode = 'off';
-        resetSessionOrganizationProjection({
-            attentionStandingsBySessionId: {
-                'session-1': { sessionId: 'session-1', standing: true, updatedAt: 5 },
-            },
-        });
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            owner: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 2,
-            latestTurnStatus: 'completed',
-            archivedAt: null,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-
-        expect(screen.findByTestId('session-info-session-set-attention-standing')).toBeNull();
-        expect(screen.findByTestId('session-info-session-clear-attention-standing')).toBeNull();
-    });
-
-    it('surfaces move-to-folder from the session view when folder targets match the session workspace', async () => {
-        mockServerId = 'server-1';
-        setSessionOwnerServer('server-1');
-        sessionFoldersFeatureEnabled = true;
-        sessionFoldersV1 = { v: 1, folders: [] };
-        resetSessionOrganizationProjection({
-            foldersById: {
-                'folder-1': {
-                    folderId: 'folder-1',
-                    parentFolderId: null,
-                    sortKey: null,
-                    display: plainDisplay({
-                        name: 'Planning',
-                        workspace: {
-                            t: 'workspaceScope',
-                            serverId: 'server-1',
-                            machineId: 'machine-1',
-                            rootPath: '/repo',
-                        },
-                    }),
-                    archivedAt: null,
-                    createdAt: 1,
-                    updatedAt: 1,
-                },
-            },
-        });
-        sessionFoldersV1 = {
-            v: 1,
-            folders: [{
-                id: 'legacy-folder',
-                workspace: {
-                    t: 'workspaceScope',
-                    serverId: 'server-1',
-                    machineId: 'machine-1',
-                    rootPath: '/repo',
-                },
-                parentId: null,
-                name: 'Legacy',
-                createdAt: 1,
-                updatedAt: 1,
-            }],
-        };
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            owner: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 1,
-            latestTurnStatus: 'completed',
-            archivedAt: null,
-            metadata: {
-                machineId: 'machine-1',
-                path: '/repo',
-            },
-        };
-        openMoveSheetSpy.mockResolvedValue({
-            id: 'session-info-move-folder:folder-1',
-            kind: 'folder',
-            label: 'Planning',
-            disabled: false,
-            result: { instruction: { kind: 'idle' }, visual: { kind: 'none' } },
-        });
-
-        const screen = await renderInfoScreen();
-        await screen.pressByTestIdAsync('session-info-session-move-to-folder');
-
-        expect(openMoveSheetSpy).toHaveBeenCalledWith(expect.objectContaining({
-            sourceLabel: 'name',
-            targets: expect.arrayContaining([
-                expect.objectContaining({ id: 'session-info-move-folder:folder-1', label: 'Planning' }),
-            ]),
-        }));
-        expect(setSessionFolderAssignmentSpy).not.toHaveBeenCalled();
-        expect(sessionOrganizationOps.setSessionFolderAssignment).toHaveBeenCalledWith(expect.objectContaining({
-            credentials: { token: 'token' },
-            serverId: 'server-1',
-            serverUrl: 'https://server.example.test',
-            sessionId: 'session-1',
-            folderId: 'folder-1',
-        }));
-    });
-
-    it('hides read-state quick action for non-terminal raw session seq', async () => {
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 1,
-            latestTurnStatus: 'in_progress',
-            archivedAt: null,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-
-        expect(screen.findByTestId('session-info-mark-unread')).toBeNull();
-        expect(screen.findByTestId('session-info-mark-read')).toBeNull();
-    });
-
-    it('hides read-state quick action for archived sessions', async () => {
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 2,
-            archivedAt: 123,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-
-        expect(screen.findByTestId('session-info-mark-unread')).toBeNull();
-        expect(screen.findByTestId('session-info-mark-read')).toBeNull();
-    });
-
-    it('hides pin quick action for archived sessions', async () => {
-        mockServerId = 'server-b';
-        setSessionOwnerServer('server-b');
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            owner: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 2,
-            lastViewedSessionSeq: 2,
-            archivedAt: 123,
-            metadata: {},
-        };
-
-        const screen = await renderInfoScreen();
-
-        expect(screen.findByTestId('session-info-session-pin')).toBeNull();
-        expect(screen.findByTestId('session-info-session-unpin')).toBeNull();
-    });
-
-    it('shows the session log path row when a sessionLogPath is present even when developer mode is disabled', async () => {
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                sessionLogPath: '/tmp/.happier/logs/session.log',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        expect(screen.findByTestId('sessionLog.logPathCopyLabel')).toBeTruthy();
-    });
-
-    it('wires session detail copy rows through item-local copy feedback', async () => {
-        localDevModeEnabled = true;
-        mockAgentCore = {
-            resume: {
-                vendorResumeIdField: 'claudeSessionId',
-                uiVendorResumeIdLabelKey: 'sessionInfo.claudeCodeSessionId',
-                uiVendorResumeIdCopiedKey: 'sessionInfo.claudeCodeSessionIdCopied',
-            },
-            displayNameKey: 'agentInput.agent.claude',
-            permissions: { modeGroup: 'codexLike' },
-            ui: { agentPickerIconName: 'code-slash-outline' },
-        };
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                flavor: 'claude',
-                homeDir: '/Users/lee',
-                host: 'mac',
-                path: '/Users/lee/project',
-                claudeSessionId: 'claude-session-1',
-                claudeTranscriptPath: '/tmp/claude/session.jsonl',
-                sessionLogPath: '/tmp/.happier/logs/session.log',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        const itemByTitle = (title: string) =>
-            screen.findAllByType('Item' as any).find((node: any) => node.props?.title === title);
-
-        expect(itemByTitle('sessionInfo.happySessionId')?.props.copy).toBe('session-1');
-        expect(itemByTitle('sessionInfo.happySessionId')?.props.onPress).toBeUndefined();
-        expect(itemByTitle('sessionInfo.claudeCodeSessionId')?.props.copy).toBe('claude-session-1');
-        expect(itemByTitle('sessionInfo.claudeCodeSessionId')?.props.onPress).toBeUndefined();
-        expect(itemByTitle('sessionLog.logPathCopyLabel')?.props.copy).toBe('/tmp/.happier/logs/session.log');
-        expect(itemByTitle('sessionLog.logPathCopyLabel')?.props.onPress).toBeUndefined();
-        expect(itemByTitle('sessionInfo.providerSessionLogs')?.props.copy).toBe('/tmp/claude/session.jsonl');
-        expect(itemByTitle('sessionInfo.providerSessionLogs')?.props.onPress).toBeUndefined();
-        expect(itemByTitle('sessionInfo.copyMetadata')?.props.copy).toBe(JSON.stringify(mockSession.metadata, null, 2));
-        expect(itemByTitle('sessionInfo.copyMetadata')?.props.onPress).toBeUndefined();
-    });
-
-    it('wires developer debug information through item-local copy feedback and omits unknown provider artifact lines', async () => {
-        localDevModeEnabled = true;
-        mockAgentCore = {
-            resume: {
-                vendorResumeIdField: 'codexSessionId',
-            },
-            displayNameKey: 'agentInput.agent.codex',
-            permissions: { modeGroup: 'codexLike' },
-            ui: { agentPickerIconName: 'code-slash-outline' },
-        };
-        mockResolveAgentIdFromFlavor.mockReturnValue('codex');
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                flavor: 'codex',
-                codexSessionId: 'codex-session-1',
-                sessionLogPath: '/tmp/.happier/logs/session.log',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        const copyDebugItem = screen.findAllByType('Item' as any)
-            .find((node: any) => node.props?.title === 'sessionInfo.copyDebugInformation');
-        expect(copyDebugItem).toBeTruthy();
-        expect(copyDebugItem?.props.onPress).toBeUndefined();
-        expect(copyDebugItem?.props.copy).toBe([
-            'Happier session ID: session-1',
-            'agentInput.agent.codex session ID: codex-session-1',
-            'Happier logs: /tmp/.happier/logs/session.log',
-        ].join('\n'));
-    });
-
-    it('shows the provider session logs row when an artifact path is known', async () => {
-        localDevModeEnabled = true;
-        mockAgentCore = {
-            resume: {
-                vendorResumeIdField: 'claudeSessionId',
-            },
-            displayNameKey: 'agentInput.agent.claude',
-            permissions: { modeGroup: 'codexLike' },
-            ui: { agentPickerIconName: 'code-slash-outline' },
-        };
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                flavor: 'claude',
-                claudeSessionId: 'claude-session-1',
-                claudeTranscriptPath: '/tmp/claude/session.jsonl',
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        const providerLogsItem = screen.findAllByType('Item' as any)
-            .find((node: any) => node.props?.title === 'sessionInfo.providerSessionLogs');
-        expect(providerLogsItem).toBeTruthy();
-        expect(providerLogsItem?.props.copy).toBe('/tmp/claude/session.jsonl');
-        expect(providerLogsItem?.props.onPress).toBeUndefined();
-    });
-
-    it('defers raw dev JSON rendering until a section is opened', async () => {
-        localDevModeEnabled = true;
-        mockSession = {
-            id: 'session-1',
-            active: false,
-            accessLevel: null,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            seq: 1,
-            metadata: {
-                path: '/workspace/repo',
-                sessionModelsV1: {
-                    availableModels: Array.from({ length: 50 }, (_, index) => ({
-                        id: `model-${index}`,
-                        description: 'large metadata payload',
-                    })),
-                },
-            },
-            agentState: {
-                controlledByUser: false,
-                requests: {},
-            },
-        };
-
-        const screen = await renderInfoScreen();
-        expect(screen.findAllByType('CodeView' as any)).toHaveLength(0);
-
-        const metadataRawItem = screen.findAllByType('Item' as any)
-            .find((node: any) => node.props?.title === 'sessionInfo.metadata' && typeof node.props?.onPress === 'function');
-        expect(metadataRawItem).toBeTruthy();
-
-        await act(async () => {
-            metadataRawItem?.props.onPress();
-        });
-
-        const codeViews = screen.findAllByType('CodeView' as any);
-        expect(codeViews).toHaveLength(1);
-        expect(codeViews[0]?.props.language).toBe('json');
-        expect(codeViews[0]?.props.code).toContain('"sessionModelsV1"');
     });
 
     it('stops without archiving even when inactive sessions are hidden and unpinned', async () => {

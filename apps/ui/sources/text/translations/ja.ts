@@ -586,8 +586,8 @@ export const ja: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
-        title: "共有プロジェクトの入口",
-        description: "招待された Google ユーザーはそれぞれ空の専用会話を開始します。プロジェクトのファイルはホスト上で共有され、モデルの利用料金はホストが負担します。",
+        title: "会話を共有",
+        description: "招待された Google ユーザーは、招待作成時の会話の文脈を受け取り、自分の会話で続きを話せます。プロジェクトのファイルは共有され、モデルの利用料金はホストが負担します。",
         create: "招待を作成",
         name: "入口の名前",
         members: "メンバー",
@@ -615,6 +615,13 @@ export const ja: TranslationStructure = {
         refresh: "状態を更新",
         loadingFailed: "アクセスを確認できません。送信前に更新してください。",
         unavailable: "このセッションでは共有入口を利用できません。",
+        contextSnapshotRequired: "この招待には文脈が保存されていません。ホストに新しい共有スナップショットの作成を依頼してください。",
+        contextSnapshotTooLarge: "会話が長すぎるためコピーできません。短い会話を共有してください。",
+        contextSnapshotUnavailable: "この文脈はコピーできません。分岐した履歴のない通常の会話を共有してください。",
+        createFresh: "新しい共有スナップショットを作成",
+        createFreshDetail: "現在の文脈を新しい招待に保存します。既存のメンバーの会話は維持されます。",
+        previousInvitations: "他の招待",
+        snapshotMissing: "この古い招待には会話の文脈が保存されていません。",
     },
     settingsKeyboard: {
         title: 'Keyboard shortcuts',
@@ -10157,7 +10164,7 @@ settingsSession: {
     // Unified onboarding redesign — BrandPanel (left pane / mobile hero)
     brandTaglineLine1: "ひとつのプロジェクト。",
     brandTaglineLine2: "それぞれの AI 対話。",
-    brandSubTagline: "同じプロジェクトディレクトリで Codex を使います。各メンバーは新しい会話を始め、ファイルの変更を共有します。",
+    brandSubTagline: "文脈ごと会話を共有し、Codex と個別に続きを話せます。プロジェクトのファイルは共有されます。",
     brandTrustStrip: "ファイル共有 · 個別の会話 · セルフホスト可能",
     frontDoorSelectedServer: "選択中のサーバー",
     frontDoorHostRequirement: "ホストがオンラインの間にタスクを実行します。オフラインの要求は待機せず拒否されます。",
