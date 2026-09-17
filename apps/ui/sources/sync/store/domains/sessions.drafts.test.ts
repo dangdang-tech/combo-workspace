@@ -45,7 +45,7 @@ function createHarness() {
   };
   const domain = createSessionsDomain({ get, set } as never);
   set(domain);
-  return { domain };
+  return { domain, get, set };
 }
 
 function sessionFixture(id: string) {
@@ -84,5 +84,21 @@ describe('sessions domain: canonical draft cleanup', () => {
     domain.deleteSession('session-delete');
 
     expect(getSessionDraftSnapshot(scope, { kind: 'session', sessionId: 'session-delete' })).toBeNull();
+  });
+
+  it('keeps the recipient composer draft while removing revoked session context', () => {
+    const scope = { serverId: 'server-revoke', accountId: 'recipient' } as const;
+    const { domain, get, set } = createHarness();
+    domain.activateSessionLocalStateScope(scope);
+    domain.applySessions([sessionFixture('session-revoked') as never]);
+    set({ sessionMessages: { 'session-revoked': { sensitiveContext: 'shared transcript' } } });
+    writeExistingSessionDraft({ scope, sessionId: 'session-revoked', patch: { text: 'My unsent question' } });
+    expect(getSessionDraftSnapshot(scope, { kind: 'session', sessionId: 'session-revoked' })?.document.composer.text.value).toBe('My unsent question');
+
+    domain.deleteSession('session-revoked', { preserveComposerDraft: true });
+
+    expect(get().sessions).not.toHaveProperty('session-revoked');
+    expect(get().sessionMessages).not.toHaveProperty('session-revoked');
+    expect(getSessionDraftSnapshot(scope, { kind: 'session', sessionId: 'session-revoked' })?.document.composer.text.value).toBe('My unsent question');
   });
 });

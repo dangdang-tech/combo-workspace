@@ -80,100 +80,20 @@ describe('ToolCallPinAction', () => {
         standardCleanup();
     });
 
-    it('renders a tool pin action with an accessible pin label', async () => {
-        const { ToolCallPinAction } = await import('./ToolCallPinAction');
-
-        const screen = await renderScreen(
-            <ToolCallPinAction
-                availability={available()}
-                onTogglePin={() => {}}
-                testID="tool-pin"
-            />,
-        );
-
-        const button = screen.findByTestId('tool-pin');
-        expect(button?.props.accessibilityRole).toBe('button');
-        expect(button?.props.accessibilityLabel).toBe('session.transcriptNavigation.pinToolCallA11y');
-        expect(button?.props.hitSlop).toBeUndefined();
-        expect(iconCalls).toEqual([expect.objectContaining({ name: 'push-pin', color: '#555555', size: 14 })]);
-    });
-
-    it('uses an unpin label and active color for pinned tool calls', async () => {
-        const { ToolCallPinAction } = await import('./ToolCallPinAction');
-
-        const screen = await renderScreen(
-            <ToolCallPinAction
-                availability={available({ pinned: true })}
-                onTogglePin={() => {}}
-                testID="tool-pin"
-            />,
-        );
-
-        expect(screen.findByTestId('tool-pin')?.props.accessibilityLabel).toBe('session.transcriptNavigation.unpinToolCallA11y');
-        expect(iconCalls).toEqual([expect.objectContaining({ name: 'push-pin-slash', color: '#0b7a75' })]);
-    });
-
-    it('stops row propagation before toggling the pin', async () => {
-        const { ToolCallPinAction } = await import('./ToolCallPinAction');
-        const callOrder: string[] = [];
-        const stopPropagation = vi.fn(() => {
-            callOrder.push('stopPropagation');
-        });
-        const onToggle = vi.fn(() => {
-            callOrder.push('onToggle');
-        });
-        const target = available();
-
-        const screen = await renderScreen(
-            <ToolCallPinAction
-                availability={target}
-                onTogglePin={onToggle}
-                testID="tool-pin"
-            />,
-        );
-
-        screen.findByTestId('tool-pin')?.props.onPress?.({ stopPropagation });
-
-        expect(stopPropagation).toHaveBeenCalledTimes(1);
-        expect(onToggle).toHaveBeenCalledTimes(1);
-        expect(onToggle).toHaveBeenCalledWith({ ...target.pinTarget, pinnedAtMs: expect.any(Number) });
-        expect(callOrder).toEqual(['stopPropagation', 'onToggle']);
-    });
-
-    it('omits unavailable actions and actions without a host callback', async () => {
-        const { ToolCallPinAction } = await import('./ToolCallPinAction');
-
-        const unavailableScreen = await renderScreen(
-            <ToolCallPinAction
-                availability={{ status: 'unavailable', reason: 'missing-seq' }}
-                onTogglePin={() => {}}
-                testID="tool-pin"
-            />,
-        );
-        expect(unavailableScreen.findAllByType('Pressable')).toHaveLength(0);
-        standardCleanup();
-
-        const noCallbackScreen = await renderScreen(
-            <ToolCallPinAction
-                availability={available()}
-                testID="tool-pin"
-            />,
-        );
-        expect(noCallbackScreen.findAllByType('Pressable')).toHaveLength(0);
-    });
-
-    it('uses native hit slop outside web', async () => {
-        platformState.os = 'ios';
-        const { ToolCallPinAction } = await import('./ToolCallPinAction');
-
-        const screen = await renderScreen(
-            <ToolCallPinAction
-                availability={available()}
-                onTogglePin={() => {}}
-                testID="tool-pin"
-            />,
-        );
-
-        expect(screen.findByTestId('tool-pin')?.props.hitSlop).toBe(15);
+    it.each([
+        ['web', false], ['web', true], ['ios', false], ['ios', true],
+    ] as const)('omits tool pin presentation on %s even with pinned=%s and a callback', async (os, pinned) => {
+        platformState.os = os;
+        const { ToolCallPinAction, resolveToolRowPinAction } = await import('./ToolCallPinAction');
+        const onTogglePin = vi.fn();
+        const availability = available({ pinned });
+        const screen = await renderScreen(<ToolCallPinAction availability={availability} onTogglePin={onTogglePin} testID="tool-pin" />);
+        expect(screen.findAllByType('Pressable' as React.ElementType)).toHaveLength(0);
+        expect(resolveToolRowPinAction({
+            sessionId: 's1', seq: 5, transcriptBlockIndex: 2, routeMessageId: 'tool:call-1',
+            pins: pinned ? [{ ...availability.pinTarget, pinnedAtMs: 1 }] : [],
+            onTogglePin, testID: 'tool-pin',
+        })).toBeNull();
+        expect(onTogglePin).not.toHaveBeenCalled();
     });
 });

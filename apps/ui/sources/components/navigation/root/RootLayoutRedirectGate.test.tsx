@@ -44,6 +44,7 @@ vi.mock('@/auth/context/AuthContext', () => ({
 
 import { useSegments } from 'expo-router';
 import { RootLayoutRedirectGate } from './RootLayoutRedirectGate';
+import RemovedFeatureRoute from './RemovedFeatureRoute';
 
 type Counter = { n: number };
 
@@ -59,6 +60,12 @@ function NavProbe({ counter }: { counter: Counter }): null {
 }
 
 describe('RootLayoutRedirectGate', () => {
+    it('keeps the build-time replacement for an old URL pointed at home', async () => {
+        const screen = await renderScreen(<RemovedFeatureRoute />);
+        expect(screen.findAllByType('Redirect' as never)[0]?.props.href).toBe('/');
+        await screen.unmount();
+    });
+
     beforeEach(() => {
         authState.isAuthenticated = true;
         navState.listeners.clear();

@@ -124,10 +124,10 @@ describe('MessageView row action reveal', () => {
         standardCleanup();
     });
 
-    it('keeps an unpinned pin hidden on fine-pointer web without forcing the timestamp or the rest of the row visible', async () => {
+    it('omits pin controls without forcing the timestamp or copy actions visible', async () => {
         const screen = await renderUserMessage();
 
-        expect(readOpacity(screen.findByTestId('transcript-message-pin-slot:u1')?.props.style)).toBe(0);
+        expect(screen.findByTestId('transcript-message-pin-slot:u1')).toBeNull();
         expect(readOpacity(screen.findByTestId('transcript-message-actions:u1')?.props.style)).toBe(0);
         expect(screen.findAllByTestId('transcript-message-timestamp:u1')).toHaveLength(0);
         expect(flattenStyle(screen.findByTestId('transcript-message-actions-row:u1')?.props.style).pointerEvents)
@@ -142,7 +142,7 @@ describe('MessageView row action reveal', () => {
         });
 
         expect(readOpacity(screen.findByTestId('transcript-message-actions:u1')?.props.style)).toBe(1);
-        expect(readOpacity(screen.findByTestId('transcript-message-pin-slot:u1')?.props.style)).toBe(1);
+        expect(screen.findByTestId('transcript-message-pin-slot:u1')).toBeNull();
 
         await act(async () => {
             screen.findByTestId('transcript-message-actions:u1')?.props.onBlur?.();
@@ -151,14 +151,13 @@ describe('MessageView row action reveal', () => {
         expect(readOpacity(screen.findByTestId('transcript-message-actions:u1')?.props.style)).toBe(0);
     });
 
-    it('keeps a pinned row pin visible while the rest of the row stays hidden', async () => {
+    it('omits controls for saved pins while copy actions stay hidden', async () => {
         const screen = await renderUserMessage([existingPin]);
 
-        expect(readOpacity(screen.findByTestId('transcript-message-pin-slot:u1')?.props.style)).toBe(1);
+        expect(screen.findByTestId('transcript-message-pin-slot:u1')).toBeNull();
         expect(readOpacity(screen.findByTestId('transcript-message-actions:u1')?.props.style)).toBe(0);
         expect(screen.findAllByTestId('transcript-message-timestamp:u1')).toHaveLength(0);
-        expect(screen.findByTestId('transcript-message-pin:u1')?.props.accessibilityLabel)
-            .toBe('session.transcriptNavigation.unpinMessageA11y');
+        expect(screen.findByTestId('transcript-message-pin:u1')).toBeNull();
     });
 
     it('renders no pin for an agent event row', async () => {

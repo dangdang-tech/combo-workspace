@@ -212,7 +212,7 @@ describe('ToolCallsGroupView (structured tool-call rendering)', () => {
         expect(renderedToolTimelineRows.some((props) => props?.tool?.name === 'SubAgentRun')).toBe(true);
     });
 
-    it('passes tool pin actions to collapsed whole-group activity-feed preview rows', async () => {
+    it('omits tool pin actions from collapsed whole-group activity-feed preview rows', async () => {
         renderedMessageViews.length = 0;
         renderedToolTimelineRows.length = 0;
         toolChromeMode = 'activity_feed';
@@ -246,10 +246,10 @@ describe('ToolCallsGroupView (structured tool-call rendering)', () => {
         });
 
         expect(renderedMessageViews).toHaveLength(0);
-        expect(renderedToolTimelineRows.some((props) => props?.headerAction)).toBe(true);
+        expect(renderedToolTimelineRows.some((props) => props?.headerAction)).toBe(false);
     });
 
-    it('passes tool pin actions to expanded whole-group activity-feed rows', async () => {
+    it('omits tool pin actions from expanded whole-group activity-feed rows', async () => {
         renderedMessageViews.length = 0;
         renderedToolTimelineRows.length = 0;
         toolChromeMode = 'activity_feed';
@@ -283,7 +283,7 @@ describe('ToolCallsGroupView (structured tool-call rendering)', () => {
         });
 
         expect(renderedMessageViews).toHaveLength(0);
-        expect(renderedToolTimelineRows.some((props) => props?.headerAction)).toBe(true);
+        expect(renderedToolTimelineRows.some((props) => props?.headerAction)).toBe(false);
     });
 
     it('keeps expanded childless SubAgentRun rows on MessageView in activity feed mode before child transcript items arrive', async () => {

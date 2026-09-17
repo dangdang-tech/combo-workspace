@@ -169,7 +169,11 @@ async function finalizeSharedSession(input: Readonly<{
       assertOnline();
       const localId = `shared-entry:${assignment.memberId}:context:${index}`;
       const role = item.role === 'User' ? 'user' : 'agent';
-      const payload = { role, content: { type: 'text', text: item.text }, meta: { source: 'cli', sentFrom: 'cli' } };
+      const content = role === 'user' ? { type: 'text', text: item.text } : {
+        type: 'output', data: { type: 'assistant', uuid: localId,
+          message: { role: 'assistant', content: item.text } },
+      };
+      const payload = { role, content, meta: { source: 'cli', sentFrom: 'cli' } };
       await commitSessionStoredMessage({ token: credentials.token, sessionId, localId, messageRole: role,
         content: assignment.encryptionMode === 'plain' ? { t: 'plain', v: payload }
           : { t: 'encrypted', c: encryptSessionPayload({ ctx, payload, idempotencyKey: localId }) },

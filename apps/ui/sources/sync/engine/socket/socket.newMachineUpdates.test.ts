@@ -5,6 +5,7 @@ import type { Machine } from '@/sync/domains/state/storageTypes';
 import type { Session } from '@/sync/domains/state/storageTypes';
 import type { NormalizedMessage } from '@/sync/typesRaw';
 import { storage } from '@/sync/domains/state/storage';
+import { getSessionDraftSnapshot, writeExistingSessionDraft } from '@/sync/ops/sessionDrafts/sessionDraftRepository';
 import {
     clearActiveViewingSessionsForServerScopeReset,
     markSessionVisible,
@@ -1114,5 +1115,34 @@ describe('flushMachineActivityUpdates', () => {
 
         expect(applyMachines).not.toHaveBeenCalled();
         expect(storage.getState().machines['m_unknown_stale']).toBeUndefined();
+    });
+});
+
+describe('socket session removal and recipient drafts', () => {
+    beforeEach(() => storage.setState(initialStorageState, true));
+
+    it.each(['delete-session', 'session-share-revoked'] as const)('purges shared session access on %s', async (type) => {
+        const sessionId = `draft-${type}`;
+        const scope = { serverId: `server-${type}`, accountId: 'recipient' };
+        storage.getState().activateSessionLocalStateScope(scope);
+        storage.getState().applySessions([buildSession(sessionId)]);
+        writeExistingSessionDraft({ scope, sessionId, patch: { text: 'Unsent recipient question' } });
+        const removeSessionEncryption = vi.fn();
+        const params = buildBaseParams();
+        const body = type === 'delete-session'
+            ? { t: type, sid: sessionId }
+            : { t: type, sessionId, shareId: 'share' };
+
+        await handleUpdateContainer({
+            ...params,
+            encryption: { ...params.encryption, removeSessionEncryption } as unknown as typeof params.encryption,
+            updateData: { id: `update-${type}`, seq: 2, createdAt: 2, body } as ApiUpdateContainer,
+        });
+
+        expect(storage.getState().sessions[sessionId]).toBeUndefined();
+        expect(removeSessionEncryption).toHaveBeenCalledWith(sessionId);
+        const draft = getSessionDraftSnapshot(scope, { kind: 'session', sessionId });
+        if (type === 'session-share-revoked') expect(draft?.document.composer.text.value).toBe('Unsent recipient question');
+        else expect(draft).toBeNull();
     });
 });

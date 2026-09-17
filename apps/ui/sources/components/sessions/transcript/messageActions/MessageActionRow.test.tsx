@@ -88,7 +88,7 @@ describe('MessageActionRow', () => {
         expect(flattenStyle(actions?.props.style).pointerEvents).toBe('none');
     });
 
-    it('keeps a pinned pin visible while the rest of the actions stay hidden', async () => {
+    it('omits legacy pin slots while preserving the other action reveal', async () => {
         const { MessageActionRow } = await import('./MessageActionRow');
 
         const screen = await renderScreen(
@@ -105,7 +105,8 @@ describe('MessageActionRow', () => {
             </MessageActionRow>,
         );
 
-        expect(readOpacity(screen.findByTestId('transcript-message-pin-slot:pinned')?.props.style)).toBe(1);
+        expect(screen.findByTestId('transcript-message-pin-slot:pinned')).toBeNull();
+        expect(screen.findByTestId('pin-action')).toBeNull();
         expect(readOpacity(screen.findByTestId('transcript-message-actions:pinned')?.props.style)).toBe(0);
     });
 

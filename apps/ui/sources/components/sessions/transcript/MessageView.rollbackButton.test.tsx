@@ -193,10 +193,10 @@ describe('MessageView (rollback button)', () => {
         standardCleanup();
     });
 
-    it('renders rollback action for agent messages when rollbackAction is provided', async () => {
+    it.each(['user-text', 'agent-text'] as const)('omits rewind for %s even when rollbackAction is provided', async (kind) => {
         const { MessageView } = await import('./MessageView');
 
-        const message: any = { kind: 'agent-text', id: 'a1', createdAt: 1, text: 'hello', isThinking: false, seq: 2 };
+        const message: any = { kind, id: 'a1', createdAt: 1, text: 'hello', isThinking: false, seq: 2 };
 
         const screen = await renderScreen(
             <MessageView
@@ -210,6 +210,6 @@ describe('MessageView (rollback button)', () => {
         const rollbackButtons = screen.findAll(
             (node: any) => node.type === 'TranscriptRollbackActionButton' && node.props.testID === 'transcript-message-rollback:a1',
         );
-        expect(rollbackButtons).toHaveLength(1);
+        expect(rollbackButtons).toHaveLength(0);
     });
 });

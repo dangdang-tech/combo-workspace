@@ -111,7 +111,7 @@ describe('MessageView row action reveal on a coarse-primary-pointer web host', (
         restoreWindow = null;
     });
 
-    it('keeps the row actions and the pin visible without hover', async () => {
+    it('keeps copy actions visible without hover and omits pin controls', async () => {
         const { MessageView } = await import('./MessageView');
 
         const screen = await renderScreen(
@@ -127,6 +127,6 @@ describe('MessageView row action reveal on a coarse-primary-pointer web host', (
         // A phone/tablet browser has no hover, so hiding the actions behind hover
         // would make them unreachable.
         expect(readOpacity(screen.findByTestId('transcript-message-actions:u1')?.props.style)).toBe(1);
-        expect(readOpacity(screen.findByTestId('transcript-message-pin-slot:u1')?.props.style)).toBe(1);
+        expect(screen.findByTestId('transcript-message-pin-slot:u1')).toBeNull();
     });
 });

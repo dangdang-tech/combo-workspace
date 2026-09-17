@@ -95,7 +95,7 @@ describe('MessageView message pin button', () => {
         standardCleanup();
     });
 
-    it('renders a user-message pin action from message identity facts and routes the callback', async () => {
+    it('omits the user-message pin action even with committed identity and a host callback', async () => {
         const { MessageView } = await import('./MessageView');
         const message: UserTextMessage = {
             kind: 'user-text',
@@ -117,21 +117,11 @@ describe('MessageView message pin button', () => {
             />,
         );
 
-        const pinButton = screen.findByTestId('transcript-message-pin:u1');
-        expect(pinButton?.props.accessibilityLabel).toBe('session.transcriptNavigation.pinMessageA11y');
-
-        screen.pressByTestId('transcript-message-pin:u1');
-
-        expect(toggleMessagePinSpy).toHaveBeenCalledWith(expect.objectContaining({
-            sessionId: 's1',
-            seq: 7,
-            transcriptBlockIndex: 0,
-            routeMessageId: 'local:local-u1',
-            role: 'user',
-        }));
+        expect(screen.findByTestId('transcript-message-pin:u1')).toBeNull();
+        expect(toggleMessagePinSpy).not.toHaveBeenCalled();
     });
 
-    it('renders an assistant unpin action when an existing pin matches the row identity', async () => {
+    it('omits assistant unpin controls when an existing pin matches the row identity', async () => {
         const { MessageView } = await import('./MessageView');
         const message: AgentTextMessage = {
             kind: 'agent-text',
@@ -163,6 +153,6 @@ describe('MessageView message pin button', () => {
             />,
         );
 
-        expect(screen.findByTestId('transcript-message-pin:a1')?.props.accessibilityLabel).toBe('session.transcriptNavigation.unpinMessageA11y');
+        expect(screen.findByTestId('transcript-message-pin:a1')).toBeNull();
     });
 });

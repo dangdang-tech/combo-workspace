@@ -289,6 +289,24 @@ export function normalizeRawMessage(
 ): NormalizedMessage | null {
     const seq = typeof opts?.seq === 'number' && Number.isFinite(opts.seq) ? Math.trunc(opts.seq) : undefined;
 
+    // Older shared-entry imports stored assistant text in the user-text envelope.
+    // Adapt only that reserved producer shape; ordinary invalid records still fail validation.
+    if (localId !== null && /^shared-entry:[^:\s]+:context:(0|[1-9]\d*)$/.test(localId)
+        && isPlainRecord(rawInput) && rawInput.role === 'agent'
+        && isPlainRecord(rawInput.content) && rawInput.content.type === 'text'
+        && typeof rawInput.content.text === 'string') {
+        rawInput = {
+            ...rawInput,
+            content: {
+                type: 'output',
+                data: {
+                    type: 'assistant', uuid: id,
+                    message: { role: 'assistant', content: [{ type: 'text', text: rawInput.content.text }] },
+                },
+            },
+        };
+    }
+
     // Zod transform handles normalization during validation
     const parsed = rawRecordSchema.safeParse(rawInput);
     if (!parsed.success) {

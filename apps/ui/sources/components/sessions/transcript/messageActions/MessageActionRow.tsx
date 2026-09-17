@@ -6,14 +6,7 @@ import { Text } from '@/components/ui/text/Text';
 
 import { RowActionRevealSlot } from './RowActionRevealSlot';
 
-/**
- * Timestamp + hover-revealed actions for one transcript message.
- *
- * The pin has its own reveal slot: a pinned row must keep showing its pin
- * without dragging the rest of the actions — or the timestamp presentation —
- * into view. The container never captures pointer input; each slot owns whether
- * its own children are clickable.
- */
+/** Timestamp and hover-revealed copy actions for one transcript message. */
 export function MessageActionRow(props: Readonly<{
     children: React.ReactNode;
     isWeb: boolean;
@@ -47,16 +40,6 @@ export function MessageActionRow(props: Readonly<{
                 >
                     {props.timestampText}
                 </Text>
-            ) : null}
-            {props.pinAction ? (
-                <RowActionRevealSlot
-                    revealed={props.showPinAction === true}
-                    onFocus={props.onActionsFocus}
-                    onBlur={props.onActionsBlur}
-                    testID={`transcript-message-pin-slot:${props.messageId}`}
-                >
-                    {props.pinAction}
-                </RowActionRevealSlot>
             ) : null}
             <RowActionRevealSlot
                 revealed={props.showActions}

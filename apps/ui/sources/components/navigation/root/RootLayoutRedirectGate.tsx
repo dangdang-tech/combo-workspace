@@ -2,20 +2,7 @@ import { Redirect, useSegments } from 'expo-router';
 import * as React from 'react';
 import { useAuth } from '@/auth/context/AuthContext';
 import { isPublicRouteForUnauthenticated } from '@/auth/routing/authRouting';
-
-function isWorkspaceRoute(segments: readonly string[]): boolean {
-    const path = segments.filter((part) => !part.startsWith('(') && part !== 'index');
-    const [root, section, detail] = path;
-    if (!root) return true;
-    if (['invite', 'oauth', 'restore', 'terminal', 'scan', 'account', 'setup', 'server'].includes(root)) return true;
-    if (root === 'settings') return path.length === 1 || ['account', 'machines'].includes(section ?? '');
-    if (root === 'machine') return path.length === 2;
-    if (root === 'new') return path.length === 1 || (section === 'pick' && ['machine', 'path'].includes(detail ?? ''));
-    if (root === 'session') {
-        return path.length === 2 || ['info', 'details', 'transcript', 'entry-sharing', 'message'].includes(detail ?? '');
-    }
-    return false;
-}
+import { isWorkspaceRoute } from './coreSharingRoutes';
 
 /**
  * Gates the app shell behind the unauthenticated redirect check.

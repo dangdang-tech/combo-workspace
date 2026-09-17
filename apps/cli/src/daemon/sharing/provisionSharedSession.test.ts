@@ -2,7 +2,7 @@ import axios from 'axios';
 import tweetnacl from 'tweetnacl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetServerFeaturesClientForTests } from '@/features/serverFeaturesClient';
-import { deriveBoxPublicKeyFromSeed, openEncryptedDataKeyEnvelopeV1, sealEncryptedDataKeyEnvelopeV1 } from '@happier-dev/protocol';
+import { deriveBoxPublicKeyFromSeed, openEncryptedDataKeyEnvelopeV1, sealEncryptedDataKeyEnvelopeV1, TranscriptRawRecordV1Schema } from '@happier-dev/protocol';
 import { decodeBase64, decodeBase64 as decode, decrypt, encodeBase64, encrypt, getRandomBytes } from '@/api/encryption';
 import type { Credentials } from '@/persistence';
 import { openSessionDataEncryptionKey } from '@/api/client/openSessionDataEncryptionKey';
@@ -86,7 +86,7 @@ describe('provisionSharedSession', () => {
     const source = { ...row('source', mode, { ...sourceExtra, ...snapshotMetadata }), seq: 2 };
     return { v: 1 as const, session: source, messages: [
       { seq: 1, createdAt: 1, content: stored({ role: 'user', content: { type: 'text', text: 'BEFORE_SHARE_QUESTION' } }) },
-      { seq: 2, createdAt: 2, content: stored({ role: 'agent', content: { type: 'text', text: 'BEFORE_SHARE_ANSWER' } }) },
+      { seq: 2, createdAt: 2, content: stored({ role: 'agent', content: { type: 'codex', data: { type: 'message', message: 'BEFORE_SHARE_ANSWER' } } }) },
     ] };
   }
   function stored(payload: unknown) {
@@ -102,6 +102,18 @@ describe('provisionSharedSession', () => {
       directTransport: { spawn: async (request) => { launches.push(request); return { success: true, sessionId: 'child' }; } },
       ...overrides, assignment: { ...assignment, ...overrides.assignment, sourceSnapshot: Object.prototype.hasOwnProperty.call(overrides.assignment ?? {}, 'sourceSnapshot') ? overrides.assignment!.sourceSnapshot : snapshot() } });
   }
+
+  it.each(['plain', 'e2ee'] as const)('imports readable user and assistant records in %s storage', async (storageMode) => {
+    mode = storageMode;
+    await run({ assignment: { ...assignment, encryptionMode: storageMode } });
+    const payloads = imported.map(item => childPayload(item.content));
+    expect(payloads).toHaveLength(2);
+    for (const payload of payloads) expect(TranscriptRawRecordV1Schema.safeParse(payload).success).toBe(true);
+    expect(payloads[0]).toMatchObject({ role: 'user', content: { type: 'text', text: 'BEFORE_SHARE_QUESTION' } });
+    expect(payloads[1]).toMatchObject({ role: 'agent', content: { type: 'output', data: {
+      type: 'assistant', message: { role: 'assistant', content: 'BEFORE_SHARE_ANSWER' },
+    } } });
+  });
 
   it('forks the frozen share-time context into an independent child and wraps only its key for the recipient', async () => {
     const result = await run();
@@ -121,7 +133,10 @@ describe('provisionSharedSession', () => {
     expect(metadata.replaySeedV1.seedText).toContain('BEFORE_SHARE_QUESTION');
     expect(metadata.replaySeedV1.seedText).toContain('BEFORE_SHARE_ANSWER');
     expect(metadata.forkV1).toMatchObject({ parentSessionId: 'source', parentCutoffSeqInclusive: 2 });
-    expect(imported.map(item => childPayload(item.content).content.text)).toEqual(['BEFORE_SHARE_QUESTION', 'BEFORE_SHARE_ANSWER']);
+    expect(imported.map(item => {
+      const payload = childPayload(item.content);
+      return payload.role === 'user' ? payload.content.text : payload.content.data.message.content;
+    })).toEqual(['BEFORE_SHARE_QUESTION', 'BEFORE_SHARE_ANSWER']);
     expect(vi.mocked(axios.get).mock.calls.some(([url]) => String(url).endsWith('/messages'))).toBe(false);
     expect(openEncryptedDataKeyEnvelopeV1({ envelope: decodeBase64(result.encryptedDataKey!),
       recipientSecretKeyOrSeed: new Uint8Array(32).fill(99) })).toBeNull();

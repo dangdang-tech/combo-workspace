@@ -625,4 +625,20 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   throw new Error(`Unable to resolve module "${resolvedModuleName}" for platform "${platform ?? "unknown"}".`);
 };
 
+// Runtime redirects do not remove require.context dependencies. Resolve obsolete
+// route implementations to one tiny redirect while retaining their URL keys, so
+// old bookmarks still return home and their feature imports never enter the graph.
+const { isWorkspaceRouteFile } = require('./sources/components/navigation/root/coreSharingRoutes');
+const productRouteRoot = path.resolve(__dirname, 'sources/app');
+const removedFeatureRoute = path.resolve(__dirname, 'sources/components/navigation/root/RemovedFeatureRoute.tsx');
+const resolveRequestBeforeProductRoutes = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  const resolved = resolveRequestBeforeProductRoutes(context, moduleName, platform);
+  if (resolved?.type === 'sourceFile' && resolved.filePath.startsWith(productRouteRoot + path.sep)
+    && !isWorkspaceRouteFile(path.relative(productRouteRoot, resolved.filePath))) {
+    return { type: 'sourceFile', filePath: removedFeatureRoute };
+  }
+  return resolved;
+};
+
 module.exports = config;

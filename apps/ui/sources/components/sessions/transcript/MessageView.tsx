@@ -21,7 +21,6 @@ import { shouldShowTranscriptRowActions, shouldShowTranscriptRowPinAction } from
 import { renderStructuredMessage, StructuredMessageBlock } from '@/components/sessions/transcript/structured/StructuredMessageBlock';
 import type { StructuredMessageRendererParams } from '@/components/sessions/transcript/structured/structuredMessageRegistry';
 import { useRouter } from 'expo-router';
-import { buildScopedSessionRouteHref } from '@/hooks/session/sessionRouteServerScope';
 import { buildSessionFileDeepLink } from '@/utils/url/sessionFileDeepLink';
 import { fireAndForget } from '@/utils/system/fireAndForget';
 import { Text } from '@/components/ui/text/Text';
@@ -42,11 +41,6 @@ import { AttachmentsMessageRow } from '@/components/sessions/attachments/message
 import { SessionMediaInlineImages } from '@/components/sessions/sessionMedia/SessionMediaInlineImages';
 import { SessionMediaUnavailableItems } from '@/components/sessions/sessionMedia/SessionMediaUnavailableItems';
 import { parseSessionMediaMessageMeta } from '@/sync/domains/sessionMedia/sessionMediaMessageMeta';
-import { canForkFromMessage } from '@/sync/domains/sessionFork/forkUiSupport';
-import { resolveForkFromMessageSemantics } from '@/sync/domains/sessionFork/forkFromMessageSemantics';
-import { openSessionForkStrategyFlow } from '@/components/sessions/fork/openSessionForkStrategyFlow';
-import { readMachineTargetForSession } from '@/sync/ops/sessionMachineTarget';
-import { resolveServerIdForSessionIdFromLocalCache } from '@/sync/runtime/orchestration/serverScopedRpc/resolveServerIdForSessionIdFromLocalCache';
 import { getImageMimeTypeFromPath } from '@/scm/utils/filePresentation';
 import { normalizeVoiceAgentTurnTranscriptText } from '@happier-dev/agents';
 import { MessageSelectionCheckbox } from '@/components/sessions/transcript/messageSelection/MessageSelectionCheckbox';
@@ -57,10 +51,7 @@ import {
   stripLegacyAttachmentsBlock,
   unwrapLegacyThinkingWrapper,
 } from '@/components/sessions/transcript/messageSelection/resolveSelectableMessageText';
-import { TranscriptRollbackActionButton } from '@/components/sessions/transcript/TranscriptRollbackActionButton';
 import { MessageActionRow } from '@/components/sessions/transcript/messageActions/MessageActionRow';
-import { MessagePinButton } from '@/components/sessions/transcript/messageActions/MessagePinButton';
-import { resolveMessagePinAvailability } from '@/components/sessions/transcript/messageActions/resolveMessagePinAvailability';
 import { readCoarsePrimaryPointer, useRowActionHoverHost } from '@/components/sessions/transcript/messageActions/rowActionRevealHost';
 import { RowActionRevealSlot } from '@/components/sessions/transcript/messageActions/RowActionRevealSlot';
 import { resolveToolRowPinAction } from '@/components/sessions/transcript/toolCalls/ToolCallPinAction';
@@ -614,9 +605,6 @@ function UserTextBlock(props: {
   const selectionEnabled = props.messageDisplayCommon.transcriptMessageSelectionEnabled === true && selectableMessage != null;
   const selectionRow = useOptionalTranscriptSelectionRow(props.message.id);
   const selectionModeActionsVisible = selectionEnabled && selectionRow.isSelectionMode;
-  const sessionReplayEnabled = props.forkCommon.sessionReplayEnabled;
-  const agentSwitchingEnabled = props.forkCommon.agentSwitchingEnabled;
-  const sessionForkSupportSource = props.forkCommon.sessionForkSupportSource;
   const workspacePath = props.messageDisplayCommon.workspacePath;
   const handleMarkdownLinkPress = React.useCallback((url: string) => {
     if (!props.canOpenFiles) return false;
@@ -631,20 +619,6 @@ function UserTextBlock(props: {
     return true;
   }, [props.canOpenFiles, props.sessionId, router, workspacePath]);
   const seq = resolveTranscriptMessageSeq(props.message);
-  const showForkButton = props.canFork && canForkFromMessage({ session: sessionForkSupportSource, messageSeq: seq, replayEnabled: sessionReplayEnabled, agentSwitchingEnabled });
-  const forkSemantics = React.useMemo(() => {
-    if (seq == null) return null;
-    return resolveForkFromMessageSemantics({ message: props.message, messageSeqInclusive: seq });
-  }, [props.message, seq]);
-  const messagePinAvailability = React.useMemo(() => resolveMessagePinAvailability({
-    sessionId: props.sessionId,
-    seq,
-    transcriptBlockIndex: resolveTranscriptMessageBlockIndex(props.message),
-    routeMessageId: buildMessageRouteId(props.message),
-    role: 'user',
-    pins: props.messagePins ?? [],
-    readOnlyContext: props.pinReadOnlyContext === true,
-  }), [props.message, props.messagePins, props.pinReadOnlyContext, props.sessionId, seq]);
   const rowActionVisibilityInput = {
     platformOS: Platform.OS,
     isRowHovered: isMessageHovered,
@@ -653,13 +627,8 @@ function UserTextBlock(props: {
     coarsePrimaryPointer: readCoarsePrimaryPointer(),
     selectionModeActive: selectionModeActionsVisible,
   } as const;
-  const hasPinButton = props.onToggleMessagePin != null && messagePinAvailability.status === 'available';
   const showMessageActions = shouldShowTranscriptRowActions(rowActionVisibilityInput);
   const showSelectButton = selectionEnabled && showMessageActions;
-  const showPinButton = hasPinButton && shouldShowTranscriptRowPinAction({
-    ...rowActionVisibilityInput,
-    pinned: messagePinAvailability.status === 'available' && messagePinAvailability.pinned,
-  });
   const copyText = selectableMessage?.text ?? (isStructuredOnly ? props.message.text : (markdownText ?? props.message.displayText ?? props.message.text));
   const timestampPresentation = resolveMessageTimestampPresentation({
     displayMode: props.messageDisplayCommon.transcriptMessageTimestampDisplayMode,
@@ -731,52 +700,11 @@ function UserTextBlock(props: {
             messageId={props.message.id}
             timestampText={timestampText}
             showActions={showMessageActions}
-            showPinAction={showPinButton}
-            pinAction={hasPinButton ? (
-              <MessagePinButton
-                availability={messagePinAvailability}
-                onTogglePin={props.onToggleMessagePin}
-                testID={`transcript-message-pin:${props.message.id}`}
-                onHoverIn={isWeb ? () => setIsCopyButtonHovered(true) : undefined}
-                onHoverOut={isWeb ? () => setIsCopyButtonHovered(false) : undefined}
-                invertedActionsLayout={timestampPresentation.invertTimestampAndActions}
-              />
-            ) : null}
             onActionsFocus={handleActionsFocus}
             onActionsBlur={handleActionsBlur}
             isWeb={isWeb}
             invertTimestampAndActions={timestampPresentation.invertTimestampAndActions}
           >
-            {props.rollbackAction ? (
-              <TranscriptRollbackActionButton
-                sessionId={props.sessionId}
-                target={props.rollbackAction.target}
-                restoredDraftText={props.rollbackAction.restoredDraftText}
-                testID={`transcript-message-rollback:${props.message.id}`}
-                onHoverIn={isWeb ? () => setIsCopyButtonHovered(true) : undefined}
-                onHoverOut={isWeb ? () => setIsCopyButtonHovered(false) : undefined}
-                style={[
-                  styles.rollbackMessageButton,
-                  Platform.OS === 'web' ? styles.webActionButton : null,
-                  timestampPresentation.invertTimestampAndActions ? styles.webActionButtonInverted : null,
-                  timestampPresentation.invertTimestampAndActions ? styles.messageActionButtonInvertedSpacing : null,
-                ]}
-                pressedStyle={styles.copyMessageButtonPressed}
-              />
-            ) : null}
-            {showForkButton ? (
-              <ForkMessageButton
-                sessionId={props.sessionId}
-                upToSeqInclusive={(forkSemantics?.upToSeqInclusive ?? seq!)}
-                restoredDraftText={forkSemantics?.restoredDraftText ?? null}
-                messageId={props.message.id}
-                forkCommon={props.forkCommon}
-                isForkAllowed={props.isForkAllowed}
-                onHoverIn={isWeb ? () => setIsCopyButtonHovered(true) : undefined}
-                onHoverOut={isWeb ? () => setIsCopyButtonHovered(false) : undefined}
-                invertedActionsLayout={timestampPresentation.invertTimestampAndActions}
-              />
-            ) : null}
             {selectableMessage ? (
               <SelectMessageButton
                 messageId={props.message.id}
@@ -876,52 +804,11 @@ function UserTextBlock(props: {
             messageId={props.message.id}
             timestampText={timestampText}
             showActions={showMessageActions}
-            showPinAction={showPinButton}
-            pinAction={hasPinButton ? (
-              <MessagePinButton
-                availability={messagePinAvailability}
-                onTogglePin={props.onToggleMessagePin}
-                testID={`transcript-message-pin:${props.message.id}`}
-                onHoverIn={isWeb ? () => setIsCopyButtonHovered(true) : undefined}
-                onHoverOut={isWeb ? () => setIsCopyButtonHovered(false) : undefined}
-                invertedActionsLayout={timestampPresentation.invertTimestampAndActions}
-              />
-            ) : null}
             onActionsFocus={handleActionsFocus}
             onActionsBlur={handleActionsBlur}
             isWeb={isWeb}
             invertTimestampAndActions={timestampPresentation.invertTimestampAndActions}
           >
-            {props.rollbackAction ? (
-              <TranscriptRollbackActionButton
-                sessionId={props.sessionId}
-                target={props.rollbackAction.target}
-                restoredDraftText={props.rollbackAction.restoredDraftText}
-                testID={`transcript-message-rollback:${props.message.id}`}
-                onHoverIn={isWeb ? () => setIsCopyButtonHovered(true) : undefined}
-                onHoverOut={isWeb ? () => setIsCopyButtonHovered(false) : undefined}
-                style={[
-                  styles.rollbackMessageButton,
-                  Platform.OS === 'web' ? styles.webActionButton : null,
-                  timestampPresentation.invertTimestampAndActions ? styles.webActionButtonInverted : null,
-                  timestampPresentation.invertTimestampAndActions ? styles.messageActionButtonInvertedSpacing : null,
-                ]}
-                pressedStyle={styles.copyMessageButtonPressed}
-              />
-            ) : null}
-            {showForkButton ? (
-              <ForkMessageButton
-                sessionId={props.sessionId}
-                upToSeqInclusive={(forkSemantics?.upToSeqInclusive ?? seq!)}
-                restoredDraftText={forkSemantics?.restoredDraftText ?? null}
-                messageId={props.message.id}
-                forkCommon={props.forkCommon}
-                isForkAllowed={props.isForkAllowed}
-                onHoverIn={isWeb ? () => setIsCopyButtonHovered(true) : undefined}
-                onHoverOut={isWeb ? () => setIsCopyButtonHovered(false) : undefined}
-                invertedActionsLayout={timestampPresentation.invertTimestampAndActions}
-              />
-            ) : null}
             {selectableMessage ? (
               <SelectMessageButton
                 messageId={props.message.id}
@@ -1090,9 +977,6 @@ function AgentTextBlock(props: {
     return null;
   }
 
-  const sessionReplayEnabled = props.forkCommon.sessionReplayEnabled;
-  const agentSwitchingEnabled = props.forkCommon.agentSwitchingEnabled;
-  const sessionForkSupportSource = props.forkCommon.sessionForkSupportSource;
   const workspacePath = props.messageDisplayCommon.workspacePath;
   const handleMarkdownLinkPress = React.useCallback((url: string) => {
     if (!props.canOpenFiles) return false;
@@ -1107,20 +991,6 @@ function AgentTextBlock(props: {
     return true;
   }, [props.canOpenFiles, props.sessionId, router, workspacePath]);
   const seq = resolveTranscriptMessageSeq(props.message);
-  const showForkButton = props.canFork && canForkFromMessage({ session: sessionForkSupportSource, messageSeq: seq, replayEnabled: sessionReplayEnabled, agentSwitchingEnabled });
-  const forkSemantics = React.useMemo(() => {
-    if (seq == null) return null;
-    return resolveForkFromMessageSemantics({ message: props.message, messageSeqInclusive: seq });
-  }, [props.message, seq]);
-  const messagePinAvailability = React.useMemo(() => resolveMessagePinAvailability({
-    sessionId: props.sessionId,
-    seq,
-    transcriptBlockIndex: resolveTranscriptMessageBlockIndex(props.message),
-    routeMessageId: buildMessageRouteId(props.message),
-    role: 'assistant',
-    pins: props.messagePins ?? [],
-    readOnlyContext: props.pinReadOnlyContext === true,
-  }), [props.message, props.messagePins, props.pinReadOnlyContext, props.sessionId, seq]);
   const rowActionVisibilityInput = {
     platformOS: Platform.OS,
     isRowHovered: isMessageHovered,
@@ -1129,13 +999,8 @@ function AgentTextBlock(props: {
     coarsePrimaryPointer: readCoarsePrimaryPointer(),
     selectionModeActive: selectionModeActionsVisible,
   } as const;
-  const hasPinButton = props.onToggleMessagePin != null && messagePinAvailability.status === 'available';
   const showMessageActions = shouldShowTranscriptRowActions(rowActionVisibilityInput);
   const showSelectButton = selectionEnabled && showMessageActions;
-  const showPinButton = hasPinButton && shouldShowTranscriptRowPinAction({
-    ...rowActionVisibilityInput,
-    pinned: messagePinAvailability.status === 'available' && messagePinAvailability.pinned,
-  });
   const timestampPresentation = resolveMessageTimestampPresentation({
     displayMode: props.messageDisplayCommon.transcriptMessageTimestampDisplayMode,
     isWeb,
@@ -1394,52 +1259,11 @@ function AgentTextBlock(props: {
           messageId={props.message.id}
           timestampText={timestampText}
           showActions={showMessageActions}
-          showPinAction={showPinButton}
-          pinAction={hasPinButton ? (
-            <MessagePinButton
-              availability={messagePinAvailability}
-              onTogglePin={props.onToggleMessagePin}
-              testID={`transcript-message-pin:${props.message.id}`}
-              onHoverIn={isWeb ? () => setIsCopyButtonHovered(true) : undefined}
-              onHoverOut={isWeb ? () => setIsCopyButtonHovered(false) : undefined}
-              invertedActionsLayout={timestampPresentation.invertTimestampAndActions}
-            />
-          ) : null}
           onActionsFocus={handleActionsFocus}
           onActionsBlur={handleActionsBlur}
           isWeb={isWeb}
           invertTimestampAndActions={timestampPresentation.invertTimestampAndActions}
         >
-          {props.rollbackAction ? (
-            <TranscriptRollbackActionButton
-              sessionId={props.sessionId}
-              target={props.rollbackAction.target}
-              restoredDraftText={props.rollbackAction.restoredDraftText}
-              testID={`transcript-message-rollback:${props.message.id}`}
-              onHoverIn={isWeb ? () => setIsCopyButtonHovered(true) : undefined}
-              onHoverOut={isWeb ? () => setIsCopyButtonHovered(false) : undefined}
-              style={[
-                styles.rollbackMessageButton,
-                Platform.OS === 'web' ? styles.webActionButton : null,
-                timestampPresentation.invertTimestampAndActions ? styles.webActionButtonInverted : null,
-                timestampPresentation.invertTimestampAndActions ? styles.messageActionButtonInvertedSpacing : null,
-              ]}
-              pressedStyle={styles.copyMessageButtonPressed}
-            />
-          ) : null}
-          {showForkButton ? (
-            <ForkMessageButton
-              sessionId={props.sessionId}
-              upToSeqInclusive={(forkSemantics?.upToSeqInclusive ?? seq!)}
-              restoredDraftText={forkSemantics?.restoredDraftText ?? null}
-              messageId={props.message.id}
-              forkCommon={props.forkCommon}
-              isForkAllowed={props.isForkAllowed}
-              onHoverIn={isWeb ? () => setIsCopyButtonHovered(true) : undefined}
-              onHoverOut={isWeb ? () => setIsCopyButtonHovered(false) : undefined}
-              invertedActionsLayout={timestampPresentation.invertTimestampAndActions}
-            />
-          ) : null}
           {selectableMessage ? (
             <SelectMessageButton
               messageId={props.message.id}
@@ -1462,112 +1286,6 @@ function AgentTextBlock(props: {
           />
         </MessageActionRow>
       </TranscriptJumpAttention>
-    </Pressable>
-  );
-}
-
-function ForkMessageButton(props: {
-  sessionId: string;
-  upToSeqInclusive: number;
-  restoredDraftText?: string | null;
-  messageId: string;
-  forkCommon: TranscriptForkCommon;
-  isForkAllowed: () => boolean;
-  invertedActionsLayout?: boolean;
-  onHoverIn?: () => void;
-  onHoverOut?: () => void;
-}) {
-  const { theme } = useUnistyles();
-  const router = useRouter();
-  const sessionForkSupportSource = props.forkCommon.sessionForkSupportSource;
-  const hitSlop = Platform.OS === 'web' ? undefined : 15;
-  const executionRunsEnabled = props.forkCommon.executionRunsEnabled;
-  const agentSwitchingEnabled = props.forkCommon.agentSwitchingEnabled;
-  const sessionReplayEnabled = props.forkCommon.sessionReplayEnabled;
-  const sessionReplayStrategy = props.forkCommon.sessionReplayStrategy;
-  const sessionReplaySummaryRunner = props.forkCommon.sessionReplaySummaryRunnerV1;
-  const sessionReplayMaxSeedChars = props.forkCommon.sessionReplayMaxSeedChars;
-
-  // A launcher only. Choosing Native, Replay or Configure happens before any
-  // fork effect is issued, and the modal — not this button — owns the progress
-  // of the operation it starts.
-  const handlePress = React.useCallback(() => {
-    if (!props.isForkAllowed()) return;
-    const reachableMachineTarget = readMachineTargetForSession(props.sessionId);
-    const serverId = resolveServerIdForSessionIdFromLocalCache(props.sessionId) ?? null;
-    const restored = typeof props.restoredDraftText === 'string' ? props.restoredDraftText : null;
-    openSessionForkStrategyFlow({
-      sessionId: props.sessionId,
-      forkSupportSource: sessionForkSupportSource,
-      serverId,
-      machineId: reachableMachineTarget?.machineId ?? sessionForkSupportSource?.metadata?.machineId ?? null,
-      forkPoint: { type: 'seq', upToSeqInclusive: props.upToSeqInclusive },
-      settings: {
-        sessionReplayEnabled,
-        sessionReplayMaxSeedChars,
-        sessionReplayStrategy,
-        sessionReplaySummaryRunnerV1: sessionReplaySummaryRunner,
-      },
-      replayEnabled: sessionReplayEnabled,
-      executionRunsEnabled,
-      agentSwitchingEnabled,
-      restoredDraftText: restored,
-      sourceMessageId: props.messageId,
-      sourcePreview: restored,
-      writeForkInitialPrompt: true,
-      // Keep the transcript row independent of the session-opening hook, but
-      // carry the fork's server scope into the route so child hydration and
-      // navigation agree on the same Session.
-      navigateToSession: (childSessionId, options) => {
-        router.push(buildScopedSessionRouteHref({
-          sessionId: childSessionId,
-          serverId: options?.serverId ?? serverId,
-        }) as any);
-      },
-      navigateToNewSession: (route) => {
-        router.push(route as any);
-      },
-    });
-  }, [
-    agentSwitchingEnabled,
-    executionRunsEnabled,
-    props.isForkAllowed,
-    props.messageId,
-    props.restoredDraftText,
-    props.sessionId,
-    props.upToSeqInclusive,
-    router,
-    sessionForkSupportSource,
-    sessionReplayEnabled,
-    sessionReplayMaxSeedChars,
-    sessionReplayStrategy,
-    sessionReplaySummaryRunner,
-  ]);
-
-  if (!sessionForkSupportSource) return null;
-
-  return (
-    <Pressable
-      testID={`transcript-message-fork:${props.messageId}`}
-      onPress={handlePress}
-      onHoverIn={props.onHoverIn}
-      onHoverOut={props.onHoverOut}
-      hitSlop={hitSlop}
-      accessibilityRole="button"
-      accessibilityLabel={t('session.forking.forkFromMessageA11y')}
-      style={({ pressed }) => [
-        styles.forkMessageButton,
-        Platform.OS === 'web' ? styles.webActionButton : null,
-        props.invertedActionsLayout ? styles.webActionButtonInverted : null,
-        props.invertedActionsLayout ? styles.messageActionButtonInvertedSpacing : null,
-        pressed && styles.copyMessageButtonPressed,
-      ]}
-    >
-      <Icon
-        name="git-branch"
-        size={14}
-        color={theme.colors.text.secondary}
-      />
     </Pressable>
   );
 }
@@ -1906,20 +1624,6 @@ const styles = StyleSheet.create((theme) => ({
   },
   messageActionButtonInvertedSpacing: {
     marginRight: 2,
-  },
-  forkMessageButton: {
-    padding: 2,
-    borderRadius: 6,
-    opacity: 0.6,
-    cursor: 'pointer',
-    marginRight: 6,
-  },
-  rollbackMessageButton: {
-    padding: 2,
-    borderRadius: 6,
-    opacity: 0.6,
-    cursor: 'pointer',
-    marginRight: 6,
   },
   copyMessageButton: {
     padding: 2,

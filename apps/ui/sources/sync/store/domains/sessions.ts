@@ -251,7 +251,7 @@ export type SessionsDomain = {
     ) => BeginScmOperationResult;
     finishSessionProjectScmOperation: (sessionId: string, operationId: string) => boolean;
 
-    deleteSession: (sessionId: string) => void;
+    deleteSession: (sessionId: string, options?: Readonly<{ preserveComposerDraft?: boolean }>) => void;
 };
 
 type SessionsDomainDependencies = {
@@ -2083,7 +2083,7 @@ export function createSessionsDomain<S extends SessionsDomain & SessionsDomainDe
             }
             return finished;
         },
-        deleteSession: (sessionId: string) => set((state) => {
+        deleteSession: (sessionId: string, options?: Readonly<{ preserveComposerDraft?: boolean }>) => set((state) => {
             optimisticThinkingTimeouts.cancel(sessionId);
             resumingTimeouts.cancel(sessionId);
             thinkingGraceTimeouts.cancel(sessionId);
@@ -2116,7 +2116,8 @@ export function createSessionsDomain<S extends SessionsDomain & SessionsDomainDe
             delete actionDrafts[sessionId];
             saveSessionActionDrafts(actionDrafts, sessionLocalStateScope);
 
-            if (sessionLocalStateScope) {
+            // Revocation still purges shared context and keys, but the recipient owns their unsent draft.
+            if (sessionLocalStateScope && options?.preserveComposerDraft !== true) {
                 fireAndForget(
                     deleteSessionDraft({
                         scope: sessionLocalStateScope,

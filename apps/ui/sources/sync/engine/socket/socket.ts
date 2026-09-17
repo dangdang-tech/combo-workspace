@@ -1976,7 +1976,7 @@ export async function handleUpdateContainer(params: {
         dropDeferredTranscriptStreamSegments(sessionId);
         handleDeleteSessionSocketUpdate({
             sessionId,
-            deleteSession: (targetSessionId) => storage.getState().deleteSession(targetSessionId),
+            deleteSession: (targetSessionId) => storage.getState().deleteSession(targetSessionId, { preserveComposerDraft: true }),
             removeSessionEncryption: (targetSessionId) => encryption.removeSessionEncryption(targetSessionId),
             removeProjectManagerSession: (targetSessionId) => projectManager.removeSession(targetSessionId),
             clearScmStatusForSession: (targetSessionId) => scmStatusSync.clearForSession(targetSessionId),

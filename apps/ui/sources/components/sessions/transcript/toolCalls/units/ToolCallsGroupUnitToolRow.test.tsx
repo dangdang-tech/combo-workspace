@@ -206,7 +206,7 @@ describe('ToolCallsGroupUnitToolRow', () => {
         expect(rows[0]?.props.messageId).toBe('server:server-msg-1');
     });
 
-    it('passes a pin action to direct grouped feed rows when row identity facts are available', async () => {
+    it('omits the pin action from direct grouped feed rows when row identity facts are available', async () => {
         const onToggleToolPin = vi.fn();
         const screen = await renderToolRow({
             message: {
@@ -222,7 +222,7 @@ describe('ToolCallsGroupUnitToolRow', () => {
 
         const rows = screen.findAllByType('ToolTimelineRow' as React.ElementType);
         expect(rows).toHaveLength(1);
-        expect(rows[0]?.props.headerAction).toBeTruthy();
+        expect(rows[0]?.props.headerAction).toBeNull();
     });
 
     it('does not reserve a grouped feed header action slot when tool pin identity facts are unavailable', async () => {
