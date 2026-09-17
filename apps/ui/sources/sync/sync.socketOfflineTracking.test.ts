@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { IDBFactory } from 'fake-indexeddb';
 
 import { readReactNativeMmkvStubValues } from '@/dev/testkit/mocks/mmkv';
+import { resetBrowserSessionDraftPersistenceForTest } from '@/dev/testkit/persistence/resetBrowserSessionDraftPersistence';
 
 type FetchChanges = typeof import('./api/session/apiChanges').fetchChanges;
 type FetchCurrentChangesCursor = typeof import('./api/session/apiChanges').fetchCurrentChangesCursor;
@@ -121,6 +123,7 @@ import { WEB_SYNC_INSTANCE_ID_SESSION_KEY } from '@/sync/runtime/webSyncClientId
 import { syncReliabilityTelemetry } from '@/sync/runtime/syncReliabilityTelemetry';
 import { loadSyncTuning } from '@/sync/runtime/syncTuning';
 import { syncPerformanceTelemetry } from '@/sync/runtime/syncPerformanceTelemetry';
+import { getSessionDraftSnapshot, writeExistingSessionDraft } from '@/sync/ops/sessionDrafts/sessionDraftRepository';
 
 class MemoryWebStorage implements Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
   readonly values = new Map<string, string>();
@@ -757,8 +760,10 @@ describe('sync socket offline tracking', () => {
     }));
   });
 
-  it('retires a required changed session when exact hydration proves it was deleted', async () => {
-    upsertAndActivateServer({ serverUrl: 'http://localhost:53288', scope: 'tab' });
+  it.each([false, true])('preserves the composer draft when required hydration returns 404 (after socket revocation: %s)', async (afterSocketRevocation) => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
+    await resetBrowserSessionDraftPersistenceForTest();
+    const profile = upsertAndActivateServer({ serverUrl: 'http://localhost:53288', scope: 'tab' });
     stubSnapshotRefreshFetch();
     storage.setState((state) => ({
       ...state,
@@ -793,6 +798,20 @@ describe('sync socket offline tracking', () => {
       getSessionEncryption: () => null,
     };
 
+    const scope = { serverId: profile.id, accountId: 'test' };
+    const sessionId = 's_deleted_while_offline';
+    storage.getState().activateSessionLocalStateScope(scope);
+    writeExistingSessionDraft({ scope, sessionId, patch: { text: 'Unsent recipient question' } });
+    const draftBefore = getSessionDraftSnapshot(scope, { kind: 'session', sessionId });
+    expect(draftBefore?.document.composer.text.value).toBe('Unsent recipient question');
+    if (afterSocketRevocation) {
+      await (sync as unknown as { handleUpdate: (update: unknown) => Promise<void> }).handleUpdate({
+        id: 'revoke-before-required-hydration', seq: 8, createdAt: 8,
+        body: { t: 'session-share-revoked', sessionId, shareId: 'share' },
+      });
+      expect(getSessionDraftSnapshot(scope, { kind: 'session', sessionId })).toEqual(draftBefore);
+    }
+
     await expect((sync as any).fetchSessions({
       requiredHydrationSessionIds: ['s_deleted_while_offline'],
       prioritizeSessionIds: ['s_deleted_while_offline'],
@@ -806,6 +825,7 @@ describe('sync socket offline tracking', () => {
     );
     expect(storage.getState().sessions.s_deleted_while_offline).toBeUndefined();
     expect((sync as any).encryption.removeSessionEncryption).toHaveBeenCalledWith('s_deleted_while_offline');
+    expect(getSessionDraftSnapshot(scope, { kind: 'session', sessionId })).toEqual(draftBefore);
   });
 
   it('marks server-backed pinned rows as required hydration during session list fetches', async () => {

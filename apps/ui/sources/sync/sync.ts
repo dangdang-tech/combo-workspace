@@ -4202,7 +4202,10 @@ class Sync {
                         stagedSessionDataKeyEnvelopes.delete(sessionId);
                         handleDeleteSessionSocketUpdate({
                             sessionId,
-                            deleteSession: (targetSessionId) => storage.getState().deleteSession(targetSessionId),
+                            resetSessionTranscriptState: (targetSessionId) => this.resetSessionTranscriptState(targetSessionId),
+                            // A hidden shared session also returns 404; only an explicit deletion
+                            // event proves the recipient's composer draft should be discarded.
+                            deleteSession: (targetSessionId) => storage.getState().deleteSession(targetSessionId, { preserveComposerDraft: true }),
                             removeSessionEncryption: (targetSessionId) => activeEncryption.removeSessionEncryption(targetSessionId),
                             removeProjectManagerSession: (targetSessionId) => projectManager.removeSession(targetSessionId),
                             clearScmStatusForSession: (targetSessionId) => scmStatusSync.clearForSession(targetSessionId),
@@ -7520,6 +7523,7 @@ class Sync {
                   this.hydrateSessionShellByIdFromSocket(sessionId, reason, sourceServerId, shouldContinue);
               },
               applyMessages: (sessionId, messages) => this.applyMessages(sessionId, messages),
+              resetSessionTranscriptState: (sessionId) => this.resetSessionTranscriptState(sessionId),
                 onSessionVisible: (sessionId) => this.onSessionVisible(sessionId),
                 isSessionMessagesLoaded: (sessionId) => storage.getState().sessionMessages[sessionId]?.isLoaded === true,
                 getSessionMaterializedMaxSeq: (sessionId) => this.sessionMaterializedMaxSeqById[sessionId] ?? 0,

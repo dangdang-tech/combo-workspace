@@ -76,6 +76,7 @@ type SyncForkPagingTestAccess = {
         decryptEncryptionKey: (encryptedKey: string | null | undefined) => Promise<null>;
         initializeSessions: () => Promise<void>;
         getSessionEncryption: () => null;
+        removeSessionEncryption: (sessionId: string) => void;
     };
     activeServerSessionIds: Set<string>;
     hasFetchedSessionsSnapshotForActiveServer: boolean;
@@ -83,6 +84,7 @@ type SyncForkPagingTestAccess = {
     sessionMessagesHasMoreOlderByKey: Map<string, boolean>;
     disconnectServer: () => void;
     fetchMessages: (sessionId: string) => Promise<void>;
+    handleUpdate: (update: unknown) => Promise<void>;
     prefetchForkedTranscriptContext: (sessionId: string) => Promise<void>;
     loadOlderMessagesForkAware: (sessionId: string) => Promise<{
         loaded: number;
@@ -156,6 +158,7 @@ describe('sync forked transcript paging', () => {
             decryptEncryptionKey: async () => null,
             initializeSessions: async () => {},
             getSessionEncryption: () => null,
+            removeSessionEncryption: vi.fn(),
         };
         syncForTest.activeServerSessionIds = new Set<string>(['child']);
         syncForTest.hasFetchedSessionsSnapshotForActiveServer = true;
@@ -166,6 +169,61 @@ describe('sync forked transcript paging', () => {
     afterEach(() => {
         vi.unstubAllGlobals();
     });
+
+    it.each(['delete-session', 'session-share-revoked'] as const)(
+        'rematerializes unchanged text rows after %s and authorized same-session restoration',
+        async (type) => {
+            const child = createSession('child');
+            storage.getState().applySessions([child]);
+            const rows = [
+                {
+                    id: 'context-user', seq: 1, localId: 'shared-entry:member:context:0', sidechainId: null, messageRole: 'user',
+                    content: { t: 'plain', v: { role: 'user', content: { type: 'text', text: 'Remember the shared context' } } },
+                    createdAt: 1, updatedAt: 1,
+                },
+                {
+                    id: 'context-agent', seq: 2, localId: 'shared-entry:member:context:1', sidechainId: null, messageRole: 'agent',
+                    content: { t: 'plain', v: { role: 'agent', content: { type: 'output', data: {
+                        type: 'assistant', uuid: 'context-agent',
+                        message: { role: 'assistant', content: [{ type: 'text', text: 'I remember the shared context' }] },
+                    } } } },
+                    createdAt: 2, updatedAt: 2,
+                },
+            ];
+            requestMock.mockImplementation(async () => new Response(JSON.stringify({
+                messages: rows, hasMore: false, nextBeforeSeq: null,
+            }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+
+            const { sync } = await import('./sync');
+            const syncForTest = sync as unknown as SyncForkPagingTestAccess;
+            const readTextRows = () => Object.values(storage.getState().sessionMessages.child?.messagesById ?? {})
+                .filter((message) => message.kind === 'user-text' || message.kind === 'agent-text')
+                .map((message) => ({ kind: message.kind, text: message.text, seq: message.seq }));
+            const expected = [
+                { kind: 'user-text', text: 'Remember the shared context', seq: 1 },
+                { kind: 'agent-text', text: 'I remember the shared context', seq: 2 },
+            ];
+            await syncForTest.fetchMessages('child');
+            expect(readTextRows()).toEqual(expected);
+
+            await syncForTest.handleUpdate({
+                id: `remove-${type}`, seq: 3, createdAt: 3,
+                body: type === 'delete-session'
+                    ? { t: type, sid: 'child' }
+                    : { t: type, sessionId: 'child', shareId: 'share' },
+            });
+            expect(storage.getState().sessions.child).toBeUndefined();
+            expect(storage.getState().sessionMessages.child).toBeUndefined();
+            expect(syncForTest.encryption.removeSessionEncryption).toHaveBeenCalledWith('child');
+            expect(requestMock).toHaveBeenCalledTimes(1);
+
+            // The authorized session shell has returned, but the server rows have not changed.
+            storage.getState().applySessions([child]);
+            await syncForTest.fetchMessages('child');
+            expect(readTextRows()).toEqual(expected);
+            expect(requestMock).toHaveBeenCalledTimes(2);
+        },
+    );
 
     it('publishes initial-page coverage only once that page has materialized', async () => {
         applyChildForkSession();

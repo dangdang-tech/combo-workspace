@@ -57,6 +57,7 @@ type SessionEncryption = {
 
 export function handleDeleteSessionSocketUpdate(params: {
     sessionId: string;
+    resetSessionTranscriptState?: (sessionId: string) => void;
     deleteSession: (sessionId: string) => void;
     removeSessionEncryption: (sessionId: string) => void;
     removeProjectManagerSession: (sessionId: string) => void;
@@ -64,6 +65,10 @@ export function handleDeleteSessionSocketUpdate(params: {
     log: { log: (message: string) => void };
 }) {
     const { sessionId, deleteSession, removeSessionEncryption, removeProjectManagerSession, clearScmStatusForSession, log } = params;
+
+    // Forget received rows and cursors before removing storage. A later grant can restore
+    // the same session and unchanged rows, which must be materialized again.
+    params.resetSessionTranscriptState?.(sessionId);
 
     // Remove session from storage
     deleteSession(sessionId);

@@ -6,7 +6,6 @@ import { afterTx, type Tx } from "@/storage/inTx";
 import { markAccountChanged } from "@/app/changes/markAccountChanged";
 import { eventRouter, buildSessionSharedUpdate, buildSessionShareRevokedUpdate } from "@/app/events/eventRouter";
 import { invalidateSessionRelayAuthorizationForSession } from "@/app/api/socket/sessionRelayAuthCache";
-import { tombstoneSessionDraftForLifecycleInTx } from "@/app/account/sessionDrafts/sessionDraftService";
 import { PROFILE_SELECT } from "./types";
 import { randomKeyNaked } from "@/utils/keys/randomKeyNaked";
 import { isSessionEntryHostLive, SESSION_ENTRY_MACHINE_SELECT } from "./sessionEntryPresence";
@@ -113,12 +112,11 @@ export async function grantEntrySession(tx: Tx, member: Member, sessionId: strin
     });
 }
 
-/** Revoke the durable grant, invalidate draft/relay access, and retain the host's child conversation. */
+/** Suspend the grant and relay access, retaining the child's conversation and the guest's private draft for re-enablement. */
 export async function revokeEntrySession(tx: Tx, member: Member) {
     if (!member.sessionId) return;
     const share = await tx.sessionShare.findUnique({ where: { entryMemberId: member.id } });
     if (share) await tx.sessionShare.delete({ where: { id: share.id } });
-    await tombstoneSessionDraftForLifecycleInTx(tx, { accountId: member.userId, sessionId: member.sessionId });
     const cursor = await markShareChanged(tx, member.entry.ownerId, member.userId, member.sessionId);
     const sessionId = member.sessionId;
     afterTx(tx, () => {

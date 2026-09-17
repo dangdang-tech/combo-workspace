@@ -1068,6 +1068,7 @@ export async function handleSocketUpdate(params: {
     fetchSessions: () => void;
     hydrateSessionById?: (sessionId: string, reason: SocketSessionHydrationReason) => void;
     applyMessages: (sessionId: string, messages: NormalizedMessage[]) => void;
+    resetSessionTranscriptState?: (sessionId: string) => void;
     onSessionVisible: (sessionId: string) => void;
     isSessionMessagesLoaded: (sessionId: string) => boolean;
     getSessionMaterializedMaxSeq: (sessionId: string) => number;
@@ -1104,6 +1105,7 @@ export async function handleSocketUpdate(params: {
         fetchSessions,
         hydrateSessionById,
         applyMessages,
+        resetSessionTranscriptState,
         onSessionVisible,
         isSessionMessagesLoaded,
         getSessionMaterializedMaxSeq,
@@ -1145,6 +1147,7 @@ export async function handleSocketUpdate(params: {
         fetchSessions,
         hydrateSessionById,
         applyMessages,
+        resetSessionTranscriptState,
         onSessionVisible,
         isSessionMessagesLoaded,
         getSessionMaterializedMaxSeq,
@@ -1183,6 +1186,7 @@ export async function handleUpdateContainer(params: {
     fetchSessions: () => void;
     hydrateSessionById?: (sessionId: string, reason: SocketSessionHydrationReason) => void;
     applyMessages: (sessionId: string, messages: NormalizedMessage[]) => void;
+    resetSessionTranscriptState?: (sessionId: string) => void;
     onSessionVisible: (sessionId: string) => void;
     isSessionMessagesLoaded: (sessionId: string) => boolean;
     getSessionMaterializedMaxSeq: (sessionId: string) => number;
@@ -1219,6 +1223,7 @@ export async function handleUpdateContainer(params: {
         fetchSessions,
         hydrateSessionById,
         applyMessages,
+        resetSessionTranscriptState,
         onSessionVisible,
         isSessionMessagesLoaded,
         getSessionMaterializedMaxSeq,
@@ -1440,6 +1445,7 @@ export async function handleUpdateContainer(params: {
         dropDeferredTranscriptStreamSegments(updateData.body.sid);
         handleDeleteSessionSocketUpdate({
             sessionId: updateData.body.sid,
+            resetSessionTranscriptState,
             deleteSession: (sessionId) => storage.getState().deleteSession(sessionId),
             removeSessionEncryption: (sessionId) => encryption.removeSessionEncryption(sessionId),
             removeProjectManagerSession: (sessionId) => projectManager.removeSession(sessionId),
@@ -1976,6 +1982,7 @@ export async function handleUpdateContainer(params: {
         dropDeferredTranscriptStreamSegments(sessionId);
         handleDeleteSessionSocketUpdate({
             sessionId,
+            resetSessionTranscriptState,
             deleteSession: (targetSessionId) => storage.getState().deleteSession(targetSessionId, { preserveComposerDraft: true }),
             removeSessionEncryption: (targetSessionId) => encryption.removeSessionEncryption(targetSessionId),
             removeProjectManagerSession: (targetSessionId) => projectManager.removeSession(targetSessionId),

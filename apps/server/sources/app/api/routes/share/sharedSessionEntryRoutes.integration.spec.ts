@@ -12,6 +12,8 @@ import { canApprovePermissions, canManageSharing, checkSessionAccess } from "@/a
 import { isSessionEntryHostLive, sessionEntryLiveTaskRejection } from "@/app/share/sessionEntryPresence";
 import { registerSessionMessageRoutes } from "../session/registerSessionMessageRoutes";
 import { authorizeSessionScopedMachineBinding } from "@/app/api/socket/sessionRelayAuthCache";
+import { registerSessionDraftRoutes } from "@/app/account/sessionDrafts/registerSessionDraftRoutes";
+import { sessionDraftPhysicalKey } from "@/app/account/sessionDrafts/sessionDraftService";
 
 describe("private session entry lifecycle", () => {
     let harness: LightSqliteHarness;
@@ -40,6 +42,7 @@ describe("private session entry lifecycle", () => {
         });
         sharedSessionEntryRoutes(app);
         registerSessionMessageRoutes(app);
+        registerSessionDraftRoutes(app);
         await app.ready();
         const owner = await db.account.create({ data: { publicKey: "owner-key" } });
         const guest = await db.account.create({ data: {
@@ -385,6 +388,64 @@ describe("private session entry lifecycle", () => {
         hostSocket.connected = false;
         try { expect(sessionEntryLiveTaskRejection(ready, guestId)).toBe("host_offline"); }
         finally { hostSocket.connected = true; }
+    });
+
+    it("retains the guest's synced encrypted draft across temporary revocation without retaining access", async () => {
+        const encryptedSource = await child("e2ee");
+        const created = await entry(encryptedSource.id);
+        const recipient = await guest();
+        await db.account.update({ where: { id: recipient.id }, data: { contentPublicKey: new Uint8Array(32), contentPublicKeySig: new Uint8Array(64) } });
+        const memberId = (await redeem(created.inviteToken, recipient.id)).json().access.memberId;
+        await claim(memberId);
+        const childSession = await child("e2ee");
+        const wrappedChildKey = Buffer.alloc(105).toString("base64");
+        expect((await complete(memberId, childSession.id, wrappedChildKey)).statusCode).toBe(200);
+        await db.accessKey.create({ data: { accountId: ownerId, sessionId: childSession.id, machineId, data: "host-wrapped-key" } });
+        const binding = { accountId: ownerId, sessionId: childSession.id, machineId };
+        expect(await authorizeSessionScopedMachineBinding(binding)).toContain(recipient.id);
+
+        const address = { kind: "session" as const, sessionId: childSession.id };
+        const content = { t: "encrypted", c: "guest-only-encrypted-draft" };
+        const save = await post(recipient.id, "/v1/account/session-drafts/mutate", { address, expectedRevision: "absent", content });
+        expect(save.statusCode).toBe(200);
+        expect(save.json()).toMatchObject({ status: "updated", record: { revision: 0, content } });
+        const read = (userId = recipient.id) => post(userId, "/v1/account/session-drafts/read", { address });
+        const savedRead = (await read()).json();
+        const draftWhere = { accountId_key: { accountId: recipient.id, key: sessionDraftPhysicalKey(address)! } };
+        const storedDraft = await db.userKVStore.findUniqueOrThrow({ where: draftWhere });
+        const draftChangeWhere = { accountId: recipient.id, kind: "account", entityId: `session-draft:session/${childSession.id}` };
+        const storedChange = await db.accountChange.findFirstOrThrow({ where: draftChangeWhere });
+        expect((await read(ownerId)).json()).toEqual({ status: "absent" });
+
+        const toggle = (enabled: boolean) => app.inject({ method: "PATCH", url: `/v1/shared-session-entries/${created.entry.id}/members/${memberId}`,
+            headers: { "x-test-user-id": ownerId }, payload: { enabled } });
+        expect((await toggle(false)).statusCode).toBe(200);
+        expect(await db.sessionShare.findUnique({ where: { entryMemberId: memberId } })).toBeNull();
+        expect(await checkSessionAccess(recipient.id, childSession.id)).toBeNull();
+        expect(await checkSessionAccess(recipient.id, encryptedSource.id)).toBeNull();
+        expect(await authorizeSessionScopedMachineBinding(binding)).not.toContain(recipient.id);
+        expect((await read()).json()).toEqual({ status: "absent" });
+        expect((await post(recipient.id, "/v1/account/session-drafts/list", {})).json().items).toEqual([]);
+        const rejectedSave = await post(recipient.id, "/v1/account/session-drafts/mutate", { address, expectedRevision: 0, content });
+        expect(rejectedSave.statusCode).toBe(404);
+        expect(rejectedSave.json()).toEqual({ error: "session_unavailable" });
+        const rejectedMessage = await post(recipient.id, `/v2/sessions/${childSession.id}/messages`, { localId: "while-revoked", ciphertext: "encrypted-message", messageRole: "user" });
+        expect(rejectedMessage.statusCode).toBe(403);
+        expect(rejectedMessage.json().error).toBe("shared_session_access_revoked");
+        const rejectedRead = await app.inject({ method: "GET", url: `/v1/sessions/${childSession.id}/messages`, headers: { "x-test-user-id": recipient.id } });
+        expect(rejectedRead.statusCode).toBe(404);
+        expect(await db.userKVStore.findUniqueOrThrow({ where: draftWhere })).toEqual(storedDraft);
+        expect(await db.accountChange.findFirstOrThrow({ where: draftChangeWhere })).toEqual(storedChange);
+
+        expect((await toggle(true)).statusCode).toBe(200);
+        expect((await read()).json()).toEqual({ status: "absent" });
+        expect((await claim(memberId)).sessionId).toBe(childSession.id);
+        expect((await complete(memberId, childSession.id, wrappedChildKey)).statusCode).toBe(200);
+        expect((await read()).json()).toEqual(savedRead);
+        expect(await authorizeSessionScopedMachineBinding(binding)).toContain(recipient.id);
+        expect(await checkSessionAccess(recipient.id, encryptedSource.id)).toBeNull();
+        expect((await post(recipient.id, "/v1/account/session-drafts/mutate", { address, expectedRevision: 0, content: { ...content, c: "resumed-guest-draft" } })).json())
+            .toMatchObject({ status: "updated", record: { revision: 1 } });
     });
 
     it("rejects E2EE downgrade, missing recipient keys, and malformed wrapped child keys", async () => {
