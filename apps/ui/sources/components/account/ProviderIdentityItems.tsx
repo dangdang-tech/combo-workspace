@@ -149,15 +149,12 @@ function ProviderIdentityItem(props: Readonly<{
         );
 
     if (!identity) {
+        if (oauthSupported === false) return null;
         return (
             <Item
                 testID={`account-identity-provider-${providerId}`}
                 title={providerDisplayName}
-                subtitle={
-                    oauthSupported === false
-                        ? t('friends.providerGate.notConfigured', { provider: providerDisplayName })
-                        : t('friends.providerGate.title', { provider: providerDisplayName })
-                }
+                subtitle={t('friends.providerGate.title', { provider: providerDisplayName })}
                 onPress={oauthSupported === true ? connect : undefined}
                 disabled={oauthSupported !== true || connecting}
                 loading={connecting || oauthSupported == null}

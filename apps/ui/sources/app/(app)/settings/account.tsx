@@ -61,8 +61,6 @@ export default React.memo(() => {
     const { width, height } = useWindowDimensions();
     const [showSecret, setShowSecret] = useState(false);
     const copyFeedback = useTemporaryCopyFeedback(2000);
-    const [analyticsOptOut, setAnalyticsOptOut] = useSettingMutable('analyticsOptOut');
-    const [crashReportsOptOut, setCrashReportsOptOut] = useSettingMutable('crashReportsOptOut');
     const [clientEncryptionRequirement, setClientEncryptionRequirement] = useSettingMutable('clientEncryptionRequirementV1');
     const [clientEncryptionRequirementLocal, setClientEncryptionRequirementLocal] = useSettingMutable('clientEncryptionRequirementLocalV1');
     const { connectAccount, isLoading: isConnecting } = useConnectAccount();
@@ -589,52 +587,6 @@ export default React.memo(() => {
                         />
                     </ItemGroup>
                 )}
-
-                <ItemGroup
-                    title={t('settingsAccount.privacy')}
-                    footer={t('settingsAccount.privacyDescription')}
-                >
-                    <Item
-                        title={t('settingsAccount.analytics')}
-                        subtitle={analyticsOptOut ? t('settingsAccount.analyticsDisabled') : t('settingsAccount.analyticsEnabled')}
-                        rightElement={
-                            <Switch
-                                testID="settings-account-analytics-switch"
-                                value={!analyticsOptOut}
-                                onValueChange={(value) => {
-                                    const optOut = !value;
-                                    setAnalyticsOptOut(optOut);
-                                }}
-                                trackColor={{
-                                    false: theme.colors.switch.track.inactive,
-                                    true: theme.colors.switch.track.active,
-                                }}
-                                thumbColor={!analyticsOptOut ? theme.colors.switch.thumb.active : theme.colors.switch.thumb.inactive}
-                            />
-                        }
-                        showChevron={false}
-                    />
-                    <Item
-                        title={t('settingsAccount.crashReports')}
-                        subtitle={crashReportsOptOut ? t('settingsAccount.crashReportsDisabled') : t('settingsAccount.crashReportsEnabled')}
-                        rightElement={
-                            <Switch
-                                testID="settings-account-crash-reports-switch"
-                                value={!crashReportsOptOut}
-                                onValueChange={(value) => {
-                                    const optOut = !value;
-                                    setCrashReportsOptOut(optOut);
-                                }}
-                                trackColor={{
-                                    false: theme.colors.switch.track.inactive,
-                                    true: theme.colors.switch.track.active,
-                                }}
-                                thumbColor={!crashReportsOptOut ? theme.colors.switch.thumb.active : theme.colors.switch.thumb.inactive}
-                            />
-                        }
-                        showChevron={false}
-                    />
-                </ItemGroup>
 
                 {/* Danger Zone */}
                 <ItemGroup title={t('settingsAccount.dangerZone')}>

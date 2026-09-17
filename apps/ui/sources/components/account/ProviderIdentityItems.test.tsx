@@ -90,6 +90,13 @@ beforeEach(async () => {
 });
 
 describe('ProviderIdentityItems', () => {
+    it('shows configured Google without an unusable GitHub placeholder', async () => {
+        setProviders({ google: { enabled: true, configured: true }, github: { enabled: true, configured: false } });
+        const screen = await renderIdentities();
+        expect(screen.findByTestId('account-identity-provider-google')).not.toBeNull();
+        expect(screen.findByTestId('account-identity-provider-github')).toBeNull();
+    });
+
     it('clears pending connect state and blocks unsafe connect URLs', async () => {
         shared.serverFetch.mockResolvedValue(new Response(JSON.stringify({ url: 'javascript:alert(1)' })));
         const screen = await renderIdentities();
@@ -138,7 +145,7 @@ describe('ProviderIdentityItems', () => {
         const google = screen.findByProps({ title: 'Google' });
         expect(google.props.detail).toBe('@member@example.test');
         expect(google.props.subtitle).toBe('settingsAccount.tapToDisconnect');
-        expect(screen.findByProps({ title: 'GitHub' }).props.disabled).toBe(true);
+        expect(screen.findByTestId('account-identity-provider-github')).toBeNull();
         shared.serverFetch.mockResolvedValue(new Response(JSON.stringify({ success: true })));
 
         await act(async () => { google.props.onPress(); });

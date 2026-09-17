@@ -5,6 +5,7 @@ import { profileDefaults } from '@/sync/domains/profiles/profile';
 import { formatSecretKeyForBackup } from '@/auth/recovery/secretKeyBackup';
 import {
     renderScreen,
+    renderSettingsView,
     standardCleanup,
 } from '@/dev/testkit';
 import { createAccountFeaturesResponse, getRequestUrl, isFeaturesRequest } from './account.testHelpers';
@@ -58,6 +59,29 @@ describe('Settings → Account (secret key copy)', () => {
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
         standardCleanup();
+    });
+
+    it('keeps account recovery available without analytics or crash report controls', async () => {
+        storage.getState().applyProfile({ ...profileDefaults, linkedProviders: [], username: null });
+
+        vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+            const url = getRequestUrl(input);
+            if (isFeaturesRequest(url)) {
+                return { ok: true, json: async () => createAccountFeaturesResponse() };
+            }
+            throw new Error(`Unexpected fetch: ${url}`);
+        }));
+
+        const { default: AccountScreen } = await import('@/app/(app)/settings/account');
+        const screen = await renderSettingsView(<AccountScreen />);
+
+        expect(screen.findByTestId('settings-account-secret-key-copy')).toBeTruthy();
+        expect(screen.findByTestId('settings-account-logout')).toBeTruthy();
+        expect(screen.findGroup('settingsAccount.privacy')).toBeNull();
+        expect(screen.findRowByTitle('settingsAccount.analytics')).toBeNull();
+        expect(screen.findRowByTitle('settingsAccount.crashReports')).toBeNull();
+        expect(screen.findByTestId('settings-account-analytics-switch')).toBeNull();
+        expect(screen.findByTestId('settings-account-crash-reports-switch')).toBeNull();
     });
 
     it('allows copying the secret key without revealing it', async () => {
