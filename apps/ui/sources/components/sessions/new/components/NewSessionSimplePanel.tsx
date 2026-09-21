@@ -1,6 +1,9 @@
 import * as React from 'react';
 import type { ViewStyle } from 'react-native';
-import { Keyboard, Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { Keyboard, Platform, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
+import { Typography } from '@/constants/Typography';
+import { Text } from '@/components/ui/text/Text';
 import { useNavigation, useRouter } from 'expo-router';
 import Animated, {
     runOnJS,
@@ -71,6 +74,33 @@ const SIMPLE_NEW_SESSION_EXIT_TRAVEL_PX = 12;
 
 /** How long the disarmed state may persist before it is assumed the pop never happened. */
 const SIMPLE_NEW_SESSION_DISMISS_SAFETY_MS = 1000;
+
+const stylesheet = StyleSheet.create((theme) => ({
+    preparationGuide: {
+        paddingTop: 20,
+        paddingBottom: 16,
+        gap: 8,
+        backgroundColor: theme.colors.surface.base,
+    },
+    preparationTitle: {
+        fontSize: 20,
+        lineHeight: 28,
+        color: theme.colors.text.primary,
+        ...Typography.default('semiBold'),
+    },
+    preparationSteps: {
+        fontSize: 13,
+        lineHeight: 20,
+        color: theme.colors.text.secondary,
+        ...Typography.default(),
+    },
+    preparationBody: {
+        fontSize: 14,
+        lineHeight: 21,
+        color: theme.colors.text.secondary,
+        ...Typography.default(),
+    },
+}));
 
 export type NewSessionSimplePanelProps = Readonly<{
     composerTopContent?: React.ReactNode;
@@ -190,6 +220,7 @@ const NewSessionFloatingComposerCapsuleRow = React.memo(
 );
 
 export const NewSessionSimplePanel = React.memo(function NewSessionSimplePanel(props: NewSessionSimplePanelProps): React.ReactElement {
+    const styles = stylesheet;
     const { width: windowWidth } = useWindowDimensions();
     const shouldBottomAnchor =
         props.shouldBottomAnchor ?? (Platform.OS !== 'web' || isMobileLayoutWidth(windowWidth));
@@ -386,8 +417,9 @@ export const NewSessionSimplePanel = React.memo(function NewSessionSimplePanel(p
                 shouldBottomAnchor
                     ? undefined
                     : {
-                        flexBasis: 0,
+                        flexBasis: 'auto',
                         flexGrow: 0,
+                        flexShrink: 1,
                     }
             }
             surface={isFloatingComposer ? 'transparent' : undefined}
@@ -439,7 +471,9 @@ export const NewSessionSimplePanel = React.memo(function NewSessionSimplePanel(p
             <View
                 ref={props.popoverBoundaryRef}
                 style={{
-                    flex: 1,
+                    flex: shouldBottomAnchor ? 1 : undefined,
+                    flexShrink: 1,
+                    minHeight: 0,
                     width: '100%',
                     justifyContent: shouldBottomAnchor ? 'flex-end' : 'flex-start',
                 }}
@@ -455,6 +489,19 @@ export const NewSessionSimplePanel = React.memo(function NewSessionSimplePanel(p
                         onPress={isFloatingComposer ? handleDismissScreen : handleDismissKeyboard}
                     />
                 ) : null}
+                {Platform.OS === 'web' ? <ScrollView
+                    testID="new-session-sharing-guide"
+                    style={{ flexGrow: 0, flexShrink: 1, minHeight: 0 }}
+                    contentContainerStyle={[
+                        styles.preparationGuide,
+                        { paddingHorizontal: props.newSessionSidePadding },
+                    ]}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <Text style={styles.preparationTitle}>{t('sharedEntry.guidePrepareTitle')}</Text>
+                    <Text style={styles.preparationSteps}>{t('sharedEntry.guideSteps')}</Text>
+                    <Text style={styles.preparationBody}>{t('sharedEntry.guidePrepareBody')}</Text>
+                </ScrollView> : null}
             </View>
         </ComposerKeyboardScaffold>
     );

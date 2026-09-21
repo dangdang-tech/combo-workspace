@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { useAuth } from '@/auth/context/AuthContext';
+import { withAuthReturnTo } from '@/auth/routing/resolveAuthReturnToRoute';
 import { Item } from '@/components/ui/lists/Item';
 import { ItemGroup } from '@/components/ui/lists/ItemGroup';
 import { ItemList } from '@/components/ui/lists/ItemList';
@@ -10,7 +11,7 @@ import { getActiveServerSnapshot } from '@/sync/domains/server/serverProfiles';
 import { upsertActivateAndSwitchServer } from '@/sync/domains/server/activeServerSwitch';
 import { canonicalizeServerUrl, createServerUrlComparableKey } from '@/sync/domains/server/url/serverUrlCanonical';
 import { createSharedEntryClient, SharedEntryError, type SharedEntryAccess } from '@/sync/api/social/apiSharedEntries';
-import { sharedEntryErrorMessage } from './sharedEntryPresentation';
+import { sharedEntryInviteErrorMessage, sharedEntryInviteRecovery } from './sharedEntryPresentation';
 import { useSharedEntryPolling } from './useSharedEntryPolling';
 
 export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; serverUrl?: string }) {
@@ -27,6 +28,7 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
     useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
     const target = serverUrl ? canonicalizeServerUrl(serverUrl) : '';
     const invalidServer = Boolean(serverUrl && !target);
+    const returnTo = `/invite/${encodeURIComponent(token)}${target ? `?server=${encodeURIComponent(target)}` : ''}`;
     const needsServerSwitch = Boolean(target && ![snapshot.serverUrl, snapshot.activeShareableServerUrl, snapshot.activeLocalRelayUrl]
         .some(url => url && createServerUrlComparableKey(url) === createServerUrlComparableKey(target)));
     const run = useCallback(async (operation: () => Promise<void>) => {
@@ -52,7 +54,6 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
     }, [access?.status, access?.sessionId, router, snapshot.serverId]);
     const accept = () => {
         if (!auth.isAuthenticated) {
-            const returnTo = `/invite/${encodeURIComponent(token)}${target ? `?server=${encodeURIComponent(target)}` : ''}`;
             router.push({ pathname: '/', params: { returnTo } });
             return;
         }
@@ -62,22 +63,37 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
         });
     };
     const preparing = access?.status === 'pending' || access?.status === 'provisioning';
+    const preparationError = access?.status === 'failed' && access.errorCode
+        ? new SharedEntryError(access.errorCode, 409)
+        : null;
+    const recovery = sharedEntryInviteRecovery(error ?? preparationError);
+    const canRetry = recovery === 'retry';
+    const stepTitle = access?.status === 'ready' ? t('sharedEntry.inviteStepOpen')
+        : auth.isAuthenticated && !needsServerSwitch ? t('sharedEntry.inviteStepPrepare')
+        : t('sharedEntry.inviteStepSignIn');
     return <>
         <Stack.Screen options={{ title: t('sharedEntry.title') }} />
         <ItemList>
             <ItemGroup title={access?.title ?? t('sharedEntry.title')} footer={t('sharedEntry.description')}>
+                <Item testID="shared-entry-progress" title={stepTitle} subtitle={t('sharedEntry.inviteSteps')} showChevron={false} />
                 {invalidServer || !token ? <Item title={t('sharedEntry.inviteInvalid')} showChevron={false} /> : needsServerSwitch ?
                     <Item testID="shared-entry-switch-server" title={t('sharedEntry.connectServer')} subtitle={target} disabled={busy} onPress={() => void run(async () => {
                         await upsertActivateAndSwitchServer({ serverUrl: target, source: 'url', scope: 'tab', refreshAuth: auth.refreshFromActiveServer });
                         if (mounted.current) setRevision(revision + 1);
                     })} /> : <>
-                        {preparing ? <Item testID="shared-entry-preparing" title={t('sharedEntry.preparing')} subtitle={access?.hostOnline ? t('sharedEntry.preparingDetail') : t('sharedEntry.hostOffline')} showChevron={false} /> : null}
+                        {preparing && canRetry ? <Item testID="shared-entry-preparing" title={t('sharedEntry.preparing')} subtitle={access?.hostOnline ? t('sharedEntry.preparingDetail') : t('sharedEntry.inviteHostOfflineWaiting')} showChevron={false} /> : null}
                         {access?.status === 'revoked' ? <Item title={t('sharedEntry.accessDisabled')} showChevron={false} /> : null}
-                        {access?.status === 'failed' ? <Item testID="shared-entry-preparation-failed" title={access.errorCode?.startsWith('context_snapshot_') ? sharedEntryErrorMessage(new SharedEntryError(access.errorCode, 409)) : t('sharedEntry.preparationFailed')} showChevron={false} /> : null}
-                        {!preparing && access?.status !== 'revoked' && access?.status !== 'ready' ? <Item testID="shared-entry-accept" title={busy ? t('common.loading') : auth.isAuthenticated ? (access ? t('common.retry') : t('sharedEntry.accept')) : t('sharedEntry.signIn')} disabled={busy} onPress={accept} /> : null}
-                        {preparing ? <Item testID="shared-entry-refresh" title={t('sharedEntry.refresh')} disabled={busy} onPress={() => void refresh()} /> : null}
+                        {access?.status === 'failed' ? <Item testID="shared-entry-preparation-failed" title={preparationError ? sharedEntryInviteErrorMessage(preparationError) : t('sharedEntry.preparationFailed')} showChevron={false} /> : null}
+                        {!preparing && canRetry && access?.status !== 'revoked' && access?.status !== 'ready' ? <Item testID="shared-entry-accept" title={busy ? t('common.loading') : auth.isAuthenticated ? (access || error ? t('common.retry') : t('sharedEntry.prepareCopy')) : t('sharedEntry.signIn')} disabled={busy} onPress={accept} /> : null}
+                        {preparing && canRetry ? <Item testID="shared-entry-refresh" title={t('sharedEntry.refresh')} disabled={busy} onPress={() => void refresh()} /> : null}
+                        {recovery === 'account' || recovery === 'restore' ? <Item
+                            testID="shared-entry-recover"
+                            title={recovery === 'account' ? t('sharedEntry.linkGoogle') : t('sharedEntry.restoreKeys')}
+                            disabled={busy}
+                            onPress={() => router.push(withAuthReturnTo(recovery === 'account' ? '/settings/account' : '/restore', returnTo))}
+                        /> : null}
                     </>}
-                {error ? <Item testID="shared-entry-error" title={sharedEntryErrorMessage(error)} showChevron={false} /> : null}
+                {error ? <Item testID="shared-entry-error" title={sharedEntryInviteErrorMessage(error)} showChevron={false} /> : null}
             </ItemGroup>
         </ItemList>
     </>;

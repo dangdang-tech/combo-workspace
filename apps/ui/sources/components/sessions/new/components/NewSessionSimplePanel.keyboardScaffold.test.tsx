@@ -244,6 +244,8 @@ describe('NewSessionSimplePanel keyboard scaffold integration', () => {
             expect(scaffoldRender?.props.mode).toBe('newSession');
             expect(screen.findByType('MockComposerKeyboardScaffoldContent')).toBeTruthy();
             expect(screen.findByType('MockComposerKeyboardScaffoldComposer')).toBeTruthy();
+            // The web sharing guide must not sit beneath the native absolute composer.
+            expect(screen.getTextContent()).not.toContain('sharedEntry.guidePrepareTitle');
             // 360 less the close capsule row (42). `safeAreaTop` is 0 here, so only the row comes
             // off: AgentInput sizes its own chrome, but the capsule row is the HOST's, drawn above
             // the card inside the same budget, and nothing else subtracts it.

@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
+import { RoundButton } from '@/components/ui/buttons/RoundButton';
+import { Text } from '@/components/ui/text/Text';
+import { Typography } from '@/constants/Typography';
 import * as Clipboard from 'expo-clipboard';
 import { Item } from '@/components/ui/lists/Item';
 import { ItemGroup } from '@/components/ui/lists/ItemGroup';
@@ -8,6 +12,25 @@ import { t } from '@/text';
 import { createSharedEntryClient, SharedEntryError, type SharedEntry, type SharedEntryMember } from '@/sync/api/social/apiSharedEntries';
 import { getActiveServerSnapshot, getServerProfileById } from '@/sync/domains/server/serverProfiles';
 import { sharedEntryErrorMessage } from './sharedEntryPresentation';
+
+const clipboardWriteFailure = new Error('Clipboard write failed');
+
+const stylesheet = StyleSheet.create((theme) => ({
+    introduction: {
+        padding: theme.margins.lg,
+        gap: theme.margins.md,
+    },
+    name: {
+        ...Typography.default('semiBold'),
+        color: theme.colors.text.primary,
+    },
+    detail: {
+        color: theme.colors.text.secondary,
+    },
+    actions: {
+        gap: theme.margins.md,
+    },
+}));
 
 type SharedEntryManagementProps = {
     sourceSessionId: string; machineId: string; title: string; serverId: string | null;
@@ -29,6 +52,7 @@ function SharedEntryManagementScope({ sourceSessionId, machineId, title, serverI
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState<unknown>(null);
     const [copied, setCopied] = useState(false);
+    const [managementExpanded, setManagementExpanded] = useState(false);
     const inFlight = useRef(false);
     const generation = useRef(0);
     const mounted = useRef(false);
@@ -74,6 +98,15 @@ function SharedEntryManagementScope({ sourceSessionId, machineId, title, serverI
         selectedEntryId.current = next.id;
         setEntry(next); setMembers(nextMembers); setInviteToken(null); setCopied(false);
     });
+    const rotate = () => run(async (isCurrent) => {
+        const confirmed = await Modal.confirm(t('sharedEntry.rotate'), t('sharedEntry.rotateDetail'), {
+            confirmText: t('sharedEntry.rotate'), cancelText: t('common.cancel'),
+        });
+        if (!isCurrent() || !confirmed || !entry) return;
+        const token = await client.rotateInvite(entry.id);
+        if (!isCurrent()) return;
+        setInviteToken(token); setCopied(false);
+    });
     const copy = async () => {
         if (!inviteToken) return;
         const snapshot = getActiveServerSnapshot();
@@ -82,28 +115,52 @@ function SharedEntryManagementScope({ sourceSessionId, machineId, title, serverI
         const origin = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin
             : (process.env.EXPO_PUBLIC_HAPPY_WEBAPP_URL || 'https://app.happier.dev').replace(/\/+$/, '');
         await run(async (isCurrent) => {
-            await Clipboard.setStringAsync(`${origin}/invite/${encodeURIComponent(inviteToken)}?server=${encodeURIComponent(relay)}`);
+            setCopied(false);
+            const didCopy = await Clipboard.setStringAsync(`${origin}/invite/${encodeURIComponent(inviteToken)}?server=${encodeURIComponent(relay)}`).catch(() => false);
+            if (!didCopy) throw clipboardWriteFailure;
             if (isCurrent()) setCopied(true);
         });
     };
+    const styles = stylesheet;
     return <>
-        <ItemGroup title={entry?.title ?? t('sharedEntry.title')} footer={t('sharedEntry.description')}>
+        <ItemGroup title={t('sharedEntry.generateStep')}>
+            <View style={styles.introduction}>
+                <Text style={styles.name}>{entry?.title ?? title}</Text>
+                <Text style={styles.detail}>{t('sharedEntry.contextDetail')}</Text>
+                {loaded ? <View style={styles.actions}>
+                    {!entry ? <RoundButton testID="shared-entry-create" title={t('sharedEntry.create')} accessibilityLabel={t('sharedEntry.create')}
+                        size="normal" disabled={busy || !machineId} onPress={() => void create()} /> : !entry.hasContextSnapshot ?
+                        <RoundButton testID="shared-entry-create-fresh" title={t('sharedEntry.createFresh')} accessibilityLabel={t('sharedEntry.createFresh')}
+                            size="normal" disabled={busy || !machineId} onPress={() => void create()} /> : inviteToken ? <>
+                        <RoundButton testID="shared-entry-copy" title={copied ? t('sharedEntry.copied') : t('sharedEntry.copy')}
+                            accessibilityLabel={copied ? t('sharedEntry.copied') : t('sharedEntry.copy')}
+                            size="normal" disabled={busy} onPress={() => void copy()} />
+                        <Text testID="shared-entry-link-next-step" style={styles.detail} accessibilityLiveRegion="polite">
+                            {t(copied ? 'sharedEntry.copiedDetail' : 'sharedEntry.sendLinkDetail')}
+                        </Text>
+                    </> : <>
+                        <Text testID="shared-entry-link-unavailable" style={styles.detail}>{t('sharedEntry.linkUnavailable')}</Text>
+                        <RoundButton testID="shared-entry-rotate" title={t('sharedEntry.rotate')} accessibilityLabel={t('sharedEntry.rotate')}
+                            size="normal" disabled={busy} onPress={() => void rotate()} />
+                    </>}
+                </View> : null}
+            </View>
             {!loaded && busy ? <Item title={t('common.loading')} showChevron={false} /> : null}
-            {loaded && !entry ? <Item testID="shared-entry-create" title={t('sharedEntry.create')} disabled={busy || !machineId} onPress={() => void create()} /> : null}
-            {entry ? <>
-                {!entry.hasContextSnapshot ? <Item testID="shared-entry-snapshot-missing" title={t('sharedEntry.snapshotMissing')} showChevron={false} /> : null}
-                {inviteToken ? <Item testID="shared-entry-copy" title={copied ? t('sharedEntry.copied') : t('sharedEntry.copy')} disabled={busy} onPress={() => void copy()} /> : null}
-                <Item testID="shared-entry-rotate" title={t('sharedEntry.rotate')} subtitle={t('sharedEntry.rotateDetail')} disabled={busy} onPress={() => void run(async (isCurrent) => {
-                    const token = await client.rotateInvite(entry.id);
-                    if (!isCurrent()) return;
-                    setInviteToken(token); setCopied(false);
-                })} />
-                <Item testID="shared-entry-create-fresh" title={t('sharedEntry.createFresh')} subtitle={t('sharedEntry.createFreshDetail')} disabled={busy || !machineId} onPress={() => void create()} />
-            </> : null}
-            {error ? <Item testID="shared-entry-management-error" title={sharedEntryErrorMessage(error)} showChevron={false} /> : null}
+            {entry && !entry.hasContextSnapshot ? <Item testID="shared-entry-snapshot-missing" title={t('sharedEntry.snapshotMissing')} showChevron={false} /> : null}
+            {error ? <Item testID="shared-entry-management-error" title={error === clipboardWriteFailure ? t('sharedEntry.copyFailed') : sharedEntryErrorMessage(error)} showChevron={false} /> : null}
             <Item testID="shared-entry-members-refresh" title={t('sharedEntry.refresh')} disabled={busy} onPress={() => void run(load)} />
         </ItemGroup>
-        {entries.length > 1 ? <ItemGroup title={t('sharedEntry.previousInvitations')}>
+        {entry ? <ItemGroup>
+            <Item testID="shared-entry-management-toggle" title={t(managementExpanded ? 'sharedEntry.hideManagement' : 'sharedEntry.manageInvitations')}
+                accessibilityState={{ expanded: managementExpanded }} disabled={busy} onPress={() => setManagementExpanded(previous => !previous)} />
+            {managementExpanded && entry.hasContextSnapshot ? <>
+                {inviteToken ? <Item testID="shared-entry-rotate" title={t('sharedEntry.rotate')} subtitle={t('sharedEntry.rotateDetail')}
+                    disabled={busy} onPress={() => void rotate()} /> : null}
+                <Item testID="shared-entry-create-fresh" title={t('sharedEntry.createFresh')} subtitle={t('sharedEntry.createFreshDetail')}
+                    disabled={busy || !machineId} onPress={() => void create()} />
+            </> : null}
+        </ItemGroup> : null}
+        {managementExpanded && entries.length > 1 ? <ItemGroup title={t('sharedEntry.previousInvitations')}>
             {entries.map(item => <Item key={item.id} testID={`shared-entry-select-${item.id}`} title={item.title}
                 subtitle={new Date(item.createdAt).toLocaleString()} selected={item.id === entry?.id} showChevron={false}
                 disabled={busy} onPress={() => void selectEntry(item)} />)}

@@ -208,7 +208,7 @@ describe('NewSessionSimplePanel (core submission)', () => {
         expect(input()?.extraActionChips).toBeUndefined();
     });
 
-    it('sends the composed message without consuming stored attachments or review comments', async () => {
+    it('guides sharing preparation and sends the original task without consuming stored attachments or review comments', async () => {
         attachmentDraftState.drafts = [{ id: 'old-attachment' }];
         attachmentDraftState.hasSendableAttachments = true;
         attachmentDraftState.clearDrafts.mockClear();
@@ -218,7 +218,13 @@ describe('NewSessionSimplePanel (core submission)', () => {
             snapshot: { selectedLines: ['old text'], beforeContext: [], afterContext: [] },
             body: 'Old review comment', includeInPrompt: true, createdAt: 1,
         }]);
-        const { input, handleCreateSession } = await renderPanel({ selectedPath: '/repo' });
+        const { screen, input, handleCreateSession } = await renderPanel({ selectedPath: '/repo', machineName: 'My computer' });
+        const content = screen.getTextContent();
+        expect(content).toContain('sharedEntry.guidePrepareTitle');
+        expect(content).toContain('sharedEntry.guideSteps');
+        expect(content).toContain('sharedEntry.guidePrepareBody');
+        expect(input()?.currentPath).toBe('/repo');
+        expect(input()?.machineName).toBe('My computer');
         await act(async () => { input()?.onSend(); });
 
         expect(handleCreateSession).toHaveBeenCalledWith({ inputTextOverride: 'Read this project' });

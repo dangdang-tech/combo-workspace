@@ -33,6 +33,8 @@ vi.mock('@/auth/context/AuthContext', () => ({
     }),
 }));
 
+const routeParams = vi.hoisted(() => ({ returnTo: undefined as string | string[] | undefined }));
+
 const clipboardMocks = vi.hoisted(() => ({
     setStringAsync: vi.fn(async () => {}),
 }));
@@ -46,6 +48,10 @@ const modalMocks = vi.hoisted(() => ({
 }));
 
 installAccountSettingsRouteModuleMocks({
+    routerModule: async () => {
+        const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router');
+        return createExpoRouterMock({ params: () => routeParams }).module;
+    },
     modalModule: async () => {
         const { createModalModuleMock } = await import('@/dev/testkit/mocks/modal');
         return createModalModuleMock({
@@ -56,9 +62,31 @@ installAccountSettingsRouteModuleMocks({
 
 describe('Settings → Account (secret key copy)', () => {
     afterEach(() => {
+        routeParams.returnTo = undefined;
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
         standardCleanup();
+    });
+
+    it.each([
+        ['/invite/valid-token?server=https%3A%2F%2Frelay.example', '/invite/valid-token?server=https%3A%2F%2Frelay.example'],
+        [undefined, '/settings/account'],
+        ['https://external.example', '/settings/account'],
+        ['//external.example', '/settings/account'],
+        [['/invite/one', '/invite/two'], '/settings/account'],
+    ])('passes only a validated return route from %s to account linking', async (returnTo, expected) => {
+        routeParams.returnTo = returnTo;
+        storage.getState().applyProfile({ ...profileDefaults, linkedProviders: [], username: null });
+        vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+            const url = getRequestUrl(input);
+            if (isFeaturesRequest(url)) return { ok: true, json: async () => createAccountFeaturesResponse() };
+            throw new Error(`Unexpected fetch: ${url}`);
+        }));
+        const { default: AccountScreen } = await import('@/app/(app)/settings/account');
+        const { ProviderIdentityItems } = await import('@/components/account/ProviderIdentityItems');
+        const screen = await renderScreen(<AccountScreen />);
+        const identityComponent = 'type' in ProviderIdentityItems ? ProviderIdentityItems.type : ProviderIdentityItems;
+        expect(screen.findByType(identityComponent).props.returnTo).toBe(expected);
     });
 
     it('keeps account recovery available without analytics or crash report controls', async () => {

@@ -31,7 +31,8 @@ import { useFeatureEnabled } from '@/hooks/server/useFeatureEnabled';
 import { fetchAccountEncryptionMode } from '@/sync/api/account/apiAccountEncryptionMode';
 import { migrateAccountEncryptionMode } from '@/sync/api/account/apiAccountEncryptionMigrate';
 import { Text } from '@/components/ui/text/Text';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { normalizeInternalReturnTo } from '@/auth/routing/resolveAuthReturnToRoute';
 import { isRunningOnMac } from '@/utils/platform/platform';
 import { decodeBase64, encodeBase64 } from '@/encryption/base64';
 import { buildAccountEncryptionMigrateToPlainRequest } from '@/sync/ops/account/buildAccountEncryptionMigrateToPlainRequest';
@@ -58,6 +59,8 @@ export default React.memo(() => {
     const { theme } = useUnistyles();
     const auth = useAuth();
     const router = useRouter();
+    const params = useLocalSearchParams<{ returnTo?: string | string[] }>();
+    const identityReturnTo = normalizeInternalReturnTo(params.returnTo) ?? '/settings/account';
     const { width, height } = useWindowDimensions();
     const [showSecret, setShowSecret] = useState(false);
     const copyFeedback = useTemporaryCopyFeedback(2000);
@@ -257,7 +260,7 @@ export default React.memo(() => {
                             profile={profile}
                             credentials={auth.credentials}
                             applyProfile={applyProfile}
-                            returnTo="/settings/account"
+                            returnTo={identityReturnTo}
                         />
                 </ItemGroup>
 

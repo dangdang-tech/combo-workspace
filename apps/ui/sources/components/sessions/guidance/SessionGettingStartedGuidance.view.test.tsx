@@ -89,7 +89,7 @@ vi.mock('@/config', () => ({
 
 describe('SessionGettingStartedGuidanceView', () => {
   beforeEach(() => { tauriState.desktop = false; vi.unstubAllGlobals(); });
-  it.each(['connect_machine', 'start_daemon', 'create_session'] as const)('keeps %s web guidance on the fork source workflow', async (kind) => {
+  it.each(['connect_machine', 'start_daemon'] as const)('keeps %s web guidance on the fork source workflow', async (kind) => {
     const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
     openSourceGuide.mockClear();
     const screen = await renderScreen(
@@ -105,7 +105,7 @@ describe('SessionGettingStartedGuidanceView', () => {
     expect(openSourceGuide).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace#从源码启动');
   });
 
-  it.each(['connect_machine', 'start_daemon', 'create_session'] as const)('copies a standalone %s command bound to the selected server and current web origin', async (kind) => {
+  it.each(['connect_machine', 'start_daemon'] as const)('copies a standalone %s command bound to the selected server and current web origin', async (kind) => {
     const origin = 'https://combo-workspace-test.43-160-242-46.sslip.io';
     const serverUrl = 'https://relay.example.test';
     vi.stubGlobal('window', { location: { origin } });
@@ -113,7 +113,7 @@ describe('SessionGettingStartedGuidanceView', () => {
     const screen = await renderScreen(
       <SessionGettingStartedGuidanceView variant="primaryPane" model={{ kind, targetLabel: 'COMBO', serverUrl, serverName: 'test', showServerSetup: true }} />,
     );
-    await screen.pressByTestIdAsync(`session-getting-started-copy-${kind === 'create_session' ? 'start_session' : 'auth_login'}`);
+    await screen.pressByTestIdAsync('session-getting-started-copy-auth_login');
     const command = clipboardMocks.setStringAsync.mock.calls.at(-1)?.[0];
     expect(command).toBeTruthy();
     // Run the copied shell text with only the CLI process boundary replaced.
@@ -121,10 +121,30 @@ describe('SessionGettingStartedGuidanceView', () => {
     const output = execFileSync('/bin/sh', ['-c', `yarn() { printf '%s\\n' "$*" "$HAPPIER_SERVER_URL" "$HAPPIER_WEBAPP_URL" "$HAPPIER_HOME_DIR" "$HAPPIER_CLI_RUNTIME_DISABLE" "$HAPPIER_CLI_SUBPROCESS_PREFER_TSX"; }\n${command}`], {
       env: { HOME: '/combo-test-home', NODE_ENV: 'test' }, encoding: 'utf8',
     });
-    const commands = kind === 'create_session' ? ['codex'] : ['auth login', 'daemon start'];
+    const commands = ['auth login', 'daemon start'];
     expect(output.trim().split('\n')).toEqual(commands.flatMap((args) => [
       `--cwd apps/cli dev ${args}`, serverUrl, origin, '/combo-test-home/.combo-workspace/host', '1', '1',
     ]));
+  });
+
+  it('takes an online host straight to session preparation without another terminal setup workflow', async () => {
+    const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
+    const onStartNewSession = vi.fn();
+    const screen = await renderScreen(
+      <SessionGettingStartedGuidanceView
+        variant="primaryPane"
+        model={{
+          kind: 'create_session', targetLabel: 'COMBO', serverUrl: 'https://relay.example.test',
+          serverName: 'test', showServerSetup: true, onStartNewSession,
+        }}
+      />,
+    );
+
+    expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
+    expect(screen.findByTestId('session-getting-started-source-guide')).toBeNull();
+    expect(screen.getTextContent()).not.toContain('HAPPIER_SERVER_URL');
+    await screen.pressByTestIdAsync('session-getting-started-start-new-session');
+    expect(onStartNewSession).toHaveBeenCalledTimes(1);
   });
 
   it('keeps shell metacharacters in the configured server URL literal when copying a command', async () => {
@@ -132,14 +152,14 @@ describe('SessionGettingStartedGuidanceView', () => {
     const serverUrl = "https://relay.example.test/path?q='; printf injected; #$(printf expanded)`printf expanded`";
     const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
     const screen = await renderScreen(
-      <SessionGettingStartedGuidanceView variant="primaryPane" model={{ kind: 'create_session', targetLabel: 'COMBO', serverUrl, serverName: 'test', showServerSetup: true }} />,
+      <SessionGettingStartedGuidanceView variant="primaryPane" model={{ kind: 'start_daemon', targetLabel: 'COMBO', serverUrl, serverName: 'test', showServerSetup: true }} />,
     );
-    await screen.pressByTestIdAsync('session-getting-started-copy-start_session');
+    await screen.pressByTestIdAsync('session-getting-started-copy-auth_login');
     const command = clipboardMocks.setStringAsync.mock.calls.at(-1)?.[0];
     const output = execFileSync('/bin/sh', ['-c', `yarn() { printf '%s' "$HAPPIER_SERVER_URL"; }\n${command}`], {
       env: { HOME: '/combo-test-home', NODE_ENV: 'test' }, encoding: 'utf8',
     });
-    expect(output).toBe(serverUrl);
+    expect(output).toBe(serverUrl.repeat(2));
   });
 
   it('uses one target-bound guided setup instead of a parallel server/auth/service recipe', async () => {

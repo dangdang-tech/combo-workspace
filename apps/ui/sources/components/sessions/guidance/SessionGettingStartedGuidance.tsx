@@ -311,13 +311,7 @@ function buildSteps(model: SessionGettingStartedGuidanceViewModel): SessionGetti
             case 'start_daemon':
                 return [connectStep];
             case 'create_session':
-                return [{
-                    id: 'start_session',
-                    title: t('sessionGettingStarted.steps.startSession.title'),
-                    description: t('sourceSetup.runBody'),
-                    command: [...sourceEnvironment, 'yarn --cwd apps/cli dev codex'].join('\n'),
-                    copyLabel: t('sessionGettingStarted.steps.startSession.copyLabel'),
-                }];
+                return [];
             default:
                 return [];
         }
@@ -403,7 +397,11 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
     const isSourceBrowser = Platform.OS === 'web' && !isTauriDesktop();
     const needsHost = model.kind === 'connect_machine' || model.kind === 'start_daemon';
     const title = isSourceBrowser && needsHost ? t('sourceSetup.title') : titleForKind(model.kind);
-    const subtitle = isSourceBrowser && needsHost ? t('sourceSetup.body') : subtitleForKind(model.kind, model.targetLabel);
+    const subtitle = isSourceBrowser && needsHost
+        ? t('sourceSetup.body')
+        : isSourceBrowser && model.kind === 'create_session'
+            ? t('sharedEntry.guideSteps')
+            : subtitleForKind(model.kind, model.targetLabel);
     const steps = React.useMemo(() => buildSteps(model), [
         model.kind,
         model.serverName,
