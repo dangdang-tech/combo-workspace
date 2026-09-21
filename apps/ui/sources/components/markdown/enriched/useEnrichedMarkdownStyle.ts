@@ -200,7 +200,8 @@ export function buildEnrichedMarkdownStyle(params: Readonly<{
         },
         strong: {
             fontFamily: readFontFamily(semiBoldTypography),
-            fontWeight: readFontWeight(semiBoldTypography) ?? (readFontFamily(semiBoldTypography) ? 'normal' : 'bold'),
+            // Strong spans accept named weights; bundled semibold font faces already carry emphasis.
+            fontWeight: readFontWeight(semiBoldTypography) !== undefined || !readFontFamily(semiBoldTypography) ? 'bold' : 'normal',
             color: inlineColor,
         },
         em: {

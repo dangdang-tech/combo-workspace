@@ -1,7 +1,6 @@
 import type { TextStyle } from 'react-native';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Typography } from '@/constants/Typography';
 import { lightTheme } from '@/theme';
 import { parseThemeColor, themeContrastRatio } from '@/theme/themeContrastMath';
 
@@ -143,8 +142,7 @@ describe('buildEnrichedMarkdownStyle foreground contrast', () => {
     it('keeps explicit system-font weight and italic style instead of assuming every font family embeds its variant', () => {
         const style = build();
         expect(style.strong?.fontFamily).toContain('system-ui');
-        expect(style.strong?.fontWeight).toBe(Typography.default('semiBold').fontWeight);
-        expect(style.strong?.fontWeight).not.toBe('normal');
+        expect(style.strong?.fontWeight).toBe('bold');
         expect(style.em?.fontStyle).toBe('italic');
     });
 });

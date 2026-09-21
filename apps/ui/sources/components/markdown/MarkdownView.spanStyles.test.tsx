@@ -75,7 +75,7 @@ describe('MarkdownView (span styles)', () => {
         const text = (value: string) => screen.findAllByType('Text').find((node) => node.props.children === value)!;
         expect(flattenTestStyle(text('link').props.style).color).toBe(foreground);
         expect(flattenTestStyle(text('link').props.style).textDecorationLine).toBe('underline');
-        expect(flattenTestStyle(screen.findByTestId('markdown-list-item-marker').props.style).color).toBe(foreground);
+        expect(flattenTestStyle(screen.findByTestId('markdown-list-item-marker')?.props.style).color).toBe(foreground);
         expect(flattenTestStyle(text('command').props.style).color).toBe(variant === 'thinking' ? foreground : lightTheme.colors.text.primary);
     });
 
