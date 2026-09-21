@@ -214,7 +214,7 @@ function normalizeSessionItemWorkingIndicatorMode(value: unknown): SessionItemWo
 
 const stylesheet = StyleSheet.create((theme) => ({
     sessionItemContainer: {
-        marginHorizontal: 16,
+        marginHorizontal: 8,
         marginBottom: 1,
         overflow: 'hidden',
     },
@@ -241,10 +241,10 @@ const stylesheet = StyleSheet.create((theme) => ({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 15,
-        backgroundColor: theme.colors.surface.base,
+        backgroundColor: 'transparent',
         borderLeftWidth: 2,
         borderRightWidth: 2,
-        borderColor: theme.colors.surface.base,
+        borderColor: 'transparent',
     },
     sessionItemFirst: {
         borderTopLeftRadius: SESSION_LIST_ROW_CORNER_RADIUS,
@@ -272,12 +272,13 @@ const stylesheet = StyleSheet.create((theme) => ({
         height: SESSION_LIST_ROW_HEIGHT_MINIMAL_NATIVE_PHONE,
     },
     sessionItemSelected: {
+        borderRadius: SESSION_LIST_ROW_CORNER_RADIUS,
         backgroundColor: theme.colors.surface.selected,
-        borderColor: theme.dark ? theme.colors.surface.selected : theme.colors.surface.base,
+        borderColor: theme.colors.surface.selected,
     },
     sessionTitleSelected: {
         color: theme.colors.text.primary,
-        ...Typography.default('semiBold'),
+        ...Typography.default('regular'),
     },
     avatarContainer: {
         position: 'relative',

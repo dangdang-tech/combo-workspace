@@ -147,12 +147,33 @@ describe('persistence', () => {
     });
 
     describe('theme runtime local state', () => {
+        it('starts with light without writing a preference for a new device', () => {
+            expect(loadThemeRuntimeLocalState().themePreference).toBe('light');
+            expect(store.has('local-settings')).toBe(false);
+        });
+
+        it.each(['dark', 'adaptive'] as const)('loads an explicit %s preference without rewriting local settings', (themePreference) => {
+            const raw = JSON.stringify({
+                themePreference,
+                themeProfiles: { profiles: [], activeProfileIds: { light: null, dark: null } },
+            });
+            store.set('local-settings', raw);
+            const write = vi.spyOn(store, 'set');
+            try {
+                expect(loadThemeRuntimeLocalState().themePreference).toBe(themePreference);
+                expect(store.get('local-settings')).toBe(raw);
+                expect(write).not.toHaveBeenCalled();
+            } finally {
+                write.mockRestore();
+            }
+        });
+
         it('returns default theme runtime state when local settings JSON is malformed', () => {
             store.set('local-settings', '{not json');
             const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
             expect(loadThemeRuntimeLocalState()).toEqual({
-                themePreference: 'adaptive',
+                themePreference: 'light',
                 themeProfiles: {
                     profiles: [],
                     activeProfileIds: { light: null, dark: null },

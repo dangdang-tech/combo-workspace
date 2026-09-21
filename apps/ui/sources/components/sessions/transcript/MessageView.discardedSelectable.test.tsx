@@ -2,6 +2,8 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderScreen, standardCleanup } from '@/dev/testkit';
+import { flattenTestStyle } from '@/dev/testkit/harness/popoverHarness';
+import { lightTheme } from '@/theme';
 import { installMessageViewCommonModuleMocks } from './messageViewTestHelpers';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -75,7 +77,7 @@ describe('MessageView (discarded label)', () => {
     standardCleanup();
   });
 
-  it('renders the discarded label as selectable', async () => {
+  it('renders the discarded label as selectable with its user bubble foreground', async () => {
     const { MessageView } = await import('./MessageView');
 
     const message: any = {
@@ -91,5 +93,6 @@ describe('MessageView (discarded label)', () => {
       (n: any) => n.type === 'Text' && n.props?.children === 'message.discarded',
     )[0]!;
     expect(discarded.props.selectable).toBe(true);
+    expect(flattenTestStyle(discarded.props.style).color).toBe(lightTheme.colors.message.user.foreground);
   });
 });

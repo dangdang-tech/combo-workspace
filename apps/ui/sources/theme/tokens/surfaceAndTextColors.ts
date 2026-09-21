@@ -41,33 +41,33 @@ export type ThemeSurfaceColors = Readonly<{
 }>;
 
 export const lightTextColors: ThemeTextColors = {
-    primary: '#222222',
-    secondary: '#6c6c70',
-    tertiary: '#99999d',
-    link: '#2BACCC',
+    primary: '#303030',
+    secondary: '#686868',
+    tertiary: '#8a8a8a',
+    link: '#1f5dcc',
     destructive: '#FF3B30',
-    placeholder: '#999999',
+    placeholder: '#8a8a8a',
     disabled: '#C0C0C0',
 };
 
 export const darkTextColors: ThemeTextColors = {
     primary: '#EFEFEF',
-    secondary: '#8A817C',
-    tertiary: '#6C625D',
+    secondary: '#a0a0a0',
+    tertiary: '#8a8a8a',
     link: '#9EB9FF',
     destructive: '#EE6E6C',
-    placeholder: '#766C67',
-    disabled: '#635955',
+    placeholder: '#8a8a8a',
+    disabled: '#666666',
 };
 
 export const lightSurfaceColors: ThemeSurfaceColors = {
     base: '#ffffff',
-    inset: '#F8F8F8',
-    elevated: '#f0f0f0',
+    inset: '#fafafa',
+    elevated: '#f9f9f9',
     ripple: 'rgba(0, 0, 0, 0.08)',
-    pressed: '#fafafa',
-    selected: '#f8f8f8',
-    pressedOverlay: '#fafafa',
+    pressed: '#eeeeee',
+    selected: '#eeeeee',
+    pressedOverlay: '#eeeeee',
     // Barely-there grouped-section tint. Baked as an opacity overlay (not a solid inset) so it
     // reads a hair off the base surface; a runtime opacity transform would be a silent no-op once
     // web var-ifies the token.
@@ -75,12 +75,12 @@ export const lightSurfaceColors: ThemeSurfaceColors = {
 };
 
 export const darkSurfaceColors: ThemeSurfaceColors = {
-    base: '#191717',
-    inset: '#171515',
-    elevated: '#221C1C',
+    base: '#202020',
+    inset: '#191919',
+    elevated: '#292929',
     ripple: 'rgba(255, 255, 255, 0.055)',
-    pressed: '#302727',
-    selected: '#292121',
+    pressed: '#303030',
+    selected: '#2e2e2e',
     pressedOverlay: 'rgba(255,255,255,0.036)',
     sectionTint: 'rgba(255,255,255,0.014)',
 };

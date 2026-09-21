@@ -120,6 +120,7 @@ import { useSessionListScrollRetention } from './scroll/useSessionListScrollRete
 import { buildSessionListRetentionKey } from './scroll/sessionListRetentionKey';
 import {
     normalizeSessionListSurfaceOwnership,
+    SESSION_LIST_SURFACE_OWNER_SIDEBAR,
     type SessionListSurfaceOwnership,
 } from './surface/sessionListSurfaceOwnership';
 import { useSessionListSnapshotWhenInactive } from './surface/useSessionListSnapshotWhenInactive';
@@ -177,6 +178,9 @@ const stylesheet = StyleSheet.create((theme) => ({
         justifyContent: 'center',
         alignItems: 'stretch',
         backgroundColor: theme.colors.background.canvas,
+    },
+    sidebarContainer: {
+        backgroundColor: theme.colors.surface.inset,
     },
     contentContainer: {
         position: 'relative',
@@ -608,6 +612,7 @@ export const SessionsListContent = React.memo(function SessionsListContent(props
     const liveData = props.data;
     const surfaceOwnership = normalizeSessionListSurfaceOwnership(props.surfaceOwnership);
     const data = useSessionListSnapshotWhenInactive(liveData, surfaceOwnership.dataActive);
+    const containerStyle = [styles.container, surfaceOwnership.ownerKey === SESSION_LIST_SURFACE_OWNER_SIDEBAR ? styles.sidebarContainer : null];
     const surfaceDataActiveRef = React.useRef(surfaceOwnership.dataActive);
     surfaceDataActiveRef.current = surfaceOwnership.dataActive;
     const sessionListPaneSourceScopeKey = useSessionListPaneSourceScopeKey();
@@ -2445,13 +2450,13 @@ export const SessionsListContent = React.memo(function SessionsListContent(props
     // Preserve the original empty loading surface without skipping hooks above.
     if (!data) {
         return (
-            <View style={styles.container} />
+            <View style={containerStyle} />
         );
     }
 
     return (
         <SessionListSelectionStoreProvider store={sessionListSelectionStore}>
-            <View ref={focusReturnFallbackRef} style={styles.container} {...keyboardZoneProps}>
+            <View ref={focusReturnFallbackRef} style={containerStyle} {...keyboardZoneProps}>
                 <View
                     ref={listViewportRef}
                     style={styles.contentContainer}

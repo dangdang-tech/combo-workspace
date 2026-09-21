@@ -102,30 +102,7 @@ installPendingMessagesCommonModuleMocks({
     },
     unistyles: async () => {
         const { createUnistylesMock } = await import('@/dev/testkit/mocks/unistyles');
-        return createUnistylesMock({
-            theme: {
-                colors: {
-                    text: '#000',
-                    textSecondary: '#666',
-                    surfaceHighest: '#eee',
-                    surface: '#fff',
-                    surfacePressedOverlay: '#eee',
-                    input: { background: '#fff' },
-                    button: {
-                        // Match app theme shape: secondary has tint but no background.
-                        secondary: { tint: '#000' },
-                    },
-                    box: {
-                        // Match app theme shape: error (not danger).
-                        error: { background: '#fdd', text: '#a00' },
-                    },
-                    textDestructive: '#a00',
-                    textLink: '#00f',
-                    userMessageBackground: '#eee',
-                    userMessageText: '#000',
-                },
-            },
-        });
+        return createUnistylesMock();
     },
     icons: async () => ({
         Ionicons: 'Ionicons',
@@ -2218,6 +2195,33 @@ describe('PendingMessagesTranscriptBlock', () => {
             // p1 is the head: never clamped, no "View more". p2 is backlog: clamped.
             expect(screen.findByTestId('pendingMessages.viewMore:p1')).toBeNull();
             expect(screen.findByTestId('pendingMessages.viewMore:p2')).toBeTruthy();
+        });
+
+        it('keeps pending text on its inverted bubble foreground before and after expanding the backlog', async () => {
+            settingValues = crossoverSettings();
+            const PendingMessagesTranscriptBlock = await loadPendingMessagesTranscriptBlock();
+            const { lightTheme: theme } = await import('@/theme');
+            const screen = await renderScreen(React.createElement(PendingMessagesTranscriptBlock, {
+                sessionId: 's1',
+                pendingMessages: [longPendingMessage('p1', 0), longPendingMessage('p2', 1)],
+                discardedMessages: [],
+            }));
+
+            const head = screen.findByTestId('pendingMessages.message:p1')!;
+            const backlog = screen.findByTestId('pendingMessages.message:p2')!;
+            expect(flattenStyle(head.props.style({ pressed: false })).backgroundColor).toBe(theme.colors.message.user.background);
+            expect(flattenStyle(head.findByType('MarkdownView' as any).props.textStyle).color).toBe(theme.colors.message.user.foreground);
+            const collapsedText = backlog.findAllByType('Text' as any).find((node) => node.props.children === LONG_TEXT)!;
+            expect(flattenStyle(collapsedText.props.style).color).toBe(theme.colors.message.user.foreground);
+            const expand = screen.findByTestId('pendingMessages.viewMore:p2')!;
+            expect(flattenStyle(expand.findByType('Text' as any).props.style).color).toBe(theme.colors.message.user.foreground);
+            expect(theme.colors.message.user.foreground).not.toBe(theme.colors.text.primary);
+
+            await screen.pressByTestIdAsync('pendingMessages.viewMore:p2');
+            const expandedBacklog = screen.findByTestId('pendingMessages.message:p2')!;
+            expect(flattenStyle(expandedBacklog.findByType('MarkdownView' as any).props.textStyle).color).toBe(theme.colors.message.user.foreground);
+            expect(screen.findByTestId('pendingMessages.pendingAffordanceLabel:p2')).toBeTruthy();
+            await screen.unmount();
         });
     });
 

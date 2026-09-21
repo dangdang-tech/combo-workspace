@@ -1,7 +1,7 @@
 import type { MarkdownBlock, MarkdownSpan, MarkdownTableAlignment } from './parseMarkdown';
 import * as React from 'react';
 import type { StyleProp, TextStyle } from 'react-native';
-import { Pressable, View, Platform } from 'react-native';
+import { Pressable, View, Platform, StyleSheet as ReactNativeStyleSheet } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Text } from '../ui/text/Text';
 import { HorizontalOverflowScrollView } from '../ui/scroll/HorizontalOverflowScrollView';
@@ -97,6 +97,16 @@ export const MarkdownBlockView = React.memo((props: MarkdownBlockViewProps) => {
     return null;
 }, areMarkdownBlockViewPropsEqual);
 
+function foregroundOverride(textStyle: StyleProp<TextStyle>): Pick<TextStyle, 'color'> | undefined {
+    const color = ReactNativeStyleSheet.flatten(textStyle)?.color;
+    return color == null ? undefined : { color };
+}
+
+function linkStyle(textStyle: StyleProp<TextStyle>) {
+    const foreground = foregroundOverride(textStyle);
+    return foreground ? [style.link, foreground, { textDecorationLine: 'underline' as const }] : style.link;
+}
+
 function RenderTextBlock(props: { spans: MarkdownSpan[], first: boolean, last: boolean, selectable: boolean, onLinkPress?: (url: string) => boolean | void, textStyle?: StyleProp<TextStyle>, variant: 'default' | 'thinking', streamingReveal: boolean, streamingRevealPreset?: StreamingTextRevealPreset }) {
     const baseStyle = [style.text, props.textStyle];
     return (
@@ -104,7 +114,7 @@ function RenderTextBlock(props: { spans: MarkdownSpan[], first: boolean, last: b
             <MarkdownSpansView
                 spans={props.spans}
                 baseStyle={baseStyle}
-                linkStyle={style.link}
+                linkStyle={linkStyle(props.textStyle)}
                 onLinkPress={props.onLinkPress}
                 resolveSpanStyle={(s) => {
                     if (props.variant === 'thinking' && s === 'code') return style.thinkingInlineCode;
@@ -126,7 +136,7 @@ function RenderHeaderBlock(props: { level: 1 | 2 | 3 | 4 | 5 | 6, spans: Markdow
             <MarkdownSpansView
                 spans={props.spans}
                 baseStyle={headerStyle}
-                linkStyle={style.link}
+                linkStyle={linkStyle(props.textStyle)}
                 onLinkPress={props.onLinkPress}
                 resolveSpanStyle={(sn) => {
                     if (props.variant === 'thinking' && sn === 'code') return style.thinkingInlineCode;
@@ -146,13 +156,13 @@ function RenderListBlock(props: { items: { depth: number, spans: MarkdownSpan[] 
         <View style={[style.listContainer, props.first && style.first, props.last && style.last]}>
             {props.items.map((item, index) => (
                 <View testID="markdown-list-item-row" style={[style.listRow, { paddingLeft: item.depth * 20 }]} key={index}>
-                    <Text selectable={props.selectable} testID="markdown-list-item-marker" style={style.listMarker}>•</Text>
+                    <Text selectable={props.selectable} testID="markdown-list-item-marker" style={[style.listMarker, foregroundOverride(props.textStyle)]}>•</Text>
                     <View style={style.listContent}>
                         <Text selectable={props.selectable} style={listStyle}>
                             <MarkdownSpansView
                                 spans={item.spans}
                                 baseStyle={listStyle}
-                                linkStyle={style.link}
+                                linkStyle={linkStyle(props.textStyle)}
                                 onLinkPress={props.onLinkPress}
                                 resolveSpanStyle={(sn) => {
                                     if (props.variant === 'thinking' && sn === 'code') return style.thinkingInlineCode;
@@ -176,13 +186,13 @@ function RenderNumberedListBlock(props: { items: { depth: number, number: number
         <View style={[style.listContainer, props.first && style.first, props.last && style.last]}>
             {props.items.map((item, index) => (
                 <View testID="markdown-list-item-row" style={[style.listRow, { paddingLeft: item.depth * 20 }]} key={index}>
-                    <Text selectable={props.selectable} testID="markdown-list-item-marker" style={style.numberedListMarker}>{item.number.toString()}.</Text>
+                    <Text selectable={props.selectable} testID="markdown-list-item-marker" style={[style.numberedListMarker, foregroundOverride(props.textStyle)]}>{item.number.toString()}.</Text>
                     <View style={style.listContent}>
                         <Text selectable={props.selectable} style={listStyle}>
                             <MarkdownSpansView
                                 spans={item.spans}
                                 baseStyle={listStyle}
-                                linkStyle={style.link}
+                                linkStyle={linkStyle(props.textStyle)}
                                 onLinkPress={props.onLinkPress}
                                 resolveSpanStyle={(sn) => {
                                     if (props.variant === 'thinking' && sn === 'code') return style.thinkingInlineCode;
@@ -231,7 +241,7 @@ function RenderOptionsBlock(props: {
     onOptionLongPress?: OptionLongPressHandler,
     textStyle?: StyleProp<TextStyle>,
 }) {
-    const optionTextStyle = [style.optionText, props.textStyle];
+    const optionTextStyle = [style.optionText, props.textStyle, style.surfaceText];
     return (
         <View style={[style.optionsContainer, props.first && style.first, props.last && style.last]}>
             {props.items.map((item, index) => {
@@ -356,7 +366,7 @@ function RenderTableBlock(props: {
                           markdown={header}
                           selectable={props.selectable}
                           onLinkPress={props.onLinkPress}
-                          textStyle={[style.tableHeaderText, textAlignmentStyle, props.textStyle]}
+                          textStyle={[style.tableHeaderText, textAlignmentStyle, props.textStyle, style.surfaceText]}
                           profile={props.profile}
                           streamingReveal={props.streamingReveal}
                           streamingRevealPreset={props.streamingRevealPreset}
@@ -480,7 +490,11 @@ const style = StyleSheet.create((theme) => ({
         ...Typography.mono(),
         fontSize: 14,
         lineHeight: 20,
+        color: theme.colors.text.primary,
         backgroundColor: theme.colors.surface.selected,
+    },
+    surfaceText: {
+        color: theme.colors.text.primary,
     },
     thinkingInlineCode: {
         ...Typography.mono(),

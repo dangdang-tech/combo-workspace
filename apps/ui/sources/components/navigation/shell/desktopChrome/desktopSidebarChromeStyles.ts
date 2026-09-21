@@ -27,7 +27,7 @@ export const desktopSidebarChromeStyles = StyleSheet.create((theme) => ({
         paddingHorizontal: DESKTOP_SIDEBAR_CHROME_HORIZONTAL_PADDING_PX,
         paddingTop: DESKTOP_SIDEBAR_CHROME_TOP_PADDING_PX,
         paddingBottom: DESKTOP_SIDEBAR_CHROME_CONTROL_GAP_PX / 2,
-        backgroundColor: theme.colors.background.canvas,
+        backgroundColor: theme.colors.surface.inset,
         position: 'relative',
         zIndex: 100,
         overflow: 'visible',
@@ -128,8 +128,8 @@ export const desktopSidebarChromeStyles = StyleSheet.create((theme) => ({
     },
     titleText: {
         flexShrink: 1,
-        fontSize: 18,
-        lineHeight: 24,
+        fontSize: 16,
+        lineHeight: 22,
         color: theme.colors.chrome.header.foreground,
         ...Typography.default('semiBold'),
     },
@@ -165,6 +165,7 @@ export const desktopSidebarChromeStyles = StyleSheet.create((theme) => ({
     iconButton: {
         width: 32,
         height: 32,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -177,6 +178,7 @@ export const desktopSidebarChromeStyles = StyleSheet.create((theme) => ({
     topIconButton: {
         width: DESKTOP_SIDEBAR_CHROME_TOP_NAV_ICON_BUTTON_SIZE_PX,
         height: DESKTOP_SIDEBAR_CHROME_TOP_NAV_ICON_BUTTON_SIZE_PX,
+        borderRadius: 6,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: DESKTOP_SIDEBAR_CHROME_TOP_NAV_ICON_OPACITY,
@@ -187,6 +189,7 @@ export const desktopSidebarChromeStyles = StyleSheet.create((theme) => ({
     topSettingsIconButton: {
         width: DESKTOP_SIDEBAR_CHROME_TOP_SETTINGS_ICON_BUTTON_SIZE_PX,
         height: DESKTOP_SIDEBAR_CHROME_TOP_SETTINGS_ICON_BUTTON_SIZE_PX,
+        borderRadius: 6,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: DESKTOP_SIDEBAR_CHROME_TOP_SETTINGS_ICON_OPACITY,

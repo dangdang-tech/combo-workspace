@@ -21,7 +21,6 @@ const workspaceFaviconImageStyle = {
 
 const stylesheet = StyleSheet.create((theme) => ({
     section: {
-        backgroundColor: theme.colors.background.canvas,
         paddingHorizontal: 24,
         paddingTop: 10,
         paddingBottom: 5,

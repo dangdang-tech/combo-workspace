@@ -20,9 +20,9 @@ import {
 
 const stylesheet = StyleSheet.create((theme, runtime) => ({
     headerButton: {
-        // marginHorizontal: 4,
         width: 32,
         height: 32,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -42,7 +42,7 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
         alignItems: 'center',
     },
     titleText: {
-        fontSize: 16,
+        fontSize: 15,
         color: theme.colors.chrome.header.foreground,
         ...Typography.default('semiBold'),
     },
@@ -124,7 +124,7 @@ function HeaderRight() {
             hitSlop={15}
             style={styles.headerButton}
         >
-            <Icon name="plus" size={29} color={theme.colors.chrome.header.foreground} />
+            <Icon name="plus" size={22} color={theme.colors.chrome.header.foreground} />
         </Pressable>
     );
 }
@@ -152,7 +152,7 @@ function HeaderLeft() {
     const { theme } = useUnistyles();
     const logo = (
         <View style={styles.logoContainer}>
-            <BrandMark color={theme.colors.accent.blue} />
+            <BrandMark color={theme.colors.chrome.header.foreground} />
         </View>
     );
     return (

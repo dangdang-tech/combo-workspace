@@ -24,14 +24,6 @@ function isTerminalConnectWebPathname(pathname: string | null | undefined): bool
     return route === TERMINAL_CONNECT_ROUTE;
 }
 
-/**
- * Radius on the sidebar-facing side of the content sheet only. The window-facing edges stay
- * square so the sheet reads as flush to the window and never stacks its own curve on top of
- * the OS window's rounded corners.
- */
-const CONTENT_SHEET_SEAM_RADIUS_PX = 16;
-
-
 const stylesheet = StyleSheet.create((theme) => ({
     root: {
         flexDirection: 'row',
@@ -41,8 +33,6 @@ const stylesheet = StyleSheet.create((theme) => ({
         position: 'relative',
     },
     canvas: {
-        // The plane the content sheet lies on. Painted here so the sheet's rounded
-        // sidebar-facing corners reveal the canvas rather than whatever is behind the app.
         backgroundColor: theme.colors.background.canvas,
     },
     content: {
@@ -51,40 +41,9 @@ const stylesheet = StyleSheet.create((theme) => ({
         minHeight: 0,
     },
     contentSheet: {
-        borderTopLeftRadius: CONTENT_SHEET_SEAM_RADIUS_PX,
-        borderBottomLeftRadius: CONTENT_SHEET_SEAM_RADIUS_PX,
         overflow: 'hidden',
-        ...(Platform.OS === 'web' ? {} : {
-            borderLeftWidth: StyleSheet.hairlineWidth,
-            borderLeftColor: theme.colors.border.default,
-        }),
-    },
-    /**
-     * The seam shadow. An inert overlay tracing the content sheet's exact footprint — same left
-     * corners, transparent fill — whose only job is to cast the sheet's lift shadow leftward onto
-     * the sidebar.
-     *
-     * Keep it outside the clipped content sheet so the shadow can reach the sidebar.
-     *
-     * It has to be sheet-SHAPED rather than a strip: a straight strip casts a straight-edged band
-     * that runs on past the rounded corners, so the shadow and the edge it describes disagree.
-     * Matching the radii makes the cast follow the curve.
-     *
-     * x-offset only with no spread — the offset keeps the cast on the sidebar side, and the top,
-     * right and bottom casts fall beyond the window edges where nothing can show them. Dark needs
-     * roughly 3x the alpha to register over a dark canvas.
-     */
-    contentSheetSeamShadow: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        right: 0,
-        borderTopLeftRadius: CONTENT_SHEET_SEAM_RADIUS_PX,
-        borderBottomLeftRadius: CONTENT_SHEET_SEAM_RADIUS_PX,
-        zIndex: 2,
-        boxShadow: theme.dark
-            ? '-5px 0 22px rgba(0, 0, 0, 0.13)'
-            : '-5px 0 22px rgba(0, 0, 0, 0.035)',
+        borderLeftWidth: StyleSheet.hairlineWidth,
+        borderLeftColor: theme.colors.border.subtle,
     },
 }));
 
@@ -265,12 +224,6 @@ export const SidebarNavigator = React.memo((props: SidebarNavigatorProps) => {
             <View key="route-content" style={[styles.content, showSidebar && styles.contentSheet]}>
                 <Stack screenOptions={stackNavigationOptions} />
             </View>
-            {Platform.OS === 'web' && showSidebar ? (
-                <View
-                    pointerEvents="none"
-                    style={[styles.contentSheetSeamShadow, { left: sidebarWidth }]}
-                />
-            ) : null}
         </DesktopMainContentDragSurface>
     );
 });

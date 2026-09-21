@@ -1065,8 +1065,8 @@ describe('SessionItem activity time', () => {
         const titleStyle = flattenStyle(findSessionTitleText(screen, 'Session')?.props.style);
 
         expect(rowStyle.height).toBe(34);
-        expect(titleStyle.fontSize).toBe(12);
-        expect(titleStyle.lineHeight).toBe(16);
+        expect(titleStyle.fontSize).toBe(14);
+        expect(titleStyle.lineHeight).toBe(18);
     });
 
     it('uses readable title metrics for very compact native phone rows', async () => {
@@ -1093,8 +1093,8 @@ describe('SessionItem activity time', () => {
         const titleStyle = flattenStyle(findSessionTitleText(screen, 'Session')?.props.style);
 
         expect(rowStyle.height).toBe(42);
-        expect(titleStyle.fontSize).toBe(14);
-        expect(titleStyle.lineHeight).toBe(18);
+        expect(titleStyle.fontSize).toBe(15);
+        expect(titleStyle.lineHeight).toBe(20);
     });
 
     it('renders meaningful working status with canonical row indicator and themed text', async () => {

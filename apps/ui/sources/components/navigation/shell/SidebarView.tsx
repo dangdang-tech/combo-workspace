@@ -30,7 +30,7 @@ const stylesheet = StyleSheet.create((theme) => ({
         // No border. This drew a hairline on all FOUR sides of the sidebar, so the top,
         // bottom and left strokes ran along the window edge for no reason, and the right
         // stroke doubled the drawer's own divider at the seam.
-        backgroundColor: theme.colors.background.canvas,
+        backgroundColor: theme.colors.surface.inset,
         overflow: 'visible',
     },
 }));

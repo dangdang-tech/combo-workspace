@@ -31,23 +31,23 @@ describe('canonical theme color shape', () => {
     });
 
     it('uses the public canvas, surface, border, effect, and chrome token shape', () => {
-        expect(lightTheme.colors.background.canvas).toBe('#F5F5F5');
-        expect(darkTheme.colors.background.canvas).toBe('#131111');
+        expect(lightTheme.colors.background.canvas).toBe('#ffffff');
+        expect(darkTheme.colors.background.canvas).toBe('#181818');
 
         expect(lightTheme.colors.surface.base).toBe('#ffffff');
-        expect(lightTheme.colors.surface.inset).toBe('#F8F8F8');
-        expect(lightTheme.colors.surface.elevated).toBe('#f0f0f0');
-        expect(darkTheme.colors.surface.base).toBe('#191717');
-        expect(darkTheme.colors.surface.inset).toBe('#171515');
-        expect(darkTheme.colors.surface.elevated).toBe('#221C1C');
+        expect(lightTheme.colors.surface.inset).toBe('#fafafa');
+        expect(lightTheme.colors.surface.elevated).toBe('#f9f9f9');
+        expect(darkTheme.colors.surface.base).toBe('#202020');
+        expect(darkTheme.colors.surface.inset).toBe('#191919');
+        expect(darkTheme.colors.surface.elevated).toBe('#292929');
 
-        expect(lightTheme.colors.surface.pressed).toBe('#fafafa');
-        expect(lightTheme.colors.surface.selected).toBe('#f8f8f8');
-        expect(lightTheme.colors.surface.pressedOverlay).toBe('#fafafa');
+        expect(lightTheme.colors.surface.pressed).toBe('#eeeeee');
+        expect(lightTheme.colors.surface.selected).toBe('#eeeeee');
+        expect(lightTheme.colors.surface.pressedOverlay).toBe('#eeeeee');
         expect(lightTheme.colors.surface.ripple).toBe('rgba(0, 0, 0, 0.08)');
 
         expect(lightTheme.colors.border.default).toBe('#eaeaea');
-        expect(lightTheme.colors.border.surface).toBe('transparent');
+        expect(lightTheme.colors.border.surface).toBe('#eaeaea');
         expect(lightTheme.colors.border.modal).toBe('rgba(0, 0, 0, 0.1)');
         expect(darkTheme.colors.border.default).toBe('rgba(255,255,255,0.050)');
         expect(darkTheme.colors.border.surface).toBe('rgba(255,255,255,0.056)');
@@ -56,12 +56,12 @@ describe('canonical theme color shape', () => {
         expect(lightTheme.colors.effect.surfaceHighlight).toBe('transparent');
         expect(darkTheme.colors.effect.surfaceHighlight).toBe('transparent');
         expect(lightTheme.colors.chrome.header.background).toBe('#ffffff');
-        expect(lightTheme.colors.chrome.header.foreground).toBe('#18171C');
-        expect(darkTheme.colors.chrome.header.background).toBe('#131111');
+        expect(lightTheme.colors.chrome.header.foreground).toBe('#303030');
+        expect(darkTheme.colors.chrome.header.background).toBe('#181818');
         expect(darkTheme.colors.chrome.header.foreground).toBe('#EFEFEF');
 
         expect(lightTheme.colors.composer.chipTint).toBe('#767676');
-        expect(darkTheme.colors.composer.chipTint).toBe('#A79D97');
+        expect(darkTheme.colors.composer.chipTint).toBe('#a8a8a8');
     });
 
     it('uses action foreground tokens for backgroundless permission buttons', () => {
@@ -89,25 +89,25 @@ describe('canonical theme color shape', () => {
 
     it('uses canonical semantic, text, message, syntax, version-control, and diff color groups', () => {
         expect(darkTheme.colors).toHaveProperty('text.primary', '#EFEFEF');
-        expect(darkTheme.colors).toHaveProperty('text.secondary', '#8A817C');
-        expect(darkTheme.colors).toHaveProperty('text.tertiary', '#6C625D');
+        expect(darkTheme.colors).toHaveProperty('text.secondary', '#a0a0a0');
+        expect(darkTheme.colors).toHaveProperty('text.tertiary', '#8a8a8a');
         expect(darkTheme.colors).toHaveProperty('text.link', '#9EB9FF');
         expect(darkTheme.colors).toHaveProperty('text.destructive', '#EE6E6C');
-        expect(darkTheme.colors).toHaveProperty('composer.chipTint', '#A79D97');
+        expect(darkTheme.colors).toHaveProperty('composer.chipTint', '#a8a8a8');
 
         expect(darkTheme.colors).toHaveProperty('state.success.foreground', '#66DC7E');
         expect(darkTheme.colors).toHaveProperty('state.warning.foreground', '#E0B65A');
         expect(darkTheme.colors).toHaveProperty('state.danger.foreground', '#EE6E6C');
         expect(darkTheme.colors).toHaveProperty('state.info.foreground', '#9EB9FF');
-        expect(darkTheme.colors).toHaveProperty('state.neutral.foreground', '#8A817C');
-        expect(darkTheme.colors).toHaveProperty('state.active.foreground', '#9EB9FF');
-        expect(darkTheme.colors).toHaveProperty('state.active.background', 'rgba(158, 185, 255, 0.12)');
-        expect(darkTheme.colors).toHaveProperty('state.active.border', 'rgba(158, 185, 255, 0.50)');
+        expect(darkTheme.colors).toHaveProperty('state.neutral.foreground', '#a0a0a0');
+        expect(darkTheme.colors).toHaveProperty('state.active.foreground', '#EFEFEF');
+        expect(darkTheme.colors).toHaveProperty('state.active.background', '#303030');
+        expect(darkTheme.colors).toHaveProperty('state.active.border', '#484848');
 
-        expect(darkTheme.colors).toHaveProperty('message.user.background', '#221C1C');
-        expect(darkTheme.colors).toHaveProperty('message.user.foreground', '#EFEFEF');
+        expect(darkTheme.colors).toHaveProperty('message.user.background', '#ededed');
+        expect(darkTheme.colors).toHaveProperty('message.user.foreground', '#202020');
         expect(darkTheme.colors).toHaveProperty('message.agent.foreground', '#EFEFEF');
-        expect(darkTheme.colors).toHaveProperty('message.event.foreground', '#8A817C');
+        expect(darkTheme.colors).toHaveProperty('message.event.foreground', '#a0a0a0');
 
         expect(darkTheme.colors).toHaveProperty('syntax.keyword', '#9EB9FF');
         expect(darkTheme.colors).toHaveProperty('syntax.default', '#EFEFEF');

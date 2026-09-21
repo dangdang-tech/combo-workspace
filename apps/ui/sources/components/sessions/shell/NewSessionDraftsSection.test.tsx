@@ -235,7 +235,7 @@ describe('NewSessionDraftsSection', () => {
             minHeight: 34,
             paddingVertical: 0,
         });
-        expect(minimalRow?.props.titleStyle).toMatchObject({ fontSize: 12, lineHeight: 16 });
+        expect(minimalRow?.props.titleStyle).toMatchObject({ fontSize: 14, lineHeight: 18 });
         expect(minimalRow?.props.leftElement?.props).toMatchObject({
             agentId: 'codex',
             size: 14,
@@ -263,7 +263,7 @@ describe('NewSessionDraftsSection', () => {
             minHeight: 58,
             paddingVertical: 0,
         });
-        expect(compactRow?.props.titleStyle).toMatchObject({ fontSize: 14, lineHeight: 18 });
+        expect(compactRow?.props.titleStyle).toMatchObject({ fontSize: 15, lineHeight: 20 });
         expect(compactRow?.props.subtitleStyle).toMatchObject({ fontSize: 11, lineHeight: 11 });
         expect(compactRow?.props.leftElement).toBeUndefined();
         await compact.unmount();

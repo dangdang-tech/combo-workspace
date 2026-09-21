@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderScreen } from '@/dev/testkit';
 import { findNearestHostParent, flattenTestStyle } from '@/dev/testkit/harness/popoverHarness';
 import { installMarkdownCommonModuleMocks } from './markdownTestHelpers';
+import { lightTheme } from '@/theme';
+import { parseThemeColor, themeContrastRatio } from '@/theme/themeContrastMath';
 
 
 declare global {
@@ -140,4 +142,27 @@ describe('MarkdownView (tables)', () => {
         const rightCell = findNearestHostParent(findTextNode('Charlie'), 'View');
         expect(flattenTestStyle(rightCell?.props?.style).alignItems).toBe('flex-end');
     }, 60_000);
+
+    it.each(['web', 'android'] as const)('keeps plain and math table headers readable with an inverted bubble foreground on %s', async (platform) => {
+        mockPlatform(platform);
+        const { MarkdownView } = await import('./MarkdownView');
+        const foreground = lightTheme.colors.message.user.foreground;
+        const screen = await renderScreen(<MarkdownView
+            markdown={'| Header | $x$ |\n|---|---|\n| Body | $y$ |'}
+            textStyle={{ color: foreground, fontSize: 18 }}
+        />);
+
+        const text = (value: string) => screen.findAllByType('Text').find((node) => node.props.children === value)!;
+        const header = flattenTestStyle(text('Header').props.style);
+        const headerCell = findNearestHostParent(text('Header'), 'View');
+        const background = flattenTestStyle(headerCell?.props.style).backgroundColor;
+        expect(header.color).toBe(lightTheme.colors.text.primary);
+        expect(header.fontSize).toBe(18);
+        expect(themeContrastRatio(parseThemeColor(String(header.color)), parseThemeColor(String(background)))).toBeGreaterThanOrEqual(4.5);
+        expect(flattenTestStyle(text('Body').props.style).color).toBe(foreground);
+
+        const enriched = screen.findAllByType('EnrichedMarkdownText');
+        expect(enriched.find((node) => node.props.markdown === '$x$')?.props.markdownStyle.paragraph.color).toBe(lightTheme.colors.text.primary);
+        expect(enriched.find((node) => node.props.markdown === '$y$')?.props.markdownStyle.paragraph.color).toBe(foreground);
+    });
 });

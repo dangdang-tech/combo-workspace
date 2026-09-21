@@ -1,15 +1,15 @@
 import { Platform, type TextStyle } from 'react-native';
 
 /**
- * Typography system for Happier app
+ * Typography system for COMBO
  * 
- * Default typography: Inter (except Apple web, where we prefer the system font stack)
+ * Default typography: platform system fonts on web/iOS, Inter on Android
  * Monospace typography: IBM Plex Mono  
  * Logo typography: Bricolage Grotesque (specific use only)
  * 
  * Usage Examples:
  * 
- * // Default typography (Inter)
+ * // Default typography
  * <Text style={{ fontSize: 16, ...Typography.default() }}>Regular text</Text>
  * <Text style={{ fontSize: 16, ...Typography.default('italic') }}>Italic text</Text>
  * <Text style={{ fontSize: 16, ...Typography.default('semiBold') }}>Semi-bold text</Text>
@@ -29,16 +29,8 @@ import { Platform, type TextStyle } from 'react-native';
  * <Text style={{ fontSize: 28, fontFamily: getLogoFont() }}>Direct logo usage</Text>
  */
 
-const APPLE_WEB_SYSTEM_FONT_STACK =
-    "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif";
-
-function shouldPreferAppleSystemFontOnWeb(): boolean {
-    if (Platform.OS !== 'web') return false;
-    if (typeof navigator === 'undefined') return false;
-    const ua = typeof navigator.userAgent === 'string' ? navigator.userAgent : '';
-    // Matches macOS and iOS (including iPadOS desktop-mode UAs that report Macintosh).
-    return /Macintosh|iPhone|iPad|iPod/i.test(ua);
-}
+const WEB_SYSTEM_FONT_STACK =
+    'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
 
 // Font family constants
 export const FontFamilies = {
@@ -70,8 +62,8 @@ export const FontFamilies = {
 
 // Helper functions for easy access to font families
 export const getDefaultFont = (weight: 'regular' | 'italic' | 'semiBold' = 'regular') => {
-    if (shouldPreferAppleSystemFontOnWeb()) {
-        return APPLE_WEB_SYSTEM_FONT_STACK;
+    if (Platform.OS === 'web') {
+        return WEB_SYSTEM_FONT_STACK;
     }
     return FontFamilies.default[weight];
 };
@@ -115,12 +107,12 @@ function defaultTypography(
 
     const fontFamily = getDefaultFont(weight);
 
-    // Keep existing Inter behavior (family encodes weight/style).
-    if (fontFamily !== APPLE_WEB_SYSTEM_FONT_STACK) {
+    // Native Android keeps Inter's weight/style-specific font files.
+    if (Platform.OS !== 'web') {
         return { fontFamily };
     }
 
-    // Apple web: use system stack + explicit weight/style when needed.
+    // Web system fonts need explicit weight/style rather than separate font files.
     if (weight === 'italic') {
         return { fontFamily, fontStyle: 'italic' };
     }
@@ -203,7 +195,7 @@ function timestampTypography(): Pick<TextStyle, 'fontFamily' | 'fontSize' | 'lin
 }
 
 export const Typography = {
-    // Default font styles (Inter, except Apple web system stack)
+    // Default platform font styles
     default: defaultTypography,
 
     // Monospace font styles (IBM Plex Mono)

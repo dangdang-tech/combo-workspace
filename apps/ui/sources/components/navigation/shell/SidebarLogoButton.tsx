@@ -23,7 +23,7 @@ export const SidebarLogoButton = React.memo((props: SidebarLogoButtonProps) => {
             accessibilityLabel={t('common.home')}
             style={props.style}
         >
-            <BrandMark color={theme.colors.accent.blue} />
+            <BrandMark color={theme.colors.chrome.header.foreground} />
         </Pressable>
     );
 });

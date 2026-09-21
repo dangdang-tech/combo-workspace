@@ -16,4 +16,4 @@ export const COMPOSER_CONTENT_HORIZONTAL_INSET = 16;
  * the auxiliary banners stacked above it. They are peers in one column, so they round alike;
  * controls nested inside them derive a concentric radius from this value minus their inset.
  */
-export const COMPOSER_SURFACE_RADIUS = Platform.select({ default: 16, android: 20 }) as number;
+export const COMPOSER_SURFACE_RADIUS = Platform.select({ web: 24, default: 16, android: 20 }) as number;

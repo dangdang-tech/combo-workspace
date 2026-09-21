@@ -938,7 +938,7 @@ export function PendingMessagesTranscriptBlock(props: Readonly<{
                             ) : (
                                 <Text
                                     numberOfLines={collapsedLines}
-                                    style={[styles.collapsedPlainText, { color: theme.colors.text.primary }]}
+                                    style={[styles.collapsedPlainText, { color: theme.colors.message.user.foreground }]}
                                 >
                                     {text}
                                 </Text>
@@ -957,7 +957,7 @@ export function PendingMessagesTranscriptBlock(props: Readonly<{
                                         opacity: pressed ? 0.8 : 1,
                                     })}
                                 >
-                                    <Text style={{ color: theme.colors.text.link, fontSize: 12, ...Typography.default('semiBold') }}>
+                                    <Text style={{ color: theme.colors.message.user.foreground, fontSize: 12, ...Typography.default('semiBold') }}>
                                         {isExpanded ? t('session.pendingMessages.actions.viewLess') : t('session.pendingMessages.actions.viewMore')}
                                     </Text>
                                 </Pressable>
@@ -1216,7 +1216,6 @@ export function PendingMessagesTranscriptBlock(props: Readonly<{
         props.pendingMessages.length,
         theme.colors.border.default,
         theme.colors.surface.base,
-        theme.colors.text.link,
         theme.colors.text.secondary,
         theme.colors.message.user.background,
         theme.colors.message.user.foreground,
@@ -1655,7 +1654,7 @@ function ReorderDragHandleAffordance(props: {
     );
 }
 
-const styles = StyleSheet.create(() => ({
+const styles = StyleSheet.create((theme) => ({
     messageContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
@@ -1772,14 +1771,15 @@ const styles = StyleSheet.create(() => ({
         zIndex: 60,
     },
     userMessageBubble: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 12,
+        paddingHorizontal: theme.margins.lg,
+        paddingVertical: theme.margins.md,
+        borderRadius: theme.borderRadius.xxl,
         maxWidth: '100%',
         textAlign: 'left',
     },
     transcriptMarkdownText: {
         ...transcriptMarkdownTextStyle,
+        color: theme.colors.message.user.foreground,
     },
     collapsedPlainText: {
         ...Typography.default(),

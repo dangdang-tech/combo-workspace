@@ -8,13 +8,13 @@ import {
 export type SessionListRowPlatform = 'ios' | 'android' | 'web' | 'windows' | 'macos';
 export type SessionListRowDensity = 'default' | 'compact' | 'minimal';
 
-export const SESSION_LIST_ROW_CORNER_RADIUS = 12;
+export const SESSION_LIST_ROW_CORNER_RADIUS = 10;
 
 export const SESSION_LIST_ROW_TITLE_TEXT_METRICS = {
-    default: { fontSize: 14, lineHeight: 18 },
-    compact: { fontSize: 14, lineHeight: 18 },
-    minimal: { fontSize: 12, lineHeight: 16 },
-    minimalNativePhone: { fontSize: 14, lineHeight: 18 },
+    default: { fontSize: 15, lineHeight: 20 },
+    compact: { fontSize: 15, lineHeight: 20 },
+    minimal: { fontSize: 14, lineHeight: 18 },
+    minimalNativePhone: { fontSize: 15, lineHeight: 20 },
 } as const;
 
 export const SESSION_LIST_ROW_STATUS_TEXT_METRICS = {

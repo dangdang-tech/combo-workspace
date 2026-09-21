@@ -88,7 +88,7 @@ export const lightTheme = {
             default: LIGHT_STATE_INFO_FOREGROUND.default,
         })),
         background: {
-            canvas: '#F5F5F5',
+            canvas: '#ffffff',
         },
         surface: lightSurfaceColors,
         // The keyboard focus indicator. Deliberately its own hue rather than an alias of
@@ -102,7 +102,7 @@ export const lightTheme = {
         },
         border: {
             default: Platform.select({ ios: '#eaeaea', default: '#eaeaea' }),
-            surface: 'transparent',
+            surface: '#eaeaea',
             strong: Platform.select({ ios: '#d6d6d6', default: '#d6d6d6' }),
             modal: 'rgba(0, 0, 0, 0.1)',
             // Half the weight of `default`, for seams and for controls whose border should imply an
@@ -116,7 +116,7 @@ export const lightTheme = {
         chrome: {
             header: {
                 background: '#ffffff',
-                foreground: '#18171C',
+                foreground: lightTextColors.primary,
             },
         },
         overlay: {
@@ -155,8 +155,7 @@ export const lightTheme = {
             // Glass composer fill: white on light (unchanged from `surface.base`).
             composerSurface: '#ffffff',
             // Near-white solid fallback for glass panels (e.g. the session-list
-            // selection action bar) when blur is unavailable/off — lighter than
-            // `surface.elevated` (#f0f0f0), close to white so it reads as glass.
+            // selection action bar) when blur is unavailable/off.
             panelSurface: '#fafafa',
             // Translucent tint behind the web `backdrop-filter` blur (GlassSurface webBlur
             // tier) — kept fairly transparent so the blurred content actually shows through
@@ -170,7 +169,7 @@ export const lightTheme = {
 
         switch: {
             track: {
-                active: '#1976D2',
+                active: '#303030',
                 inactive: '#dddddd',
             },
             thumb: {
@@ -191,9 +190,9 @@ export const lightTheme = {
             activeGradient: createVerticalGradient(['#FDFDFD', '#FFFFFF']),
         },
         radio: {
-            active: '#007AFF',
+            active: '#303030',
             inactive: '#C0C0C0',
-            dot: '#007AFF',
+            dot: '#303030',
         },
         button: {
             primary: {
@@ -213,9 +212,9 @@ export const lightTheme = {
             }
         },
         input: {
-            background: '#F5F5F5',
-            text: '#222222',
-            placeholder: '#999999',
+            background: lightSurfaceColors.base,
+            text: lightTextColors.primary,
+            placeholder: lightTextColors.placeholder,
         },
         composer: {
             chipTint: '#767676',
@@ -312,14 +311,14 @@ export const lightTheme = {
         // Message View colors
         message: {
             user: {
-                background: '#f0eee6',
-                foreground: '#222222',
+                background: '#171717',
+                foreground: '#FFFFFF',
             },
             agent: {
-                foreground: '#222222',
+                foreground: lightTextColors.primary,
             },
             event: {
-                foreground: '#666666',
+                foreground: lightTextColors.secondary,
             },
         },
 
@@ -377,7 +376,7 @@ export const darkTheme = {
         // See `theme/tokens/stateColors.ts` for the `foreground` vs `onTint` split and the ratios.
         state: darkStateColors,
         background: {
-            canvas: '#131111',
+            canvas: '#181818',
         },
         surface: darkSurfaceColors,
         // See the light theme for why this is a dedicated hue. #A9C2FF measures 10.07:1 on
@@ -397,26 +396,26 @@ export const darkTheme = {
         },
         chrome: {
             header: {
-                background: '#131111',
+                background: '#181818',
                 foreground: '#EFEFEF',
             },
         },
         overlay: {
-            scrimSoft: 'rgba(19,17,17,0.54)',
-            scrim: 'rgba(19,17,17,0.72)',
-            scrimStrong: 'rgba(19,17,17,0.86)',
-            scrimWizard: 'rgba(19,17,17,0.78)',
+            scrimSoft: 'rgba(24,24,24,0.54)',
+            scrim: 'rgba(24,24,24,0.72)',
+            scrimStrong: 'rgba(24,24,24,0.86)',
+            scrimWizard: 'rgba(24,24,24,0.78)',
             foreground: '#EFEFEF',
-            secondaryForeground: '#8A817C',
+            secondaryForeground: '#a0a0a0',
         },
         desktopPetOverlay: {
             bubble: {
-                background: '#221C1C',
-                backgroundPressed: '#302727',
+                background: '#292929',
+                backgroundPressed: '#303030',
                 text: '#EFEFEF',
-                textSecondary: '#8A817C',
-                controlBackground: 'rgba(34, 28, 28, 0.96)',
-                controlBackgroundPressed: '#2A2222',
+                textSecondary: '#a0a0a0',
+                controlBackground: 'rgba(41, 41, 41, 0.96)',
+                controlBackgroundPressed: '#2e2e2e',
             },
         },
         shadow: {
@@ -432,14 +431,14 @@ export const darkTheme = {
             composerInnerShadow: buildGlassInnerShadow(true, COMPOSER_GLASS_INNER_SHADOW_OPACITY_SCALE),
             castShadow: buildGlassCastShadow(true),
             // Glass composer fill: a lifted/elevated tone on dark so the dark glass
-            // composer reads as raised glass (vs the flat `surface.base` = #191717).
-            composerSurface: '#221C1C',
+            // composer reads as raised glass (vs the flat `surface.base` = #202020).
+            composerSurface: '#292929',
             // Solid grey-ish fill for opt-in glass panels — the same lifted/elevated
             // tone as the dark glass composer (already glass-ish vs the flat base).
-            panelSurface: '#221C1C',
+            panelSurface: '#292929',
             // Translucent tint behind the web `backdrop-filter` blur — a frosted dark
-            // (≈ `surface.base` #191717), kept transparent enough to read as glass.
-            webBlurTint: 'rgba(25, 23, 23, 0.5)',
+            // (≈ `surface.base` #202020), kept transparent enough to read as glass.
+            webBlurTint: 'rgba(32, 32, 32, 0.5)',
         },
 
         //
@@ -448,37 +447,37 @@ export const darkTheme = {
 
         switch: {
             track: {
-                active: '#9EB9FF',
-                inactive: '#252121',
+                active: '#686868',
+                inactive: '#303030',
             },
             thumb: {
                 active: '#EFEFEF',
-                inactive: '#766C67',
+                inactive: '#8a8a8a',
             },
         },
         fab: {
-            background: '#221C1C',
-            backgroundPressed: '#2A2323',
-            gradient: createVerticalGradient(['#221C1C', '#251F1F']),
-            icon: '#EFEFEF',
+            background: '#ededed',
+            backgroundPressed: '#ffffff',
+            gradient: createVerticalGradient(['#ededed', '#ffffff']),
+            icon: '#202020',
         },
         segmentedControl: {
-            trackBackground: '#201A1A',
+            trackBackground: '#242424',
             trackGradient: undefined,
-            activeBackground: '#2A2222',
-            activeGradient: createVerticalGradient(['#2A2222', '#242020']),
+            activeBackground: '#2e2e2e',
+            activeGradient: createVerticalGradient(['#2e2e2e', '#2e2e2e']),
         },
         radio: {
-            active: '#9EB9FF',
-            inactive: '#766C67',
-            dot: '#131111',
+            active: '#EFEFEF',
+            inactive: '#8a8a8a',
+            dot: '#EFEFEF',
         },
         button: {
             primary: {
-                background: '#221C1C',
-                gradient: createVerticalGradient(['#221C1C', '#251F1F']),
-                tint: '#EFEFEF',
-                disabled: '#2A2323',
+                background: '#ededed',
+                gradient: createVerticalGradient(['#ededed', '#ffffff']),
+                tint: '#202020',
+                disabled: '#303030',
             },
             secondary: {
                 background: 'transparent',
@@ -486,16 +485,16 @@ export const darkTheme = {
             }
         },
         input: {
-            background: '#171515',
+            background: '#191919',
             text: '#EFEFEF',
-            placeholder: '#766C67',
+            placeholder: '#8a8a8a',
         },
         composer: {
-            chipTint: '#A79D97',
+            chipTint: '#a8a8a8',
         },
         feed: {
             card: {
-                background: '#221C1C',
+                background: '#292929',
             }
         },
         //
@@ -506,14 +505,14 @@ export const darkTheme = {
             connected: '#66DC7E',
             connecting: '#9EB9FF',
             actionRequired: '#E0B65A',
-            disconnected: '#8A817C',
+            disconnected: '#a0a0a0',
             error: '#EE6E6C',
-            default: '#8A817C',
+            default: '#a0a0a0',
         },
 
         // Permission mode colors
         permission: {
-            default: '#8A817C',
+            default: '#a0a0a0',
             acceptEdits: '#66DC7E',
             bypass: '#E0B65A',
             plan: '#C0A7FF',
@@ -537,12 +536,12 @@ export const darkTheme = {
                 text: '#9EB9FF',
             },
             inactive: {
-                background: '#131111',
+                background: '#181818',
                 border: 'rgba(255,255,255,0.050)',
-                text: '#8A817C',
+                text: '#a0a0a0',
             },
             selected: {
-                background: '#2A2222',
+                background: '#2e2e2e',
                 border: 'rgba(255,255,255,0.090)',
                 text: '#EFEFEF',
             },
@@ -551,7 +550,7 @@ export const darkTheme = {
 
         // Diff view
         diff: {
-            outline: '#302727',
+            outline: '#303030',
             success: '#66DC7E',
             error: '#EE6E6C',
             added: {
@@ -565,18 +564,18 @@ export const darkTheme = {
                 foreground: '#F4DEDE',
             },
             context: {
-                background: '#171515',
-                foreground: '#8A817C',
+                background: '#191919',
+                foreground: '#a0a0a0',
             },
             lineNumber: {
-                background: '#171515',
-                foreground: '#766C67',
+                background: '#191919',
+                foreground: '#8a8a8a',
             },
             hunk: {
                 background: 'rgba(158, 185, 255, 0.10)',
                 foreground: '#9EB9FF',
             },
-            leadingSpaceDot: '#302727',
+            leadingSpaceDot: '#303030',
             inlineAdded: {
                 background: 'rgba(102, 220, 126, 0.16)',
                 foreground: '#E7F4EA',
@@ -590,14 +589,14 @@ export const darkTheme = {
         // Message View colors
         message: {
             user: {
-                background: '#221C1C',
-                foreground: '#EFEFEF',
+                background: '#ededed',
+                foreground: '#202020',
             },
             agent: {
                 foreground: '#EFEFEF',
             },
             event: {
-                foreground: '#8A817C',
+                foreground: '#a0a0a0',
             },
         },
 
@@ -605,7 +604,7 @@ export const darkTheme = {
         syntax: {
             keyword: '#9EB9FF',
             string: '#66DC7E',
-            comment: '#6C625D',
+            comment: '#8a8a8a',
             number: '#E0B65A',
             function: '#C0A7FF',
             bracket1: '#FFD700',

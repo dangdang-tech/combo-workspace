@@ -771,7 +771,7 @@ function UserTextBlock(props: {
                 interaction={props.interaction}
                 onJumpToAnchor={handleJumpToAnchor}
               />
-              <MarkdownView markdown={renderedMarkdownText} onOptionPress={handleOptionPress} onOptionLongPress={handleOptionLongPress} onLinkPress={handleMarkdownLinkPress} selectable={true} profile="transcript" textStyle={styles.transcriptMarkdownText} />
+              <MarkdownView markdown={renderedMarkdownText} onOptionPress={handleOptionPress} onOptionLongPress={handleOptionLongPress} onLinkPress={handleMarkdownLinkPress} selectable={true} profile="transcript" textStyle={styles.userMarkdownText} />
               {sessionMediaInlineImages.length > 0 ? (
                 <SessionMediaInlineImages
                   sessionId={props.sessionId}
@@ -796,7 +796,7 @@ function UserTextBlock(props: {
                 />
               ) : null}
               {isDiscarded && (
-                <Text selectable style={styles.discardedCommittedMessageLabel}>{t('message.discarded')}</Text>
+                <Text selectable style={[styles.discardedCommittedMessageLabel, styles.userMessageForeground]}>{t('message.discarded')}</Text>
               )}
             </TranscriptJumpAttention>
           </View>
@@ -1556,9 +1556,9 @@ const styles = StyleSheet.create((theme) => ({
     },
     userMessageBubble: {
       backgroundColor: theme.colors.message.user.background,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: theme.borderRadius.xl,
+      paddingHorizontal: theme.margins.lg,
+      paddingVertical: theme.margins.md,
+      borderRadius: theme.borderRadius.xxl,
       maxWidth: '100%',
     },
   userStructuredMessageWrapper: {
@@ -1636,6 +1636,13 @@ const styles = StyleSheet.create((theme) => ({
   },
   transcriptMarkdownText: {
     ...transcriptMarkdownTextStyle,
+  },
+  userMarkdownText: {
+    ...transcriptMarkdownTextStyle,
+    color: theme.colors.message.user.foreground,
+  },
+  userMessageForeground: {
+    color: theme.colors.message.user.foreground,
   },
   streamingPlainText: {
     color: theme.colors.text.primary,

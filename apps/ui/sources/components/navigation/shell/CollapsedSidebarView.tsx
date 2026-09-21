@@ -30,9 +30,7 @@ export type CollapsedSidebarViewProps = Readonly<{
 const styles = StyleSheet.create((theme) => ({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background.canvas,
-        borderRightWidth: StyleSheet.hairlineWidth,
-        borderRightColor: theme.colors.border.default,
+        backgroundColor: theme.colors.surface.inset,
         paddingHorizontal: DESKTOP_SIDEBAR_CHROME_COLLAPSED_HORIZONTAL_PADDING_PX,
         gap: DESKTOP_SIDEBAR_CHROME_COLLAPSED_VERTICAL_GAP_PX,
     },

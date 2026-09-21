@@ -62,6 +62,16 @@ const pairedProfileState = {
 } as unknown as ThemeProfilesLocalStateV1;
 
 describe('theme profile runtime', () => {
+    it('starts a new device on the light canvas even when the system is dark', () => {
+        const result = resolveThemeRuntimeStartupThemes({
+            themeProfiles: localSettingsDefaults.themeProfiles,
+            themePreference: localSettingsDefaults.themePreference,
+            systemTheme: 'dark',
+        });
+
+        expect(result.backgroundColor).toBe(lightTheme.colors.background.canvas);
+    });
+
     it('falls back to canonical base themes when startup effective theme resolution fails', () => {
         const result = resolveThemeRuntimeStartupThemes({
             themeProfiles: profileState,

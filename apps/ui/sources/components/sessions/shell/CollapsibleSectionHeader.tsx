@@ -9,7 +9,6 @@ import { Icon } from '@/components/ui/icons/Icon';
 
 const stylesheet = StyleSheet.create((theme) => ({
     headerSection: {
-        backgroundColor: theme.colors.background.canvas,
         paddingHorizontal: 24,
         paddingTop: 14,
     },
@@ -18,7 +17,6 @@ const stylesheet = StyleSheet.create((theme) => ({
         color: theme.colors.text.secondary,
     },
     groupHeaderSection: {
-        backgroundColor: theme.colors.background.canvas,
         paddingHorizontal: 24,
         paddingTop: 10,
         paddingBottom: 5,

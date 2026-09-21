@@ -159,7 +159,7 @@ import {
     reconcileStructuredInputMentionsWithText,
     type ComposerStructuredInputMention,
 } from './structuredInputMentions';
-import { buildGlassCastShadowStyle } from '@/shadowElevation';
+import { buildGlassCastShadowStyle, shadowLevelStyle } from '@/shadowElevation';
 import { resolveThemeSurfaceBorderStyle } from '@/components/ui/surfaces/resolveThemeHairlineBorderStyle';
 import {
     COMPOSER_ABORT_CONFIRMATION_WINDOW_MS,
@@ -192,7 +192,7 @@ const INPUT_EXPANSION_TOGGLE_HIDE_OFFSET_PX = 12;
 const INPUT_EXPANSION_TOGGLE_INPUT_PADDING_RIGHT = 32;
 const AGENT_INPUT_CONTAINER_VERTICAL_PADDING = 4;
 const AGENT_INPUT_CONTAINER_VERTICAL_CHROME_HEIGHT = AGENT_INPUT_CONTAINER_VERTICAL_PADDING * 2;
-const AGENT_INPUT_PANEL_PADDING_TOP = 2;
+const AGENT_INPUT_PANEL_PADDING_TOP = Platform.OS === 'web' ? 8 : 2;
 const AGENT_INPUT_PANEL_PADDING_BOTTOM = 8;
 // Composer panel corner radius. Shared by the panel surface, its cast-shadow wrapper so the drop
 // shadow follows the same rounded shape, and the auxiliary banners stacked above the panel.
@@ -645,8 +645,8 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
         width: '100%',
         position: 'relative',
     },
-    // Default (non-glass) composer surface — the original styling: standard input
-    // background + hairline surface border, no drop shadow.
+    // The standard composer uses a quiet surface and hairline border; its outer
+    // wrapper carries the soft web shadow without clipping it at the corners.
     unifiedPanel: {
         backgroundColor: theme.colors.input.background,
         borderRadius: AGENT_INPUT_PANEL_RADIUS,
@@ -665,13 +665,13 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
     // `panelShadow` wrapper (glass mode only).
     unifiedPanelGlass: {
         backgroundColor: theme.colors.glass.composerSurface,
-        // Light: a touch thicker rim so the edge reads against the white surface.
-        borderWidth: theme.dark ? 1.5 : 2,
+        // Web keeps the same quiet outline as the standard composer.
+        borderWidth: Platform.OS === 'web' ? 1 : theme.dark ? 1.5 : 2,
         borderColor: theme.colors.glass.border,
-        borderTopWidth: theme.dark ? 1.5 : 2,
+        borderTopWidth: Platform.OS === 'web' ? 1 : theme.dark ? 1.5 : 2,
         borderTopColor: theme.colors.glass.border,
         // Composer-only fainter inner shadow (the other glass surfaces keep `glass.innerShadow`).
-        boxShadow: theme.colors.glass.composerInnerShadow,
+        boxShadow: Platform.OS === 'web' ? 'none' : theme.colors.glass.composerInnerShadow,
     },
     // Cast-shadow wrapper (un-clipped) for the glass composer — the two-layer pattern
     // the tab bar uses so the soft drop shadow renders around the clipped surface.
@@ -679,10 +679,13 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
     // boxShadow on Android/web (never Android `elevation`), damped further on web.
     panelShadow: {
         borderRadius: AGENT_INPUT_PANEL_RADIUS,
+        ...(Platform.OS === 'web' ? shadowLevelStyle(theme.colors.shadowLevels[1]) : {}),
     },
-    // Match the cockpit tab bar that sits beside the composer: same level, softened.
+    // Web uses a restrained shadow; native retains the glass elevation.
     panelShadowGlass: {
-        ...buildGlassCastShadowStyle(theme.colors.shadowLevels[4], theme.colors.glass.castShadow, true),
+        ...(Platform.OS === 'web'
+            ? shadowLevelStyle(theme.colors.shadowLevels[1])
+            : buildGlassCastShadowStyle(theme.colors.shadowLevels[4], theme.colors.glass.castShadow, true)),
     },
     inputContainer: {
         flexDirection: 'row',
@@ -692,7 +695,7 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
         paddingLeft: 8,
         paddingRight: 8,
         paddingVertical: AGENT_INPUT_CONTAINER_VERTICAL_PADDING,
-        minHeight: 40,
+        minHeight: Platform.OS === 'web' ? 56 : 40,
     },
     nativeKeyboardPanelContent: {
         minHeight: 0,

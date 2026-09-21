@@ -83,7 +83,7 @@ const styles = StyleSheet.create((theme) => ({
         flexBasis: 0,
         flexGrow: 1,
         flexDirection: 'column',
-        backgroundColor: theme.colors.background.canvas,
+        backgroundColor: theme.colors.surface.inset,
     },
     emptyStateContentContainer: {
         flex: 1,
@@ -114,7 +114,7 @@ const styles = StyleSheet.create((theme) => ({
         alignItems: 'center',
     },
     titleText: {
-        fontSize: 16,
+        fontSize: 15,
         color: theme.colors.chrome.header.foreground,
         ...Typography.default('semiBold'),
     },
@@ -131,6 +131,7 @@ const styles = StyleSheet.create((theme) => ({
     headerButton: {
         width: 32,
         height: 32,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -181,7 +182,7 @@ const HeaderRight = React.memo(() => {
             accessibilityRole="button"
             accessibilityLabel={t('newSession.title')}
         >
-            <Icon name="plus" size={29} color={theme.colors.chrome.header.foreground} />
+            <Icon name="plus" size={22} color={theme.colors.chrome.header.foreground} />
         </Pressable>
     );
 });

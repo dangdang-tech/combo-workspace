@@ -2,7 +2,7 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { useUnistyles } from 'react-native-unistyles';
+import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 
 import { BrandWordmark } from '@/components/onboarding/unauthShell/BrandWordmark';
 import { Avatar } from '@/components/ui/avatar/Avatar';
@@ -12,6 +12,7 @@ import { Item } from '@/components/ui/lists/Item';
 import { ItemGroup } from '@/components/ui/lists/ItemGroup';
 import { ItemList } from '@/components/ui/lists/ItemList';
 import { Text } from '@/components/ui/text/Text';
+import { Typography } from '@/constants/Typography';
 import { useActiveServerSnapshot } from '@/hooks/server/useActiveServerSnapshot';
 import { getDisplayName, getAvatarUrl, getBio } from '@/sync/domains/profiles/profile';
 import { useProfile } from '@/sync/domains/state/storage';
@@ -21,8 +22,54 @@ import { deferOnWeb } from '@/utils/platform/deferOnWeb';
 import { navigateWithBlurOnWeb } from '@/utils/platform/navigateWithBlurOnWeb';
 import { fireAndForget } from '@/utils/system/fireAndForget';
 
+const stylesheet = StyleSheet.create((theme) => ({
+    list: {
+        paddingTop: 0,
+        backgroundColor: theme.colors.surface.base,
+    },
+    identityContainer: {
+        maxWidth: layout.maxWidth,
+        alignSelf: 'center',
+        width: '100%',
+    },
+    identity: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 24,
+        paddingHorizontal: 24,
+        gap: 16,
+    },
+    identityText: {
+        flex: 1,
+        minWidth: 0,
+        gap: 4,
+    },
+    displayName: {
+        fontSize: 18,
+        color: theme.colors.text.primary,
+        ...Typography.default('semiBold'),
+    },
+    bio: {
+        fontSize: 14,
+        lineHeight: 20,
+        color: theme.colors.text.secondary,
+        ...Typography.default(),
+    },
+    group: {
+        borderRadius: 0,
+        borderWidth: 0,
+        boxShadow: 'none',
+        shadowOpacity: 0,
+        elevation: 0,
+    },
+    interactiveRow: {
+        minHeight: 48,
+    },
+}));
+
 export const SettingsView = React.memo(function SettingsView() {
     const { theme } = useUnistyles();
+    const styles = stylesheet;
     const router = useRouter();
     const profile = useProfile();
     const { serverUrl } = useActiveServerSnapshot();
@@ -44,52 +91,54 @@ export const SettingsView = React.memo(function SettingsView() {
     );
 
     return (
-        <ItemList style={{ paddingTop: 0 }}>
-            <View style={{ maxWidth: layout.maxWidth, alignSelf: 'center', width: '100%' }}>
-                <View style={{ alignItems: 'center', paddingVertical: 24, backgroundColor: theme.colors.surface.base, marginTop: 16, borderRadius: 12, marginHorizontal: 16 }}>
+        <ItemList style={styles.list}>
+            <View style={styles.identityContainer}>
+                <View style={styles.identity}>
                     {profile.firstName ? (
                         // Signed-in profile
                         <>
-                            <View style={{ marginBottom: 12 }}>
-                                <Avatar
-                                    id={profile.id}
-                                    size={90}
-                                    imageUrl={avatarUrl}
-                                    thumbhash={profile.avatar?.thumbhash}
-                                />
-                            </View>
-                            <Text style={{ fontSize: 20, fontWeight: '600', color: theme.colors.text.primary, marginBottom: bio ? 4 : 8 }}>
-                                {displayName}
-                            </Text>
-                            {bio && (
-                                <Text style={{ fontSize: 14, color: theme.colors.text.secondary, textAlign: 'center', marginBottom: 8, paddingHorizontal: 16 }}>
-                                    {bio}
+                            <Avatar
+                                id={profile.id}
+                                size={48}
+                                imageUrl={avatarUrl}
+                                thumbhash={profile.avatar?.thumbhash}
+                            />
+                            <View style={styles.identityText}>
+                                <Text style={styles.displayName}>
+                                    {displayName}
                                 </Text>
-                            )}
+                                {bio && (
+                                    <Text style={styles.bio}>
+                                        {bio}
+                                    </Text>
+                                )}
+                            </View>
                         </>
                     ) : (
                         // Product identity
                         <>
-                            <BrandWordmark height={40} />
+                            <BrandWordmark height={24} />
                         </>
                     )}
                 </View>
             </View>
 
-            <ItemGroup title={t('settings.profileAndAccount')}>
+            <ItemGroup title={t('settings.profileAndAccount')} containerStyle={styles.group}>
                 <Item
                     title={t('settings.account')}
+                    style={styles.interactiveRow}
                     subtitle={t('settings.accountSubtitle')}
-                    icon={<Icon name="user-circle" size={29} color={theme.colors.accent.blue} />}
+                    icon={<Icon name="user-circle" size={22} color={theme.colors.text.secondary} />}
                     onPress={() => router.push('/settings/account')}
                 />
                 <Item
                     title={t('settings.machines')}
-                    icon={<Icon name="desktop" size={29} color={theme.colors.accent.orange} />}
+                    style={styles.interactiveRow}
+                    icon={<Icon name="desktop" size={22} color={theme.colors.text.secondary} />}
                     onPress={() => pushRoute('/settings/machines')}
                 />
             </ItemGroup>
-            <ItemGroup>
+            <ItemGroup containerStyle={styles.group}>
                 <Item
                     title={t('systemStatus.sections.currentServer')}
                     subtitle={serverUrl}

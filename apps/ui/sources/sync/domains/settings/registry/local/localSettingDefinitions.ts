@@ -152,7 +152,7 @@ export const LOCAL_SETTING_DEFINITIONS = defineSettingDefinitions({
     },
     themePreference: {
         schema: z.enum(['light', 'dark', 'adaptive']),
-        default: 'adaptive',
+        default: 'light',
         description: 'Theme preference: light, dark, or adaptive (follows system)',
         storageScope: 'local',
         analytics: { trackCurrentState: true, trackChanges: true, valueKind: 'enum', privacy: 'safe', identityScope: 'device_user' },

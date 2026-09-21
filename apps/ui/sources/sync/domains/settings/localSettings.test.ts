@@ -4,6 +4,17 @@ import { THEME_PROFILE_MAX_OVERRIDES_PER_MODE } from '@/theme/profiles/themeProf
 import { applyLocalSettings, localSettingsDefaults, localSettingsParse } from './localSettings';
 
 describe('localSettingsParse', () => {
+    it('uses light theme when no device preference has been saved', () => {
+        expect(localSettingsParse(null).themePreference).toBe('light');
+        expect(localSettingsParse({}).themePreference).toBe('light');
+    });
+
+    it.each(['light', 'dark', 'adaptive'] as const)('preserves an explicit %s theme through unrelated settings changes', (themePreference) => {
+        const saved = localSettingsParse({ themePreference });
+        expect(saved.themePreference).toBe(themePreference);
+        expect(applyLocalSettings(saved, { uiFontScale: 1.2 }).themePreference).toBe(themePreference);
+    });
+
     it('defaults the mobile brand hero dismissal timestamp to null', () => {
         expect(localSettingsParse(null).brandHeroSeenAt).toBeNull();
     });

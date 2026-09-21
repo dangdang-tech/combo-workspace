@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { type StyleProp, type TextStyle } from 'react-native';
+import { Platform, type StyleProp, type TextStyle } from 'react-native';
 import type { EnrichedMarkdownTextProps, MarkdownStyle } from 'react-native-enriched-markdown';
 import { useUnistyles } from 'react-native-unistyles';
 
@@ -72,10 +72,14 @@ function flattenTextStyle(style: unknown): TextStyle {
     }
 
     if (Array.isArray(style)) {
-        return style.reduce<TextStyle>((flattened, entry) => ({
-            ...flattened,
-            ...flattenTextStyle(entry),
-        }), {});
+        return style.reduce<TextStyle>((flattened, entry) => {
+            const resolved = flattenTextStyle(entry);
+            // Unistyles web values are non-enumerable, including color. Preserve
+            // them when composing table-cell styles and a caller's foreground.
+            return Object.assign(flattened, Object.fromEntries(
+                Object.getOwnPropertyNames(resolved).map((key) => [key, Reflect.get(resolved, key)]),
+            ));
+        }, {});
     }
 
     if (typeof style !== 'object') {
@@ -113,7 +117,11 @@ export function buildEnrichedMarkdownStyle(params: Readonly<{
     const inlineCodeFontSize = params.profile === 'thinking'
         ? baseFontSize
         : roundTo2(baseFontSize * 0.88);
-    const baseColor = readString(flattenedTextStyle.color, params.colors.text.primary);
+    const foregroundOverride = readString(flattenedTextStyle.color, '');
+    const baseColor = foregroundOverride || params.colors.text.primary;
+    // Web inline runs must follow their containing block: a table header has its own
+    // surface/foreground even when the surrounding message uses an inverted bubble.
+    const inlineColor = Platform.OS === 'web' && foregroundOverride ? 'inherit' : baseColor;
     const textAlign = readTextAlign(flattenedTextStyle);
     const mathTextAlign = textAlign === 'left' || textAlign === 'right' || textAlign === 'center'
         ? textAlign
@@ -192,23 +200,23 @@ export function buildEnrichedMarkdownStyle(params: Readonly<{
         },
         strong: {
             fontFamily: readFontFamily(semiBoldTypography),
-            fontWeight: readFontFamily(semiBoldTypography) ? 'normal' : 'bold',
-            color: baseColor,
+            fontWeight: readFontWeight(semiBoldTypography) ?? (readFontFamily(semiBoldTypography) ? 'normal' : 'bold'),
+            color: inlineColor,
         },
         em: {
             fontFamily: readFontFamily(italicTypography),
-            fontStyle: readFontFamily(italicTypography) ? 'normal' : readFontStyle(italicTypography) ?? 'italic',
-            color: baseColor,
+            fontStyle: readFontStyle(italicTypography) ?? (readFontFamily(italicTypography) ? 'normal' : 'italic'),
+            color: inlineColor,
         },
         link: {
             fontFamily: readFontFamily(defaultTypography),
-            color: params.colors.text.link,
+            color: foregroundOverride ? inlineColor : params.colors.text.link,
             underline: true,
         },
         code: {
             fontFamily: monoTypography.fontFamily,
             fontSize: inlineCodeFontSize,
-            color: baseColor,
+            color: params.profile === 'thinking' ? baseColor : params.colors.text.primary,
             backgroundColor: params.profile === 'thinking' ? 'transparent' : params.colors.surface.selected,
             borderColor: 'transparent',
         },
@@ -216,7 +224,7 @@ export function buildEnrichedMarkdownStyle(params: Readonly<{
             fontFamily: monoTypography.fontFamily,
             fontSize: roundTo2(14 * uiFontScale),
             lineHeight: roundTo2(20 * uiFontScale),
-            color: baseColor,
+            color: params.profile === 'thinking' ? baseColor : params.colors.text.primary,
             backgroundColor: params.profile === 'thinking' ? 'transparent' : params.colors.surface.elevated,
             borderColor: params.colors.border.default,
             borderRadius: 8,
@@ -227,7 +235,7 @@ export function buildEnrichedMarkdownStyle(params: Readonly<{
             ...defaultFace,
             fontSize: baseFontSize,
             lineHeight: baseLineHeight,
-            color: params.colors.text.secondary,
+            color: foregroundOverride || params.colors.text.secondary,
             borderColor: params.colors.border.default,
             borderWidth: 2,
             gapWidth: 10,
@@ -260,7 +268,7 @@ export function buildEnrichedMarkdownStyle(params: Readonly<{
             marginBottom: 8,
         },
         inlineMath: {
-            color: baseColor,
+            color: inlineColor,
         },
         table: {
             ...defaultFace,
@@ -269,7 +277,7 @@ export function buildEnrichedMarkdownStyle(params: Readonly<{
             color: baseColor,
             headerFontFamily: readFontFamily(semiBoldTypography),
             headerBackgroundColor: params.colors.surface.inset,
-            headerTextColor: baseColor,
+            headerTextColor: params.colors.text.primary,
             rowEvenBackgroundColor: 'transparent',
             rowOddBackgroundColor: 'transparent',
             borderColor: params.colors.border.default,
@@ -284,14 +292,14 @@ export function buildEnrichedMarkdownStyle(params: Readonly<{
             checkboxSize: roundTo2(18 * uiFontScale),
             checkboxBorderRadius: 4,
             checkmarkColor: params.colors.text.primary,
-            checkedTextColor: params.colors.text.secondary,
+            checkedTextColor: foregroundOverride || params.colors.text.secondary,
             checkedStrikethrough: true,
         },
         strikethrough: {
-            color: baseColor,
+            color: inlineColor,
         },
         underline: {
-            color: baseColor,
+            color: inlineColor,
         },
         spoiler: {
             color: params.colors.surface.elevated,
