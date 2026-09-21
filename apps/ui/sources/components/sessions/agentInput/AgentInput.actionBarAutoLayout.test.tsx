@@ -273,7 +273,8 @@ describe('AgentInput (action bar auto layout)', () => {
             variableContentBeforeInput?.props.onLayout?.({ nativeEvent: { layout: { height: 70 } } });
         });
 
-        expect(screen.tree.root.findByType('MultiTextInput').props.maxHeight).toBe(468);
+        // Reserve 80px footer, 70px attachments, 16px panel padding, 4px gap, and 8px input padding.
+        expect(screen.tree.root.findByType('MultiTextInput').props.maxHeight).toBe(462);
     });
 
     it('honors the host panel max height on native where the absolutely-positioned composer needs the keyboard-driven cap', async () => {
