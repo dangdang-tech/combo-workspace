@@ -35,6 +35,8 @@ type DraftFieldMutationV1 = Readonly<{
     mutationId: string;
     intent: 'edit' | 'clearCaptured';
     baseMutationId: string | null;
+    /** Exact submitted field, retained locally when its save acknowledgement is lost. */
+    capturedMutationId?: string;
     field: Readonly<{ mutationId: string; value: StrictJsonValue }> | null;
 }>;
 
@@ -415,7 +417,10 @@ export class SessionDraftRepository {
     private readonly scopeStates = new Map<string, ScopeState>();
     private readonly listeners = new Map<string, Set<Listener>>();
     private readonly listListeners = new Map<string, Set<Listener>>();
-    private readonly flushInFlight = new Map<string, Promise<SessionDraftFlushResult>>();
+    private readonly flushInFlight = new Map<string, Readonly<{
+        promise: Promise<SessionDraftFlushResult>;
+        attemptedMutationIds: Set<string>;
+    }>>();
     private readonly mutationBatches = new Map<string, ScopeMutationBatch>();
     private readonly snapshotCache = new WeakMap<PersistedReplica, SessionDraftSnapshot>();
     private readonly existingProjectionCache = new WeakMap<PersistedReplica, ExistingSessionDraftProjection | null>();
@@ -935,6 +940,7 @@ export class SessionDraftRepository {
                 path,
                 mutationId: nextField?.mutationId ?? this.randomUUID(),
                 intent: 'clearCaptured',
+                capturedMutationId,
                 baseMutationId: getField(replica.baseRawDocument, path)?.mutationId ?? null,
                 field: nextField,
             });
@@ -985,16 +991,36 @@ export class SessionDraftRepository {
     flushSessionDraft(params: Readonly<{ scope: SessionDraftRepositoryScope; address: SessionDraftAddressV1 }>): Promise<SessionDraftFlushResult> {
         const key = this.replicaListenerKey(params.scope, params.address);
         const existing = this.flushInFlight.get(key);
-        if (existing) return existing;
-        const promise = this.flushLoop(params).then(async (result) => {
+        if (existing) {
+            const runtime = this.runtime;
+            const requestedMutationIds = new Set(
+                this.readReplica(params.scope, params.address)?.pendingFieldMutations.map((mutation) => mutation.mutationId) ?? [],
+            );
+            return existing.promise.then((result) => {
+                if (!this.isCurrentRuntime(runtime) || (result.status !== 'clean' && result.status !== 'pending')) return result;
+                const latest = this.readReplica(params.scope, params.address);
+                // A coalesced caller must not lose a clear queued after the last bounded
+                // attempt. Only drain mutations this caller requested that were never sent;
+                // already-attempted CAS conflicts retain the original retry budget.
+                const hasUnattemptedRequest = !latest?.conflict && latest?.pendingFieldMutations.some((mutation) => (
+                    requestedMutationIds.has(mutation.mutationId) && !existing.attemptedMutationIds.has(mutation.mutationId)
+                ));
+                return hasUnattemptedRequest ? this.flushSessionDraft(params) : result;
+            });
+        }
+        const attemptedMutationIds = new Set<string>();
+        const promise = this.flushLoop(params, attemptedMutationIds).then(async (result) => {
             if (this.storage.flush) await this.flushStorage(params.scope);
             return result;
         }).finally(() => this.flushInFlight.delete(key));
-        this.flushInFlight.set(key, promise);
+        this.flushInFlight.set(key, { promise, attemptedMutationIds });
         return promise;
     }
 
-    private async flushLoop(params: Readonly<{ scope: SessionDraftRepositoryScope; address: SessionDraftAddressV1 }>): Promise<SessionDraftFlushResult> {
+    private async flushLoop(
+        params: Readonly<{ scope: SessionDraftRepositoryScope; address: SessionDraftAddressV1 }>,
+        attemptedMutationIds: Set<string>,
+    ): Promise<SessionDraftFlushResult> {
         if (this.storage.prepare) await this.storage.prepare();
         // Preserve the pending recovery document before sending or clearing it.
         if (this.storage.flush) await this.flushStorage(params.scope);
@@ -1025,6 +1051,7 @@ export class SessionDraftRepository {
             if (!this.isCurrentRuntime(runtime)) return { status: 'pending' };
             let response: SessionDraftMutateResponseV1;
             try {
+                for (const mutation of submittedMutations) attemptedMutationIds.add(mutation.mutationId);
                 response = await runtime.transport.mutate({
                     address: params.address,
                     expectedRevision: replica.baseRevision,
@@ -1125,7 +1152,10 @@ export class SessionDraftRepository {
         const conflicts: SessionDraftConflictField[] = [];
         for (const mutation of replica.pendingFieldMutations) {
             const remoteField = getField(remoteDocument, mutation.path);
-            if (remoteField?.mutationId === mutation.baseMutationId || (!remoteField && mutation.baseMutationId === null)) {
+            const remoteIsCapturedSubmission = mutation.intent === 'clearCaptured'
+                && typeof mutation.capturedMutationId === 'string'
+                && remoteField?.mutationId === mutation.capturedMutationId;
+            if (remoteField?.mutationId === mutation.baseMutationId || (!remoteField && mutation.baseMutationId === null) || remoteIsCapturedSubmission) {
                 localDocument = setField(localDocument, mutation.path, mutation.field);
                 remaining.push(mutation);
                 continue;
@@ -1226,7 +1256,7 @@ export class SessionDraftRepository {
     async materializeExact(scope: SessionDraftRepositoryScope, address: SessionDraftAddressV1): Promise<void> {
         if (this.storage.prepare) await this.storage.prepare();
         const activeFlush = this.flushInFlight.get(this.replicaListenerKey(scope, address));
-        if (activeFlush) await activeFlush;
+        if (activeFlush) await activeFlush.promise;
         const runtime = this.syncRuntime(scope);
         if (!runtime) return;
         let response: SessionDraftReadResponseV1;

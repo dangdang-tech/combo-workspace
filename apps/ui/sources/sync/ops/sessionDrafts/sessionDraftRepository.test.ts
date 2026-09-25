@@ -1225,6 +1225,122 @@ describe('sessionDraftRepository', () => {
         });
     });
 
+    it.each([false, true])('reconciles a sent-draft clear after a committed save loses its acknowledgement (newer remote edit=%s)', async (newerRemoteEdit) => {
+        const cipher = plainCipher();
+        const remote = createRemote();
+        const committed = createDeferred<void>();
+        const releaseResponse = createDeferred<void>();
+        const mutate = vi.mocked(remote.transport.mutate).getMockImplementation()!;
+        vi.mocked(remote.transport.mutate).mockImplementationOnce(async (request) => {
+            await mutate(request);
+            committed.resolve();
+            await releaseResponse.promise;
+            throw new Error('connection closed after commit');
+        }).mockImplementation(mutate);
+        const repository = createSessionDraftRepository({ storage: createMemoryStorage(), transport: remote.transport, cipher, syncEnabled: true });
+        repository.writeExistingSessionDraft({ scope, sessionId: 'session-a', patch: { text: 'complete already sent second answer' } });
+        const save = repository.flushSessionDraft({ scope, address: sessionAddress });
+        await committed.promise;
+        const currentness = repository.captureSessionDraftCurrentness({ scope, address: sessionAddress });
+        const clear = repository.clearSessionDraftCurrentness({ scope, address: sessionAddress, currentness });
+        releaseResponse.resolve();
+        await Promise.all([save, clear]);
+        expect(remote.transport.mutate).toHaveBeenCalledTimes(1);
+        if (newerRemoteEdit) {
+            remote.replaceCurrent({
+                ...remote.readCurrent()!, revision: 1,
+                content: await cipher.seal(sessionAddress, createSessionDocument('unsent edit from another device', uuid(311))),
+            });
+        }
+
+        await repository.materializeExact(scope, sessionAddress);
+
+        if (newerRemoteEdit) {
+            expect(repository.getSessionDraftSnapshot(scope, sessionAddress)?.document.composer.text.value).toBe('unsent edit from another device');
+            expect(remote.transport.mutate).toHaveBeenCalledTimes(1);
+        } else {
+            expect(remote.readCurrent()?.content).toBeNull();
+            expect(repository.getSessionDraftSnapshot(scope, sessionAddress)).toBeNull();
+        }
+    });
+
+    it('does not extend the bounded CAS conflict retry budget for a coalesced flush of the same mutations', async () => {
+        const cipher = plainCipher();
+        const remote = createRemote({
+            revision: 1,
+            content: await cipher.seal(sessionAddress, createSessionDocument('previous draft', uuid(312))),
+            createdAt: 1,
+            updatedAt: 1,
+        });
+        const firstAttempt = createDeferred<void>();
+        const releaseFirst = createDeferred<void>();
+        let attempts = 0;
+        vi.mocked(remote.transport.mutate).mockImplementation(async () => {
+            attempts += 1;
+            if (attempts === 1) {
+                firstAttempt.resolve();
+                await releaseFirst.promise;
+            }
+            const current = { ...remote.readCurrent()!, revision: remote.readCurrent()!.revision + 1 };
+            remote.replaceCurrent(current);
+            return { status: 'conflict' as const, current: { address: sessionAddress, ...current } };
+        });
+        const repository = createSessionDraftRepository({ storage: createMemoryStorage(), transport: remote.transport, cipher, syncEnabled: true });
+        await repository.materializeExact(scope, sessionAddress);
+        repository.writeExistingSessionDraft({ scope, sessionId: 'session-a', patch: { text: 'new unsent draft' } });
+        const first = repository.flushSessionDraft({ scope, address: sessionAddress });
+        await firstAttempt.promise;
+        const coalesced = repository.flushSessionDraft({ scope, address: sessionAddress });
+        releaseFirst.resolve();
+        const results = await Promise.all([first, coalesced]);
+
+        expect(remote.transport.mutate).toHaveBeenCalledTimes(2);
+        expect(results).toEqual([{ status: 'pending' }, { status: 'pending' }]);
+        expect(repository.getSessionDraftSnapshot(scope, sessionAddress)?.document.composer.text.value).toBe('new unsent draft');
+    });
+
+    it('flushes a sent-draft clear queued during the second in-flight autosave before resolving the handoff', async () => {
+        const cipher = plainCipher();
+        const remote = createRemote();
+        const firstCommitted = createDeferred<void>();
+        const releaseFirst = createDeferred<void>();
+        const secondCommitted = createDeferred<void>();
+        const releaseSecond = createDeferred<void>();
+        const mutate = vi.mocked(remote.transport.mutate).getMockImplementation()!;
+        let mutations = 0;
+        vi.mocked(remote.transport.mutate).mockImplementation(async (request) => {
+            const result = await mutate(request);
+            mutations += 1;
+            if (mutations === 1) {
+                firstCommitted.resolve();
+                await releaseFirst.promise;
+            } else if (mutations === 2) {
+                secondCommitted.resolve();
+                await releaseSecond.promise;
+            }
+            return result;
+        });
+        const storage = createMemoryStorage();
+        const repository = createSessionDraftRepository({ storage, transport: remote.transport, cipher, syncEnabled: true });
+        repository.writeExistingSessionDraft({ scope, sessionId: 'session-a', patch: { text: 'second answer prefix' } });
+        const save = repository.flushSessionDraft({ scope, address: sessionAddress });
+        await firstCommitted.promise;
+        repository.writeExistingSessionDraft({ scope, sessionId: 'session-a', patch: { text: 'complete already sent second answer' } });
+        releaseFirst.resolve();
+        await secondCommitted.promise;
+
+        const currentness = repository.captureSessionDraftCurrentness({ scope, address: sessionAddress });
+        const clear = repository.clearSessionDraftCurrentness({ scope, address: sessionAddress, currentness });
+        expect(repository.getSessionDraftSnapshot(scope, sessionAddress)?.document.composer.text.value).toBe('');
+        releaseSecond.resolve();
+        await Promise.all([save, clear]);
+
+        expect(remote.readCurrent()?.content).toBeNull();
+        const reopened = createSessionDraftRepository({ storage: createMemoryStorage(), transport: remote.transport, cipher, syncEnabled: true });
+        await reopened.materializeExact(scope, sessionAddress);
+        expect(reopened.getSessionDraftSnapshot(scope, sessionAddress)).toBeNull();
+    });
+
     it.each(['exact wake', 'snapshot hydration'] as const)('never exposes a conflict when %s observes this device own in-flight save', async (materializationPath) => {
         const cipher = plainCipher();
         let current = {
