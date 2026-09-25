@@ -14,6 +14,8 @@ import {
   type ActionSpec,
   type ActionSurfaces,
   type SessionForkActionInput,
+  type SessionPublishInput,
+  type SessionPublishActionInput,
   type SessionSpawnNewInput,
 } from './actionSpecs.js';
 import { resolveActionSurfaceAvailability, type ActionSurfaceAvailability } from './actionSurfaceAvailability.js';
@@ -275,6 +277,7 @@ export type ActionExecutorDeps = Readonly<{
     callerSurface?: keyof ActionSurfaces | null;
     callerPermissionMode?: string | null;
   }>) => Promise<unknown>;
+  sessionPublish?: (args: SessionPublishActionInput) => Promise<unknown>;
   sessionTitleSet?: (args: Readonly<{ sessionId: string; title: string; serverId?: string | null }>) => Promise<unknown>;
   sessionStop?: (args: Readonly<{ sessionId: string; serverId?: string | null }>) => Promise<SessionStopActionDependencyResult>;
   sessionPermissionModeSet?: (args: Readonly<{
@@ -2255,6 +2258,23 @@ export function createActionExecutor(deps: ActionExecutorDeps): Readonly<{
               ? { callerSurface: 'session_agent' as const, callerPermissionMode: ctx.callerPermissionMode ?? null }
               : {}),
           });
+          const failure = readActionExecuteFailure(res);
+          if (failure) return { ok: false, ...failure };
+          return { ok: true, result: res };
+        }
+
+        if (actionId === 'session.publish') {
+          const input = parsed.data as SessionPublishInput;
+          const boundSessionId = normalizeId(ctx.defaultSessionId);
+          // External CLI/MCP contexts use cli-global when no real session is bound.
+          const source = input.source ?? (boundSessionId && boundSessionId !== 'cli-global'
+            ? { kind: 'session' as const, sessionId: boundSessionId }
+            : null);
+          if (!source) return { ok: false, errorCode: 'session_not_selected', error: 'session_not_selected' };
+          if (!deps.sessionPublish) {
+            return { ok: false, errorCode: 'unsupported_action', error: 'unsupported_action:session.publish' };
+          }
+          const res = await deps.sessionPublish({ ...input, source });
           const failure = readActionExecuteFailure(res);
           if (failure) return { ok: false, ...failure };
           return { ok: true, result: res };

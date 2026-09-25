@@ -622,6 +622,8 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         runBody: "在倉庫目錄下、已設定相同服務和主機資料目錄的終端執行，或在網頁中建立工作階段。",
     },
     sharedEntry: {
+        publisher: "發佈者",
+        googleAuthUnavailable: "此伺服器尚未啟用 Google 登入，請聯絡發佈者。",
         guidePrepareTitle: "先準備要分享的對話",
         guideSteps: "1 準備對話 → 2 產生分享連結 → 3 對方接著聊",
         guidePrepareBody: "輸入任務和背景，開始對話。準備好後，在對話中選擇「分享對話」。",
@@ -2082,7 +2084,7 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         restoreQrInstructions: '在已登入的裝置上前往 設定 → 帳戶 並掃描此 QR 碼。',
         externalAuthVerifiedTitle: ({ provider }: { provider: string }) => `${provider} 驗證完成`,
         externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-            `我們找到了與 ${provider} 關聯的既有 Happier 帳戶。要在此裝置上完成登入，請使用 QR code 或你的密鑰來還原帳戶金鑰。`,
+            `我們找到了與 ${provider} 關聯的既有 COMBO 帳戶。要在此裝置上完成登入，請使用 QR code 或你的密鑰來還原帳戶金鑰。`,
         linkNewDeviceTitle: '連結新裝置',
         linkNewDeviceSubtitle: '掃描新裝置上顯示的 QR Code 以將其連結至此帳戶',
         linkNewDeviceQrInstructions: '在新裝置上開啟 Happier 並顯示 QR Code',

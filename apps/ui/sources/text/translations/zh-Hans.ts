@@ -601,6 +601,8 @@ export const zhHans: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
+        publisher: "发布者",
+        googleAuthUnavailable: "此服务器尚未启用 Google 登录，请联系发布者。",
         guidePrepareTitle: "先准备要分享的会话",
         guideSteps: "1 准备会话 → 2 生成分享链接 → 3 对方接着聊",
         guidePrepareBody: "输入任务和背景，开始对话。准备好后，在会话中选择“分享会话”。",
@@ -1434,7 +1436,7 @@ export const zhHans: TranslationStructure = {
     externalAuthVerifiedTitle: ({ provider }: { provider: string }) =>
       `${provider} 验证完成`,
     externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-      `我们找到了与 ${provider} 关联的现有 Happier 账户。要在此设备上完成登录，请使用二维码或你的密钥恢复账户密钥。`,
+      `我们找到了与 ${provider} 关联的现有 COMBO 账户。要在此设备上完成登录，请使用二维码或你的密钥恢复账户密钥。`,
     restoreWithSecretKeyInstead: "改用密钥恢复",
     restoreWithSecretKeyDescription: "输入你的密钥以恢复账户访问权限。",
     lostAccessLink: "无法访问？",

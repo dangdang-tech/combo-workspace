@@ -35,6 +35,8 @@ describe('oauth/[provider] return', () => {
             const parsed = new URL(destination, 'https://app.example.test');
             expect(parsed.pathname).toBe('/restore');
             expect(parsed.searchParams.get('returnTo')).toBe(returnTo);
+            expect(parsed.searchParams.get('provider')).toBe('github');
+            expect(parsed.searchParams.get('reason')).toBe('provider_already_linked');
             expect(loginSpy).not.toHaveBeenCalled();
         });
     });
@@ -45,7 +47,7 @@ describe('oauth/[provider] return', () => {
         localSearchParamsMock.mockReturnValue({ provider: 'github', flow: 'auth', pending: 'p1', accountMode: 'e2ee' });
         await runWithOAuthScreen(async () => {
             await flushOAuthEffects();
-            expect(replaceSpy).toHaveBeenCalledWith(`/restore?returnTo=${encodeURIComponent(returnTo)}`);
+            expect(replaceSpy).toHaveBeenCalledWith(`/restore?provider=github&reason=provider_already_linked&returnTo=${encodeURIComponent(returnTo)}`);
             expect(loginSpy).not.toHaveBeenCalled();
         });
     });

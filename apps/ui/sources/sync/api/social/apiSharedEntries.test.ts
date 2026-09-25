@@ -20,6 +20,21 @@ describe('shared entry API boundary', () => {
         expect((await client.list())[0].hasContextSnapshot).toBe(expected);
         expect((await client.create({ title: 'Project', sourceSessionId: 'source', machineId: 'host' })).entry.hasContextSnapshot).toBe(expected);
     });
+    it('previews public details and an existing copy without placing the invite in the URL or allocating again', async () => {
+        const preview = { title: 'Interview coach', description: 'Practice one question at a time', publisherDisplayName: 'Publisher' };
+        boundary.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ preview, access: { ...access, status: 'ready', sessionId: 'child' } })));
+        expect(await createSharedEntryClient().preview('opaque-token')).toEqual({ preview, access: { ...access, status: 'ready', sessionId: 'child' } });
+        expect(boundary.fetch.mock.calls).toEqual([['/v1/shared-session-entries/preview', expect.objectContaining({ method: 'POST', body: JSON.stringify({ inviteToken: 'opaque-token' }) })]]);
+    });
+    it('retains reusable-link availability and retrieves the published token without rotating it', async () => {
+        const publicMetadata = { v: 1, description: 'Practice', publisherDisplayName: 'Publisher' };
+        boundary.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ entries: [{ id: 'entry', title: 'Project', sourceSessionId: 'source', machineId: 'host', createdAt: 1, hasReusableInvite: true, publicMetadata }] })))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ inviteToken: 'original-token' })));
+        const client = createSharedEntryClient();
+        expect((await client.list())[0]).toMatchObject({ hasReusableInvite: true, publicMetadata });
+        expect(await client.getInvite('entry')).toBe('original-token');
+        expect(boundary.fetch.mock.calls[1]).toEqual(['/v1/shared-session-entries/entry/invite', undefined]);
+    });
     it('redeems the opaque invite without treating pending access as a ready conversation', async () => {
         boundary.fetch.mockResolvedValue(new Response(JSON.stringify({ access }), { status: 200 }));
         const client = createSharedEntryClient();

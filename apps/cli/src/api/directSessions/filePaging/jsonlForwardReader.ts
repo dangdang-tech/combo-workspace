@@ -13,6 +13,9 @@ export async function readJsonlFileForward(params: Readonly<{
   maxItems: number;
   chunkBytes?: number;
   maxOversizeLineBytes?: number;
+  /** Publication requires complete committed records inside a captured file boundary. */
+  strict?: boolean;
+  endOffsetBytes?: number;
 }>): Promise<Readonly<{
   items: readonly JsonlParsedLine[];
   nextOffsetBytes: number;
@@ -30,8 +33,12 @@ export async function readJsonlFileForward(params: Readonly<{
   let fileSize = 0;
   try {
     const s = await stat(params.filePath);
-    fileSize = s.size;
-  } catch {
+    fileSize = params.endOffsetBytes === undefined ? s.size : Math.min(s.size, params.endOffsetBytes);
+    if (params.strict && params.endOffsetBytes !== undefined && s.size < params.endOffsetBytes) {
+      throw new Error("Native transcript changed before its committed boundary was read");
+    }
+  } catch (error) {
+    if (params.strict) throw error;
     return { items: [], nextOffsetBytes: 0, truncated: true, reachedEnd: true };
   }
 
@@ -66,6 +73,9 @@ export async function readJsonlFileForward(params: Readonly<{
 
       const buffer = Buffer.allocUnsafe(readSize);
       const res = await fh.read(buffer, 0, readSize, nextReadOffset);
+      if (params.strict && res.bytesRead === 0) {
+        throw new Error("Native transcript changed or truncated while reading its committed boundary");
+      }
       const chunk = res.bytesRead > 0 ? buffer.subarray(0, res.bytesRead) : Buffer.alloc(0);
       bytesReadTotal += chunk.length;
       nextReadOffset += chunk.length;
@@ -78,7 +88,9 @@ export async function readJsonlFileForward(params: Readonly<{
         if (combined[i] !== 0x0a) continue; // '\n'
 
         const line = combined.slice(lineStartIndex, i);
-        const parsed = tryParseJsonlLine(line);
+        const parsed = params.strict && line.toString("utf8").trim()
+          ? JSON.parse(line.toString("utf8")) as unknown
+          : tryParseJsonlLine(line);
         if (parsed !== null) {
           const startOffsetAbs = combinedStartOffset + lineStartIndex;
           const endOffsetAbs = combinedStartOffset + i;
@@ -95,6 +107,13 @@ export async function readJsonlFileForward(params: Readonly<{
     // Best-effort: parse a trailing line without newline if it appears valid.
     // This helps for completed transcripts that don't end in \n.
     if (items.length < maxItems && nextReadOffset >= fileSize && carry.length > 0) {
+      if (params.strict && carry.toString("utf8").trim()) {
+        throw new Error("Native transcript has an incomplete committed JSONL record; retry after the writer finishes");
+      }
+      if (params.strict && !carry.toString("utf8").trim()) {
+        carry = Buffer.alloc(0);
+        carryStartOffset = fileSize;
+      }
       const parsed = tryParseJsonlLine(carry);
       if (parsed !== null) {
         items.push({ value: parsed, startOffsetBytes: carryStartOffset, endOffsetBytes: carryStartOffset + carry.length });

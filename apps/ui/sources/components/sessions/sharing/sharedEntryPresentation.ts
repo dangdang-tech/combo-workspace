@@ -34,6 +34,7 @@ export function sharedEntryInviteRecovery(error: unknown): 'retry' | 'account' |
 /** An invitation has no message draft yet; keep the send-error guidance separate. */
 export function sharedEntryInviteErrorMessage(error: unknown): string {
     if (error instanceof SharedEntryError) {
+        if (error.code === 'google_auth_unavailable') return t('sharedEntry.googleAuthUnavailable');
         if (error.code === 'host_offline') return t('sharedEntry.inviteHostOffline');
         if (error.code.startsWith('context_snapshot_')) return t('sharedEntry.inviteSnapshotUnavailable');
     }

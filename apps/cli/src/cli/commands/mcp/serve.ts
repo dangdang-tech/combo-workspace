@@ -1,5 +1,6 @@
 import { readFlagValue } from '@/cli/commands/shared/argvFlags';
 import { reloadConfiguration } from '@/configuration';
+import { applyEphemeralServerSelectionFromPrefixArgs } from '@/server/serverSelection';
 import { enableMcpStdioConsolePatch } from '@/mcp/server/mcpStdioConsolePatch';
 
 import type { McpCommandDeps } from './deps';
@@ -15,11 +16,15 @@ function clearServerSelectionEnvOverrides(): void {
 export async function runMcpServeCommand(
   argv: readonly string[],
   deps: McpCommandDeps,
+  serverSelectionArgs: readonly string[] = [],
 ): Promise<void> {
   enableMcpStdioConsolePatch();
 
   clearServerSelectionEnvOverrides();
   reloadConfiguration();
+  if (serverSelectionArgs.length > 0) {
+    await applyEphemeralServerSelectionFromPrefixArgs([...serverSelectionArgs]);
+  }
 
   const defaultSessionId = readFlagValue(argv, '--session');
   const credentials = await deps.readCredentials();

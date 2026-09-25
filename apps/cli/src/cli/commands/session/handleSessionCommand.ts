@@ -12,6 +12,7 @@ import { cmdSessionWait } from './wait';
 import { cmdSessionStop } from './stop';
 import { cmdSessionArchive } from './archive';
 import { cmdSessionUnarchive } from './unarchive';
+import { cmdSessionPublish, SESSION_PUBLISH_USAGE } from './publish';
 import { cmdSessionSetTitle } from './setTitle';
 import { cmdSessionSetPermissionMode } from './setPermissionMode';
 import { cmdSessionSetModel } from './setModel';
@@ -83,6 +84,7 @@ const SESSION_HELP_BY_COMMAND = {
   list: 'happier session list [--active] [--archived] [--limit N] [--cursor C] [--include-system] [--resumable] [--plain] [--json]',
   status: 'happier session status <session-id-or-prefix-or-tag> [--live] [--json]',
   create: SESSION_CREATE_USAGE,
+  publish: SESSION_PUBLISH_USAGE,
   send: 'happier session send <session-id-or-prefix-or-tag> <message> [--permission-mode <mode>] [--model <model-id>] [--wait] [--timeout <seconds>] [--json]',
   wait: 'happier session wait <session-id-or-prefix-or-tag> [--timeout <seconds>] [--json]',
   stop: 'happier session stop <session-id-or-prefix-or-tag> [--json]',
@@ -205,6 +207,9 @@ export async function handleSessionCommand(
         return;
       case 'create':
         await cmdSessionCreate(argv, { readCredentialsFn });
+        return;
+      case 'publish':
+        await cmdSessionPublish(argv, { readCredentialsFn });
         return;
       case 'set-title':
         await cmdSessionSetTitle(argv, { readCredentialsFn });

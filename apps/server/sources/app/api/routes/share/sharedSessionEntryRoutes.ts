@@ -10,7 +10,7 @@ import { checkSessionAccess } from "@/app/share/accessControl";
 import {
     assertGoogleIdentity, assertHostOnline, captureEntrySourceSnapshot, ENTRY_INCLUDE, entrySourceEncryptionMode, findEntry, grantEntrySession, hashInvite,
     MEMBER_INCLUDE, memberAccess, memberSummary, newInvite, parseEntryDataKey, publicEntry,
-    revokeEntrySession, SessionEntryError,
+    revokeEntrySession, SessionEntryError, encryptEntryInvite, recoverEntryInvite, entryPreview, entryPublicMetadataSchema, entryInviteTokenSchema,
 } from "@/app/share/sessionEntryService";
 import { SESSION_ENTRY_MACHINE_SELECT } from "@/app/share/sessionEntryPresence";
 
@@ -30,21 +30,62 @@ export function sharedSessionEntryRoutes(baseApp: Fastify): void {
     const app = createServerFeatureGatedRouteApp(baseApp, "sharing.sessionEntries");
     app.post("/v1/shared-session-entries", {
         preHandler: app.authenticate,
-        schema: { body: z.object({ title: z.string().trim().min(1).max(120), sourceSessionId: z.string().min(1), machineId: z.string().min(1) }).strict() },
+        schema: { body: z.object({
+            title: z.string().trim().min(1).max(120), sourceSessionId: z.string().min(1), machineId: z.string().min(1),
+            publicMetadata: entryPublicMetadataSchema.optional(), reuseExisting: z.boolean().optional(),
+        }).strict() },
     }, (request, reply) => respond(reply, async () => {
-        const invite = newInvite();
-        const entry = await inTx(async (tx) => {
+        const result = await inTx(async (tx) => {
             const [source, machine] = await Promise.all([
                 tx.session.findUnique({ where: { id: request.body.sourceSessionId }, select: { accountId: true, encryptionMode: true, dataEncryptionKey: true, sharedSessionEntryMember: { select: { id: true } } } }),
                 tx.machine.findUnique({ where: { id: request.body.machineId }, select: SESSION_ENTRY_MACHINE_SELECT }),
             ]);
             if (source?.accountId !== request.userId || machine?.accountId !== request.userId || source.sharedSessionEntryMember) throw new SessionEntryError(403, "forbidden");
+            if (request.body.reuseExisting) {
+                const existing = await tx.sharedSessionEntry.findFirst({ where: {
+                    ownerId: request.userId, sourceSessionId: request.body.sourceSessionId, machineId: request.body.machineId,
+                    sourceSnapshot: { not: prismaRuntime.AnyNull }, inviteTokenEncrypted: { not: null },
+                }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+                if (existing) return { entry: existing, inviteToken: recoverEntryInvite(existing) };
+            }
             if (source.encryptionMode !== "plain" && !source.dataEncryptionKey) throw new SessionEntryError(409, "encryption_upgrade_required");
             if (machine.revokedAt || machine.replacedByMachineId) throw new SessionEntryError(409, "host_offline");
-            return tx.sharedSessionEntry.create({ data: { ...request.body, ownerId: request.userId, inviteTokenHash: invite.hash,
-                sourceSnapshot: await captureEntrySourceSnapshot(tx, request.body.sourceSessionId) } });
+            const invite = newInvite();
+            const created = await tx.sharedSessionEntry.create({ data: {
+                title: request.body.title, sourceSessionId: request.body.sourceSessionId, machineId: request.body.machineId,
+                ownerId: request.userId, inviteTokenHash: invite.hash,
+                ...(request.body.publicMetadata ? { publicMetadata: request.body.publicMetadata } : {}),
+                sourceSnapshot: await captureEntrySourceSnapshot(tx, request.body.sourceSessionId),
+            } });
+            const entry = await tx.sharedSessionEntry.update({ where: { id: created.id }, data: { inviteTokenEncrypted: encryptEntryInvite(created, invite.token) } });
+            return { entry, inviteToken: invite.token };
         });
-        return { entry: publicEntry(entry), inviteToken: invite.token };
+        return { entry: publicEntry(result.entry), inviteToken: result.inviteToken };
+    }));
+
+    app.post("/v1/shared-session-entries/preview", {
+        preHandler: async (request, reply) => {
+            // Supplied credentials must pass the same eligibility checks as every authenticated route.
+            if (request.headers.authorization !== undefined) return app.authenticate(request, reply);
+        },
+        schema: { body: z.object({ inviteToken: entryInviteTokenSchema }).strict() },
+    }, (request, reply) => respond(reply, async () => {
+        reply.header("Cache-Control", "no-store");
+        const entry = await db.sharedSessionEntry.findUnique({
+            where: { inviteTokenHash: hashInvite(request.body.inviteToken) }, select: { id: true, title: true, publicMetadata: true },
+        });
+        if (!entry) throw new SessionEntryError(404, "invite_not_found");
+        const member = request.headers.authorization !== undefined
+            ? await db.sharedSessionEntryMember.findUnique({ where: { entryId_userId: { entryId: entry.id, userId: request.userId } }, include: MEMBER_INCLUDE })
+            : null;
+        return { preview: entryPreview(entry), access: member ? memberAccess(member) : null };
+    }));
+
+    app.get("/v1/shared-session-entries/:entryId/invite", { preHandler: app.authenticate, schema: { params: entryParams } }, (request, reply) => respond(reply, async () => {
+        reply.header("Cache-Control", "no-store");
+        const entry = await db.sharedSessionEntry.findUnique({ where: { id: request.params.entryId } });
+        if (entry?.ownerId !== request.userId) throw new SessionEntryError(403, "forbidden");
+        return { inviteToken: recoverEntryInvite(entry) };
     }));
 
     app.get("/v1/shared-session-entries", { preHandler: app.authenticate }, (request, reply) => respond(reply, async () => ({
@@ -59,14 +100,14 @@ export function sharedSessionEntryRoutes(baseApp: Fastify): void {
             if (!entry.sourceSnapshot && await tx.sharedSessionEntryMember.findFirst({ where: { entryId: entry.id }, select: { id: true } })) {
                 throw new SessionEntryError(409, "context_snapshot_required");
             }
-            await tx.sharedSessionEntry.update({ where: { id: entry.id }, data: { inviteTokenHash: invite.hash,
+            await tx.sharedSessionEntry.update({ where: { id: entry.id }, data: { inviteTokenHash: invite.hash, inviteTokenEncrypted: encryptEntryInvite(entry, invite.token),
                 ...(!entry.sourceSnapshot ? { sourceSnapshot: await captureEntrySourceSnapshot(tx, entry.sourceSessionId) } : {}) } });
         });
         return { inviteToken: invite.token };
     }));
 
     app.post("/v1/shared-session-entries/redeem", {
-        preHandler: app.authenticate, schema: { body: z.object({ inviteToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict() },
+        preHandler: app.authenticate, schema: { body: z.object({ inviteToken: entryInviteTokenSchema }).strict() },
     }, (request, reply) => respond(reply, async () => {
         const member = await inTx(async (tx) => {
             await assertGoogleIdentity(request.userId, tx);
@@ -154,7 +195,7 @@ export function sharedSessionEntryRoutes(baseApp: Fastify): void {
             }
             await tx.sharedSessionEntryMember.update({ where: { id: member.id }, data: { status: "provisioning" } });
             return {
-                entryId: member.entryId, memberId: member.id, sourceSessionId: member.entry.sourceSessionId,
+                entryId: member.entryId, memberId: member.id, title: member.entry.title, sourceSessionId: member.entry.sourceSessionId,
                 sourceSnapshot: member.entry.sourceSnapshot,
                 sessionId: member.sessionId, encryptionMode,
                 recipient: {

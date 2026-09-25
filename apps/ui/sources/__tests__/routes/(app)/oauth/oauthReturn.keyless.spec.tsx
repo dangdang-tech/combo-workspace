@@ -130,7 +130,7 @@ describe('oauth/[provider] return (keyless)', () => {
             expect(fetchMock).not.toHaveBeenCalled();
             expect(clearPendingExternalAuthMock).not.toHaveBeenCalled();
             expect(loginWithCredentialsSpy).not.toHaveBeenCalled();
-            expect(replaceSpy).toHaveBeenCalledWith('/restore');
+            expect(replaceSpy).toHaveBeenCalledWith('/restore?provider=github&reason=provider_already_linked');
         });
 
         vi.stubGlobal('fetch', originalFetch);

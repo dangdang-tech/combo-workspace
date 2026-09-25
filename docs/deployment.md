@@ -60,6 +60,16 @@ The server saves source metadata and stored message ciphertext at invitation cre
 
 These are upgrade and acceptance requirements, not a claim that a particular image has been deployed or passed browser/provider acceptance. Preserve the pre-upgrade backup; rolling back readers after new snapshot writes requires its own validation.
 
+## Upgrade COMBO publication and invitation recovery
+
+The source-build publication update adds `20260923120000_shared_session_publication` for PostgreSQL, SQLite, and MySQL. It adds nullable `SharedSessionEntry.publicMetadata` and `inviteTokenEncrypted`; it does not backfill or rewrite existing invitations, snapshots, members, or conversations. Preserve the server master secret: new invitation-token recovery depends on it.
+
+Use matching CLI, UI, and server sources. The new CLI publication action needs the updated server's `reuseExisting` create input, owner invite read, and invitation preview. An older host can still prepare a child, but only the updated host applies the published invitation title to newly created copies. Older clients can continue using their existing create, rotate, and redeem requests. Existing hash-only invitations remain redeemable; the owner must retain the original link or explicitly replace it to make it recoverable.
+
+Follow the backup, dedicated-host, migration rehearsal, image, and two-account checks above. On a disposable copy of the current database, apply the exact provider migration through the server's normal migration owner, verify integrity and unchanged existing row counts, then check both updated-reader behavior and old-reader startup. Do not use `db push`, rewrite the migration ledger, or restore an old backup as an image rollback. A rollback retains the additive columns and all post-deployment conversation writes.
+
+Acceptance additionally covers: repeat CLI/MCP publication returns the same URL and snapshot; public preview exposes only the intended metadata; a signed-in recipient resumes their own copy after reload; native Codex publication leaves the selected source thread untouched and uses acknowledged imported records rather than a transcript preview. Verify a real recipient reply using inherited context, not only readiness or unit tests.
+
 ## Runtime overview
 - **App server:** Node.js running `tsx ./sources/main.ts` (Fastify + Socket.IO).
 - **Database:** Postgres via Prisma.

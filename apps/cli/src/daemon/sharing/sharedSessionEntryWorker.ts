@@ -41,6 +41,7 @@ export function startSharedSessionEntryWorker(params: SharedSessionEntryWorkerPa
 
 const ClaimResponseSchema = z.object({ assignment: z.object({
   entryId: z.string().min(1), memberId: z.string().min(1), sourceSessionId: z.string().min(1),
+  title: z.string().trim().min(1).max(120).optional(),
   sourceSnapshot: z.unknown().optional(),
   sessionId: z.string().min(1).nullable(), encryptionMode: z.enum(['plain', 'e2ee']),
   recipient: z.object({ userId: z.string().min(1), signingPublicKey: z.string().nullable(),

@@ -28,7 +28,7 @@ function isRouteOwnedServerParam(pathname: string): boolean {
 function replaceCurrentWebLocation(relativeUrl: string): void {
     if (!isWebRuntime()) return;
     try {
-        window.history.replaceState(null, '', relativeUrl);
+        window.history.replaceState(window.history.state ?? null, '', relativeUrl);
     } catch {
         // ignore
     }
@@ -49,7 +49,13 @@ export async function commitWebServerUrlOverride(params: Readonly<{
         refreshAuth: params.refreshAuth,
         ensureConnection: true,
     });
-    replaceCurrentWebLocation(params.override.cleanedRelativeUrl);
+    // A ready invitation can navigate while connection/auth refresh is pending.
+    // Only consume the same intent that is still displayed; never replay its old route.
+    const current = readWebServerUrlOverrideFromLocation();
+    if (current?.serverUrl === params.override.serverUrl
+        && current.cleanedRelativeUrl === params.override.cleanedRelativeUrl) {
+        replaceCurrentWebLocation(current.cleanedRelativeUrl);
+    }
 }
 
 export function readWebServerUrlOverrideFromLocation(): WebServerUrlOverride | null {

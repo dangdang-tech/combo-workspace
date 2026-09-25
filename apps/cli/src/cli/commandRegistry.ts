@@ -32,6 +32,7 @@ import { handleConfiguredAcpCatalogCliCommand } from '@/agent/acp/catalog/config
 export type CommandContext = Readonly<{
   args: string[];
   rawArgv: string[];
+  serverSelectionArgs?: readonly string[];
   terminalRuntime: TerminalRuntimeFlags | null;
 }>;
 

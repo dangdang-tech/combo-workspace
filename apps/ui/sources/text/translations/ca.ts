@@ -593,6 +593,8 @@ export const ca: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
+        publisher: "Publicat per",
+        googleAuthUnavailable: "L’inici de sessió amb Google no està habilitat en aquest servidor. Contacta amb qui ha publicat la sessió.",
         guidePrepareTitle: "Prepara una conversa per compartir",
         guideSteps: "1 Prepara → 2 Crea un enllaç → 3 El convidat continua",
         guidePrepareBody: "Descriu la tasca i inicia una conversa. Quan estigui preparada, tria «Comparteix la conversa».",
@@ -1396,7 +1398,7 @@ export const ca: TranslationStructure = {
         restoreQrInstructions: 'En un dispositiu on ja hagis iniciat sessió, ves a Configuració → Compte i escaneja aquest codi QR.',
         externalAuthVerifiedTitle: ({ provider }: { provider: string }) => `${provider} verificat`,
         externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-            `Hem trobat un compte de Happier existent vinculat a ${provider}. Per acabar d'iniciar sessió en aquest dispositiu, restaura la clau del teu compte amb el codi QR o amb la teva clau secreta.`,
+            `Hem trobat un compte de COMBO existent vinculat a ${provider}. Per acabar d'iniciar sessió en aquest dispositiu, restaura la clau del teu compte amb el codi QR o amb la teva clau secreta.`,
         restoreWithSecretKeyInstead: 'Restaura amb clau secreta',
         restoreWithSecretKeyDescription: 'Introdueix la teva clau secreta per recuperar l’accés al teu compte.',
         lostAccessLink: 'Sense accés?',

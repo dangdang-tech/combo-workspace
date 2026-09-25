@@ -509,7 +509,7 @@ function resolveMaxScanPages(): number {
   return Math.max(1, maxPages);
 }
 
-async function findExistingSessionIdByTag(params: Readonly<{
+export async function findExistingSessionIdByTag(params: Readonly<{
   credentials: Credentials;
   tag: string;
   metadataMatches?: (metadata: Readonly<Record<string, unknown>>) => boolean;

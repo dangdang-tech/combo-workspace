@@ -1,10 +1,16 @@
+import * as fs from 'node:fs/promises';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { readJsonlFileForward } from './jsonlForwardReader';
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return { ...actual, open: vi.fn(actual.open) };
+});
 
 function buildJsonl(lines: unknown[], opts?: { trailingNewline?: boolean }): string {
   const trailingNewline = opts?.trailingNewline !== false;
@@ -13,6 +19,22 @@ function buildJsonl(lines: unknown[], opts?: { trailingNewline?: boolean }): str
 }
 
 describe('readJsonlFileForward', () => {
+  it('fails strict publication immediately when the captured file truncates during read', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'happier-jsonl-forward-'));
+    const filePath = join(dir, 't.jsonl');
+    await writeFile(filePath, buildJsonl([{ text: 'committed' }]));
+    const read = vi.fn().mockResolvedValueOnce({ bytesRead: 0 }).mockRejectedValue(new Error('repeated read after EOF'));
+    const close = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(fs.open).mockResolvedValueOnce({ read, close } as unknown as Awaited<ReturnType<typeof fs.open>>);
+    try {
+      await expect(readJsonlFileForward({ filePath, offsetBytes: 0, maxBytes: 1024, maxItems: 10, strict: true })).rejects.toThrow(/changed|truncated/i);
+      expect(read).toHaveBeenCalledTimes(1);
+      expect(close).toHaveBeenCalledTimes(1);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('reads forward from an offset and advances the cursor', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'happier-jsonl-forward-'));
     const filePath = join(dir, 't.jsonl');

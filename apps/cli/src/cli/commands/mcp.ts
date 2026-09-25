@@ -48,7 +48,11 @@ function resolveCommandKind(args: readonly string[]): string {
   return `mcp_servers_${sub}`;
 }
 
-export async function handleMcpCommand(args: string[], deps?: Partial<McpCommandDeps>): Promise<void> {
+export async function handleMcpCommand(
+  args: string[],
+  deps?: Partial<McpCommandDeps>,
+  serverSelectionArgs?: readonly string[],
+): Promise<void> {
   const json = wantsJson(args);
   const group = String(args[0] ?? '').trim();
   const subcommand = String(args[1] ?? '').trim();
@@ -67,7 +71,7 @@ export async function handleMcpCommand(args: string[], deps?: Partial<McpCommand
         console.log('happier mcp serve [--session <session-id>]');
         return;
       }
-      await runMcpServeCommand(args, resolvedDeps);
+      await runMcpServeCommand(args, resolvedDeps, serverSelectionArgs);
       return;
     }
 
@@ -104,7 +108,7 @@ export async function handleMcpCliCommand(context: CommandContext): Promise<void
   const kind = resolveCommandKind(args);
 
   try {
-    await handleMcpCommand(args);
+    await handleMcpCommand(args, undefined, context.serverSelectionArgs);
   } catch (error) {
     if (json) {
       const mapped = mapUnknownErrorToControlError(error);

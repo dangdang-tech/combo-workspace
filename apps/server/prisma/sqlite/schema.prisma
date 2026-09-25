@@ -1287,6 +1287,10 @@ model SharedSessionEntry {
     machine         Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
     title           String
     inviteTokenHash String   @unique
+    /// Explicit, owner-authored fields safe for anonymous invitation preview.
+    publicMetadata Json?
+    /// Recoverable invitation secret encrypted with the server key and owner/entry scope.
+    inviteTokenEncrypted Bytes?
     /// Share-time stored rows and metadata, visible only to the owner daemon.
     sourceSnapshot Json?
     createdAt       DateTime @default(now())

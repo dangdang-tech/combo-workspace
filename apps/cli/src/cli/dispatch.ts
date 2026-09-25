@@ -42,6 +42,16 @@ export async function dispatchCli(params: Readonly<{
     return;
   }
 
+  // Preserve only the explicit prefix consumed by the canonical selector. MCP
+  // reapplies it after clearing ambient env overrides, before reading credentials.
+  const serverSelectionArgs = params.args.slice(0, params.args.length - args.length);
+  const commandContext = {
+    args,
+    rawArgv,
+    terminalRuntime,
+    ...(serverSelectionArgs.length > 0 ? { serverSelectionArgs } : {}),
+  };
+
   // Check if first argument is a subcommand
   const subcommand = args[0];
 
@@ -87,7 +97,7 @@ export async function dispatchCli(params: Readonly<{
   }
   const commandHandler = (subcommand ? commandRegistry[subcommand] : undefined);
   if (commandHandler) {
-    await commandHandler({ args, rawArgv, terminalRuntime });
+    await commandHandler(commandContext);
     return;
   }
 
@@ -96,5 +106,5 @@ export async function dispatchCli(params: Readonly<{
     throw new Error(`Default agent '${DEFAULT_CATALOG_AGENT_ID}' has no CLI command handler registered`);
   }
   const defaultHandler = await defaultEntry.getCliCommandHandler();
-  await defaultHandler({ args, rawArgv, terminalRuntime });
+  await defaultHandler(commandContext);
 }

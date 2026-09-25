@@ -601,6 +601,8 @@ export const it: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
+        publisher: "Pubblicato da",
+        googleAuthUnavailable: "L’accesso con Google non è abilitato su questo server. Contatta chi ha pubblicato la sessione.",
         guidePrepareTitle: "Prepara una conversazione da condividere",
         guideSteps: "1 Prepara → 2 Crea un link → 3 L’ospite continua",
         guidePrepareBody: "Descrivi l’attività e avvia una conversazione. Quando è pronta, scegli «Condividi conversazione».",
@@ -1791,7 +1793,7 @@ export const it: TranslationStructure = {
     externalAuthVerifiedTitle: ({ provider }: { provider: string }) =>
       `${provider} verificato`,
     externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-      `Abbiamo trovato un account Happier esistente collegato a ${provider}. Per completare l'accesso su questo dispositivo, ripristina la chiave del tuo account con il codice QR o con la tua chiave segreta.`,
+      `Abbiamo trovato un account COMBO esistente collegato a ${provider}. Per completare l'accesso su questo dispositivo, ripristina la chiave del tuo account con il codice QR o con la tua chiave segreta.`,
     restoreWithSecretKeyInstead: "Ripristina con chiave segreta",
     restoreWithSecretKeyDescription:
       "Inserisci la chiave segreta per ripristinare l’accesso al tuo account.",

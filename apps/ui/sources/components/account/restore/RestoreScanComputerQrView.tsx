@@ -7,6 +7,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 
+import { resolveRestoreRedirectNotice } from '@/auth/providers/resolveRestoreRedirectNotice';
 import { useAuth } from '@/auth/context/AuthContext';
 import { generateAuthKeyPair, authQRStart } from '@/auth/flows/qrStart';
 import { authQRWait } from '@/auth/flows/qrWait';
@@ -28,6 +29,8 @@ import { QrCodeScannerView } from '@/components/qr/QrCodeScannerView';
 import { promptAccountConnectApprovalRequired } from './accountConnectApprovalGuidance';
 
 const stylesheet = StyleSheet.create((theme) => ({
+    root: { flex: 1, backgroundColor: theme.colors.surface.base },
+    providerNotice: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 8 },
     scrollView: {
         flex: 1,
         backgroundColor: theme.colors.surface.base,
@@ -100,11 +103,22 @@ function resolveDeviceLabel(): string | null {
 }
 
 export const RestoreScanComputerQrView = React.memo(function RestoreScanComputerQrView() {
+    const params = useLocalSearchParams<{ returnTo?: string; provider?: string; reason?: string }>();
+    const returnTo = resolveAuthReturnToRoute(params.returnTo, false);
+    const notice = resolveRestoreRedirectNotice(params.provider, params.reason);
+    return <View style={stylesheet.root}>
+        {notice ? <View testID="restore-provider-notice" style={stylesheet.providerNotice}>
+            <Text style={stylesheet.title}>{notice.title}</Text>
+            <Text style={stylesheet.subtitle}>{notice.body}</Text>
+        </View> : null}
+        <RestoreScanComputerQrContent returnTo={returnTo} />
+    </View>;
+});
+
+function RestoreScanComputerQrContent({ returnTo }: { returnTo: string }) {
     const { theme } = useUnistyles();
     const styles = stylesheet;
     const router = useRouter();
-    const params = useLocalSearchParams<{ returnTo?: string }>();
-    const returnTo = resolveAuthReturnToRoute(params.returnTo, false);
     const isFocused = useIsFocused();
     const auth = useAuth();
     const pairingDecision = useFeatureDecision('auth.pairing.desktopQrMobileScan');
@@ -478,4 +492,4 @@ export const RestoreScanComputerQrView = React.memo(function RestoreScanComputer
             </View>
         </ScrollView>
     );
-});
+}

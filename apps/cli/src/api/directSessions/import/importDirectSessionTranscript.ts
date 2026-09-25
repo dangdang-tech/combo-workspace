@@ -110,20 +110,37 @@ export async function importDirectSessionTranscript(params: Readonly<{
   workingDirectory?: string;
 }>): Promise<Readonly<{ importedCount: number }>> {
   const items = await loadAllDirectTranscriptItems({ linked: params.linked });
-  let importedCount = 0;
   const workingDirectory = typeof params.workingDirectory === 'string' && params.workingDirectory.trim().length > 0
     ? params.workingDirectory.trim()
     : params.linked.sessionPath;
 
-  for (const item of items) {
+  return await importDirectSessionTranscriptItems({
+    items, credentials: params.credentials, sessionId: params.sessionId,
+    rawSession: params.linked.rawSession, providerId: params.linked.providerId,
+    remoteSessionId: params.linked.remoteSessionId, workingDirectory,
+  });
+}
+
+/** Commit a captured transcript using the destination session's encryption context. */
+export async function importDirectSessionTranscriptItems(params: Readonly<{
+  items: readonly DirectTranscriptRawMessageV1[];
+  credentials: Credentials;
+  sessionId: string;
+  rawSession: RawSessionRecord;
+  providerId: string;
+  remoteSessionId: string;
+  workingDirectory?: string | null;
+}>): Promise<Readonly<{ importedCount: number }>> {
+  let importedCount = 0;
+  for (const item of params.items) {
     const raw = await adoptDirectSessionMediaForImport({
       raw: item.raw,
       sessionId: params.sessionId,
       messageLocalId: item.localId ?? item.id,
-      workingDirectory,
+      workingDirectory: params.workingDirectory ?? null,
     });
     const content = buildStoredMessageContent({
-      rawSession: params.linked.rawSession,
+      rawSession: params.rawSession,
       credentials: params.credentials,
       raw,
     });
@@ -134,8 +151,8 @@ export async function importDirectSessionTranscript(params: Readonly<{
       content,
       messageRole: item.messageRole ?? undefined,
       localId: makeImportLocalId({
-        providerId: params.linked.providerId,
-        remoteSessionId: params.linked.remoteSessionId,
+        providerId: params.providerId,
+        remoteSessionId: params.remoteSessionId,
         directItemId: item.id,
       }),
     });

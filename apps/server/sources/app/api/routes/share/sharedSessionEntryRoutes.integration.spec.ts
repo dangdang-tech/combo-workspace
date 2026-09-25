@@ -28,6 +28,7 @@ describe("private session entry lifecycle", () => {
     beforeAll(async () => {
         harness = await createLightSqliteHarness({
             tempDirPrefix: "happier-entry-test-",
+            initEncrypt: true,
             env: {
                 HAPPIER_FEATURE_SHARING_SESSION_ENTRIES__ENABLED: "1",
                 HAPPIER_FEATURE_ENCRYPTION__STORAGE_POLICY: "optional",
@@ -97,11 +98,162 @@ describe("private session entry lifecycle", () => {
         const result = await post(ownerId, `/v1/machines/${machineId}/shared-session-entries/claim`);
         expect(result.statusCode).toBe(200);
         expect(result.json().assignment.memberId).toBe(memberId);
+        const assigned = await db.sharedSessionEntryMember.findUniqueOrThrow({ where: { id: memberId }, include: { entry: true } });
+        expect(result.json().assignment.title).toBe(assigned.entry.title);
         return result.json().assignment;
     }
     function complete(memberId: string, sessionId: string, encryptedDataKey?: string) {
         return post(ownerId, `/v1/machines/${machineId}/shared-session-entries/${memberId}/complete`, { sessionId, contextSnapshotVersion: 1, ...(encryptedDataKey ? { encryptedDataKey } : {}) });
     }
+
+    function preview(inviteToken: string, userId?: string) {
+        return app.inject({ method: "POST", url: "/v1/shared-session-entries/preview", payload: { inviteToken },
+            ...(userId ? { headers: { authorization: "Bearer test", "x-test-user-id": userId } } : {}) });
+    }
+    function readInvite(entryId: string, userId = ownerId) {
+        return app.inject({ method: "GET", url: `/v1/shared-session-entries/${entryId}/invite`, headers: { "x-test-user-id": userId } });
+    }
+
+    it("publication recovers the same encrypted invitation and reuses its frozen snapshot", async () => {
+        const publish = (title: string, description: string) => post(ownerId, "/v1/shared-session-entries", {
+            title, sourceSessionId, machineId, reuseExisting: true,
+            publicMetadata: { v: 1, description, publisherDisplayName: "  Project host  " },
+        });
+        const first = await publish("First publication", "  Intended use  ");
+        expect(first.statusCode).toBe(200);
+        const created = first.json();
+        expect(created.entry).toMatchObject({ hasReusableInvite: true, publicMetadata: { v: 1, description: "Intended use", publisherDisplayName: "Project host" } });
+        const stored = await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: created.entry.id } });
+        expect(Buffer.from(stored.inviteTokenEncrypted!).toString()).not.toContain(created.inviteToken);
+        expect(stored.inviteTokenEncrypted!.byteLength).toBeGreaterThan(43);
+        // Simulate a new server encryption instance; recovery must not rely on an in-memory token map.
+        await (await import("@/modules/encrypt")).initEncrypt();
+        expect((await readInvite(created.entry.id)).json()).toEqual({ inviteToken: created.inviteToken });
+        const sourceBefore = await db.session.findUniqueOrThrow({ where: { id: sourceSessionId } });
+        await db.session.update({ where: { id: sourceSessionId }, data: { metadata: "later-private-metadata" } });
+        try {
+            const repeated = await publish("Changed title must not replace", "New description must not replace");
+            expect(repeated.statusCode).toBe(200);
+            expect(repeated.json()).toEqual(created);
+            expect((await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: created.entry.id } })).sourceSnapshot).toEqual(stored.sourceSnapshot);
+            expect(await db.sharedSessionEntry.count({ where: { ownerId } })).toBe(1);
+        } finally {
+            await db.session.update({ where: { id: sourceSessionId }, data: { metadata: sourceBefore.metadata } });
+        }
+        const fresh = await entry();
+        expect(fresh.entry.id).not.toBe(created.entry.id);
+        const newest = await publish("Ignored", "Ignored");
+        expect(newest.json().entry.id).toBe(fresh.entry.id);
+        expect(newest.json().inviteToken).toBe(fresh.inviteToken);
+    });
+
+    it("publication serializes concurrent reuse without creating duplicate snapshots", async () => {
+        const results = await Promise.all(Array.from({ length: 3 }, () => post(ownerId, "/v1/shared-session-entries", {
+            title: "Concurrent publication", sourceSessionId, machineId, reuseExisting: true,
+        })));
+        expect(results.map(result => result.statusCode)).toEqual([200, 200, 200]);
+        expect(new Set(results.map(result => result.json().inviteToken)).size).toBe(1);
+        expect(await db.sharedSessionEntry.count({ where: { ownerId } })).toBe(1);
+    });
+
+    it("publication preview exposes only explicit public fields without allocating a member", async () => {
+        const response = await post(ownerId, "/v1/shared-session-entries", { title: "Public invitation", sourceSessionId, machineId,
+            publicMetadata: { v: 1, description: "Work on this project", publisherDisplayName: "Project host" } });
+        expect(response.statusCode).toBe(200);
+        const created = response.json();
+        const result = await preview(created.inviteToken);
+        expect(result.statusCode).toBe(200);
+        expect(result.json()).toEqual({ preview: { title: "Public invitation", description: "Work on this project", publisherDisplayName: "Project host" }, access: null });
+        expect(result.headers["cache-control"]).toBe("no-store");
+        expect(await db.sharedSessionEntryMember.count({ where: { entryId: created.entry.id } })).toBe(0);
+        expect((await preview(created.inviteToken, guestId)).json().access).toBeNull();
+        expect(await db.sharedSessionEntryMember.count({ where: { entryId: created.entry.id } })).toBe(0);
+        const unauthenticated = await app.inject({ method: "POST", url: "/v1/shared-session-entries/preview",
+            headers: { authorization: "Bearer invalid" }, payload: { inviteToken: created.inviteToken } });
+        expect(unauthenticated.statusCode).toBe(401);
+        expect((await preview("a".repeat(43))).statusCode).toBe(404);
+        expect((await preview("a".repeat(43))).json().error).toBe("invite_not_found");
+    });
+
+    it("publication preview resumes only the caller's existing membership including offline and revoked states", async () => {
+        const created = await entry();
+        const member = (await redeem(created.inviteToken)).json().access;
+        expect((await preview(created.inviteToken, guestId)).json().access).toEqual(member);
+        const other = await guest();
+        expect((await preview(created.inviteToken, other.id)).json().access).toBeNull();
+        expect((await preview(created.inviteToken)).json().access).toBeNull();
+        await claim(member.memberId);
+        const childSession = await child();
+        expect((await complete(member.memberId, childSession.id)).statusCode).toBe(200);
+        const connection = [...(eventRouter.getConnections(ownerId) ?? [])].find(item => item.socket === hostSocket)!;
+        eventRouter.removeConnection(ownerId, connection);
+        try {
+            expect((await preview(created.inviteToken, guestId)).json().access).toMatchObject({ status: "ready", sessionId: childSession.id, hostOnline: false });
+            expect((await preview(created.inviteToken)).json().access).toBeNull();
+        } finally { eventRouter.addConnection(ownerId, connection); }
+        expect((await app.inject({ method: "PATCH", url: `/v1/shared-session-entries/${created.entry.id}/members/${member.memberId}`,
+            headers: { "x-test-user-id": ownerId }, payload: { enabled: false } })).statusCode).toBe(200);
+        expect((await preview(created.inviteToken, guestId)).json().access).toMatchObject({ status: "revoked", sessionId: null });
+        expect(await db.sharedSessionEntryMember.count({ where: { entryId: created.entry.id } })).toBe(1);
+    });
+
+    it("publication protects owner recovery and rotates both token forms without changing context or members", async () => {
+        const created = await entry();
+        const member = (await redeem(created.inviteToken)).json().access;
+        const before = await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: created.entry.id } });
+        expect((await readInvite(created.entry.id, guestId)).statusCode).toBe(403);
+        const rotated = await post(ownerId, `/v1/shared-session-entries/${created.entry.id}/invite`);
+        expect(rotated.statusCode).toBe(200);
+        expect(rotated.json().inviteToken).not.toBe(created.inviteToken);
+        expect((await readInvite(created.entry.id)).json()).toEqual(rotated.json());
+        expect((await preview(created.inviteToken)).json().error).toBe("invite_not_found");
+        expect((await redeem(created.inviteToken)).json().error).toBe("invite_not_found");
+        expect((await preview(rotated.json().inviteToken, guestId)).json().access.memberId).toBe(member.memberId);
+        const after = await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: created.entry.id } });
+        expect(after.sourceSnapshot).toEqual(before.sourceSnapshot);
+        expect(after.inviteTokenEncrypted).not.toEqual(before.inviteTokenEncrypted);
+        expect(await db.sharedSessionEntryMember.count({ where: { entryId: created.entry.id } })).toBe(1);
+    });
+
+    it("publication preserves hash-only legacy links without inventing recoverable secrets", async () => {
+        const { newInvite, captureEntrySourceSnapshot } = await import("@/app/share/sessionEntryService");
+        const invite = newInvite();
+        // Shape written by the deployed 228405 server: hash and snapshot, no raw/recoverable token.
+        const legacy = await db.sharedSessionEntry.create({ data: { ownerId, sourceSessionId, machineId, title: "Legacy invitation",
+            inviteTokenHash: invite.hash, sourceSnapshot: await captureEntrySourceSnapshot(db, sourceSessionId) } });
+        const result = await readInvite(legacy.id);
+        expect(result.statusCode).toBe(409);
+        expect(result.json()).toEqual({ error: "invite_secret_unavailable" });
+        expect((await preview(invite.token)).json()).toEqual({ preview: { title: "Legacy invitation", description: null, publisherDisplayName: null }, access: null });
+        expect((await redeem(invite.token)).statusCode).toBe(200);
+        const listed = await app.inject({ method: "GET", url: "/v1/shared-session-entries", headers: { "x-test-user-id": ownerId } });
+        expect(listed.json().entries[0]).toMatchObject({ hasReusableInvite: false, publicMetadata: null });
+        const fresh = await post(ownerId, "/v1/shared-session-entries", { title: "New publication", sourceSessionId, machineId, reuseExisting: true });
+        expect(fresh.statusCode).toBe(200);
+        expect(fresh.json().entry.id).not.toBe(legacy.id);
+        expect((await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: legacy.id } })).inviteTokenHash).toBe(invite.hash);
+    });
+
+    it("publication rejects unknown metadata and normalizes omitted or blank public descriptions", async () => {
+        const base = { title: "Invitation", sourceSessionId, machineId };
+        for (const publicMetadata of [{ v: 1, sourceSnapshot: "must stay private" }, { v: 2 }, { v: 1, description: "x".repeat(1001) }, { v: 1, publisherDisplayName: "x".repeat(81) }]) {
+            expect((await post(ownerId, "/v1/shared-session-entries", { ...base, publicMetadata })).statusCode).toBe(400);
+        }
+        const result = await post(ownerId, "/v1/shared-session-entries", { ...base, publicMetadata: { v: 1, description: "  " } });
+        expect(result.statusCode).toBe(200);
+        expect((await preview(result.json().inviteToken)).json()).toEqual({ preview: { title: "Invitation", description: null, publisherDisplayName: null }, access: null });
+    });
+
+    it("publication fails closed for copied ciphertext or a mismatched persisted token hash", async () => {
+        const first = await entry();
+        const second = await entry();
+        const firstRow = await db.sharedSessionEntry.findUniqueOrThrow({ where: { id: first.entry.id } });
+        await db.sharedSessionEntry.update({ where: { id: second.entry.id }, data: { inviteTokenEncrypted: firstRow.inviteTokenEncrypted } });
+        expect((await readInvite(second.entry.id)).statusCode).toBe(409);
+        expect((await readInvite(second.entry.id)).json().error).toBe("invite_secret_unavailable");
+        await db.sharedSessionEntry.update({ where: { id: first.entry.id }, data: { inviteTokenHash: "different-hash" } });
+        expect((await readInvite(first.entry.id)).json().error).toBe("invite_secret_unavailable");
+    });
 
     it("reports snapshot availability without exposing snapshot contents in entry summaries", async () => {
         const { newInvite } = await import("@/app/share/sessionEntryService");
@@ -505,11 +657,14 @@ describe("private session entry lifecycle", () => {
     });
 
     it("fails closed when the canonical feature is disabled", async () => {
+        const created = await entry();
         process.env.HAPPIER_FEATURE_SHARING_SESSION_ENTRIES__ENABLED = "0";
         try {
             const response = await app.inject({ method: "GET", url: "/v1/shared-session-entries", headers: { "x-test-user-id": ownerId } });
             expect(response.statusCode).toBe(404);
             expect(response.json().error).toBe("not_found");
+            expect((await preview(created.inviteToken)).json().error).toBe("not_found");
+            expect((await readInvite(created.entry.id)).json().error).toBe("not_found");
         } finally { process.env.HAPPIER_FEATURE_SHARING_SESSION_ENTRIES__ENABLED = "1"; }
     });
 

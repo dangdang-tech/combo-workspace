@@ -15,8 +15,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { QRCode } from '@/components/qr/QRCode';
 import { getReadyServerFeatures } from '@/sync/api/capabilities/getReadyServerFeatures';
 import { fireAndForget } from '@/utils/system/fireAndForget';
-import { getAuthProvider } from '@/auth/providers/registry';
-import type { RestoreRedirectReason, RestoreRedirectNotice } from '@/auth/providers/types';
+import { resolveRestoreRedirectNotice } from '@/auth/providers/resolveRestoreRedirectNotice';
 import { Text } from '@/components/ui/text/Text';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 
@@ -101,12 +100,6 @@ function paramString(params: Record<string, unknown>, key: string): string | nul
     return typeof value === 'string' ? value : null;
 }
 
-function parseRestoreRedirectReason(value: unknown): RestoreRedirectReason | null {
-    const raw = typeof value === 'string' ? value.trim() : '';
-    if (raw === 'provider_already_linked') return raw;
-    return null;
-}
-
 export const RestoreQrView = React.memo(function RestoreQrView() {
     const { theme } = useUnistyles();
     const styles = stylesheet;
@@ -118,15 +111,7 @@ export const RestoreQrView = React.memo(function RestoreQrView() {
     const [providerResetEnabled, setProviderResetEnabled] = useState(false);
     const isCancelledRef = useRef(false);
 
-    const restoreRedirectNotice: RestoreRedirectNotice | null = React.useMemo(() => {
-        const providerId = (paramString(params, 'provider') ?? '').trim().toLowerCase();
-        const reason = parseRestoreRedirectReason(paramString(params, 'reason'));
-        if (!providerId || !reason) return null;
-
-        const provider = getAuthProvider(providerId);
-        if (!provider?.getRestoreRedirectNotice) return null;
-        return provider.getRestoreRedirectNotice({ reason });
-    }, [params]);
+    const restoreRedirectNotice = React.useMemo(() => resolveRestoreRedirectNotice(params.provider, params.reason), [params.provider, params.reason]);
 
     const keypair = React.useMemo(() => generateAuthKeyPair(), []);
 

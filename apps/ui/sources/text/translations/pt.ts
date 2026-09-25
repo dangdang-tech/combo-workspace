@@ -652,6 +652,8 @@ export const pt: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
+        publisher: "Publicado por",
+        googleAuthUnavailable: "O login com o Google não está ativado neste servidor. Entre em contato com quem publicou a sessão.",
         guidePrepareTitle: "Prepare uma conversa para compartilhar",
         guideSteps: "1 Prepare → 2 Crie um link → 3 Seu convidado continua",
         guidePrepareBody: "Descreva a tarefa e inicie uma conversa. Quando estiver pronta, escolha “Compartilhar conversa”.",
@@ -1504,7 +1506,7 @@ export const pt: TranslationStructure = {
     externalAuthVerifiedTitle: ({ provider }: { provider: string }) =>
       `${provider} verificado`,
     externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-      `Encontramos uma conta Happier existente vinculada a ${provider}. Para concluir o login neste dispositivo, restaure a chave da sua conta usando o QR code ou sua chave secreta.`,
+      `Encontramos uma conta COMBO existente vinculada a ${provider}. Para concluir o login neste dispositivo, restaure a chave da sua conta usando o QR code ou sua chave secreta.`,
     restoreWithSecretKeyInstead: "Restaurar com chave secreta",
     restoreWithSecretKeyDescription:
       "Digite sua chave secreta para recuperar o acesso à sua conta.",

@@ -19,6 +19,7 @@ import { configuration } from '@/configuration';
 
 export type SharedSessionAssignment = Readonly<{
   entryId: string;
+  title?: string;
   memberId: string;
   sourceSessionId: string;
   sourceSnapshot?: unknown;
@@ -107,12 +108,16 @@ export async function provisionSharedSession(params: Readonly<{
   }
   assertOnline();
   const inherited = resolveForkInheritedOverridesFromMetadata(sourceMetadata, agentId);
+  const publishedTitle = assignment.title?.trim();
   const recipe = !assignment.sessionId ? await buildReplaySeededSpawnRecipe({
     credentials, cwd: directory,
     source: { sourceSessionId: assignment.sourceSessionId, forkPoint: { type: 'seq', upToSeqInclusive: source.seq } },
     sourceSnapshot, providerHintAgentId: agentId, strategy: 'recent_messages',
     requestId: `shared-entry:${assignment.memberId}`,
-    extraMetadata: { ...inherited.metadata, machineId: params.machineId, sharedSessionEntryId: assignment.entryId },
+    extraMetadata: {
+      ...inherited.metadata, machineId: params.machineId, sharedSessionEntryId: assignment.entryId,
+      ...(publishedTitle ? { summary: { text: publishedTitle, updatedAt: Date.now() } } : {}),
+    },
   }) : null;
   if (recipe && !recipe.ok) fail(recipe.snapshotError ?? 'context_snapshot_unavailable');
   assertOnline();

@@ -426,6 +426,8 @@ export const en = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
+        publisher: "Published by",
+        googleAuthUnavailable: "Google sign-in is not enabled on this server. Contact the publisher.",
         guidePrepareTitle: "Prepare a session to share",
         guideSteps: "1 Prepare a session → 2 Create a share link → 3 Your guest continues",
         guidePrepareBody: "Describe your task and start a conversation. When it is ready, choose “Share session”.",
@@ -1314,7 +1316,7 @@ export const en = {
         restoreQrInstructions: "On a device that's already signed in, go to Settings → Account and scan this QR code.",
         externalAuthVerifiedTitle: ({ provider }: { provider: string }) => `${provider} verified`,
         externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-            `We found an existing Happier account linked to ${provider}. To finish signing in on this device, restore your account key using the QR code or your secret key.`,
+            `We found an existing COMBO account linked to ${provider}. To finish signing in on this device, restore your account key using the QR code or your secret key.`,
         restoreWithSecretKeyInstead: 'Restore with Secret Key Instead',
         restoreWithSecretKeyDescription: 'Enter your secret key to restore access to your account.',
         lostAccessLink: 'Lost access?',

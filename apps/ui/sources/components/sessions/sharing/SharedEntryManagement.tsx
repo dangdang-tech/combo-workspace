@@ -64,16 +64,29 @@ function SharedEntryManagementScope({ sourceSessionId, machineId, title, serverI
         try { await operation(isCurrent); } catch (nextError) { if (isCurrent()) setError(nextError); }
         finally { if (isCurrent()) { inFlight.current = false; setBusy(false); } }
     }, []);
+    const readReusableInvite = useCallback(async (next: SharedEntry | null): Promise<string | null> => {
+        if (!next?.hasReusableInvite) return null;
+        try { return await client.getInvite(next.id); }
+        catch (error) {
+            // A known lost/obsolete secret can only be repaired by explicit rotation.
+            // Transient failures retain the existing error-and-refresh path.
+            if (error instanceof SharedEntryError && error.status === 409 && error.code === 'invite_secret_unavailable') return null;
+            throw error;
+        }
+    }, [client]);
     const load = useCallback(async (isCurrent: () => boolean) => {
         const nextEntries = (await client.list()).filter(item => item.sourceSessionId === sourceSessionId);
         if (!isCurrent()) return;
         const next = nextEntries.find(item => item.id === selectedEntryId.current) ?? nextEntries[0] ?? null;
         const nextMembers = next ? await client.members(next.id) : [];
         if (!isCurrent()) return;
-        if (next?.id !== selectedEntryId.current) { setInviteToken(null); setCopied(false); }
+        const reusableToken = await readReusableInvite(next);
+        if (!isCurrent()) return;
+        if (next?.hasReusableInvite || next?.id !== selectedEntryId.current) { setInviteToken(reusableToken); setCopied(false); }
         selectedEntryId.current = next?.id ?? null;
+        if (reusableToken) setInviteToken(reusableToken);
         setEntries(nextEntries); setEntry(next); setMembers(nextMembers); setLoaded(true);
-    }, [client, sourceSessionId]);
+    }, [client, readReusableInvite, sourceSessionId]);
     useEffect(() => {
         mounted.current = true;
         generation.current += 1; inFlight.current = false;
@@ -95,8 +108,10 @@ function SharedEntryManagementScope({ sourceSessionId, machineId, title, serverI
         if (next.id === selectedEntryId.current) return;
         const nextMembers = await client.members(next.id);
         if (!isCurrent()) return;
+        const reusableToken = await readReusableInvite(next);
+        if (!isCurrent()) return;
         selectedEntryId.current = next.id;
-        setEntry(next); setMembers(nextMembers); setInviteToken(null); setCopied(false);
+        setEntry(next); setMembers(nextMembers); setInviteToken(reusableToken); setCopied(false);
     });
     const rotate = () => run(async (isCurrent) => {
         const confirmed = await Modal.confirm(t('sharedEntry.rotate'), t('sharedEntry.rotateDetail'), {

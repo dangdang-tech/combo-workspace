@@ -169,3 +169,18 @@ describe('registerHappierMcpBuiltInTools', () => {
     expect(sendNotification).toHaveBeenCalledTimes(1);
   });
 });
+
+
+it('exposes session_publish through the canonical action tool registration', async () => {
+  const handlers = new Map<string, (args: unknown, extra?: unknown) => Promise<unknown>>();
+  const result = { sourceSessionId: 'bound-session', entryId: 'entry-1', inviteUrl: 'https://combo.test/invite/example' };
+  const executeActionByToolName = vi.fn(async () => ({ ok: true as const, result }));
+  registerHappierMcpBuiltInTools({ registerTool: (name, _meta, handler) => { handlers.set(name, handler); } }, {
+    sessionId: 'bound-session', surface: 'mcp',
+    deps: { changeTitle: async () => ({ success: true }), startExecutionRun: async () => ({ ok: false as const, errorCode: 'unsupported', error: 'unsupported' }), executeActionByToolName },
+  });
+  const handler = handlers.get('session_publish');
+  expect(handler).toBeTypeOf('function');
+  expect(await handler!({ title: 'Share selected context' })).toEqual({ content: [{ type: 'text', text: JSON.stringify(result) }], isError: false });
+  expect(executeActionByToolName.mock.calls[0]?.slice(0, 3)).toEqual(['session_publish', { title: 'Share selected context' }, 'bound-session']);
+});

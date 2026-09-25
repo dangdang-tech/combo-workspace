@@ -603,6 +603,8 @@ export const es: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
+        publisher: "Publicado por",
+        googleAuthUnavailable: "El inicio de sesión con Google no está habilitado en este servidor. Contacta con quien publicó la sesión.",
         guidePrepareTitle: "Prepara una conversación para compartir",
         guideSteps: "1 Prepara → 2 Crea un enlace → 3 Tu invitado continúa",
         guidePrepareBody: "Describe tu tarea e inicia una conversación. Cuando esté lista, elige «Compartir conversación».",
@@ -1456,7 +1458,7 @@ export const es: TranslationStructure = {
     externalAuthVerifiedTitle: ({ provider }: { provider: string }) =>
       `${provider} verificado`,
     externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-      `Encontramos una cuenta existente de Happier vinculada a ${provider}. Para terminar de iniciar sesión en este dispositivo, restaura tu clave de cuenta con el código QR o tu clave secreta.`,
+      `Encontramos una cuenta existente de COMBO vinculada a ${provider}. Para terminar de iniciar sesión en este dispositivo, restaura tu clave de cuenta con el código QR o tu clave secreta.`,
     restoreWithSecretKeyInstead: "Restaurar con clave secreta",
     restoreWithSecretKeyDescription:
       "Ingresa tu clave secreta para recuperar el acceso a tu cuenta.",

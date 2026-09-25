@@ -428,6 +428,8 @@ export const de: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
+        publisher: "Veröffentlicht von",
+        googleAuthUnavailable: "Die Google-Anmeldung ist auf diesem Server nicht aktiviert. Bitte kontaktiere den Herausgeber.",
         guidePrepareTitle: "Eine Unterhaltung zum Teilen vorbereiten",
         guideSteps: "1 Vorbereiten → 2 Link erstellen → 3 Gast setzt fort",
         guidePrepareBody: "Beschreibe deine Aufgabe und starte eine Unterhaltung. Wähle danach „Unterhaltung teilen“.",
@@ -1316,7 +1318,7 @@ export const de: TranslationStructure = {
         restoreQrInstructions: "Geh auf einem bereits angemeldeten Gerät zu Einstellungen → Konto und scanne diesen QR-Code.",
         externalAuthVerifiedTitle: ({ provider }: { provider: string }) => `${provider} verifiziert`,
         externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-            `Wir haben ein bestehendes Happier-Konto gefunden, das verknüpft ist mit ${provider}. Um die Anmeldung auf diesem Gerät abzuschließen, stelle deinen Kontoschlüssel per QR-Code oder Secret Key wieder her.`,
+            `Wir haben ein bestehendes COMBO-Konto gefunden, das verknüpft ist mit ${provider}. Um die Anmeldung auf diesem Gerät abzuschließen, stelle deinen Kontoschlüssel per QR-Code oder Secret Key wieder her.`,
         restoreWithSecretKeyInstead: 'Stattdessen mit Secret Key wiederherstellen',
         restoreWithSecretKeyDescription: 'Gib deinen Secret Key ein, um wieder Zugriff auf dein Konto zu bekommen.',
         lostAccessLink: 'Zugriff verloren?',

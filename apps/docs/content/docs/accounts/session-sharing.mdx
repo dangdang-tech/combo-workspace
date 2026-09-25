@@ -16,14 +16,32 @@ This page describes the COMBO source build. Its product policy allows shared ses
 - A source conversation whose history does not depend on a fork ancestor. A member's managed conversation cannot be shared again.
 - On encrypted deployments, a per-session source key and the recipient's registered content keys. Restore or connect account keys before accepting an encrypted invitation.
 
+## Publish from Codex
+
+The COMBO source-build CLI exposes `session publish`; its MCP tool is `session_publish`. Use the same authenticated server profile and connected host as your workspace. Tell Codex exactly which conversation to publish and give it a public title and purpose.
+
+```sh
+happier session publish <COMBO_SESSION_ID> --title "Interview coach" --description "One question at a time, with feedback." --json
+```
+
+For a native Codex conversation, pass its exact thread and home directory:
+
+```sh
+happier session publish --codex-thread <EXACT_THREAD_ID> --codex-home <ABSOLUTE_CODEX_HOME> --title "Interview coach" --json
+```
+
+When running from the repository, replace `happier` with `yarn --cwd apps/cli dev`. This fork does not yet publish a COMBO installer. A bound MCP session can be used as the source; a native thread must be identified explicitly. The command never chooses the newest thread or guesses from the working directory.
+
+Native publication reads stored conversation text into a separate sharing source. It does not take control of or resume the original Codex thread. Publishing freezes committed history, so finish the conversation you want to share before publishing. Repeating publication returns the existing recoverable invitation and its saved context. For an existing COMBO source session, use **Create new sharing snapshot** in the web workspace to publish newer context. Native Codex publication remains fixed at its first import; repeating publication or creating a web snapshot does not import later native messages. Refreshing that native import is not currently supported.
+
 ## Shared workspace entries
 
 1. Open your session's information screen and choose **Share conversation**.
 2. Choose **Create invitation**, then **Copy invitation link**. The context is fixed when the invitation is created, even if the recipient accepts later.
-3. The recipient opens the link. If it names another relay, choose **Continue on the invitation server**, then sign in with Google and choose **Accept invitation**.
+3. The recipient opens the link and sees its title and purpose before accepting it. If it names another relay, choose **Continue on the invitation server**, then sign in with Google and prepare the copy.
 4. Keep the host online while it prepares the conversation. The recipient can read the copied user and assistant text and send a new message that continues from it.
 
-A returning recipient reuses their existing conversation. Different invited accounts receive different conversations. The host's later chat messages are not added to those copies, and a recipient's replies are not written into the host's original conversation.
+A returning recipient, including after a page refresh, goes back to their existing conversation without creating another copy. Different invited accounts receive different conversations. The host's later chat messages are not added to those copies, and a recipient's replies are not written into the host's original conversation.
 
 ### Project files remain shared
 
@@ -49,7 +67,7 @@ Deleting the source session also deletes its sharing entry, memberships, and the
 
 The host's member list shows **Can use** or **No access**. **Disable access** revokes ongoing access; **Allow access** restores the same conversation after the host prepares its grant again. This also restores an already allocated legacy child without importing new context. Re-enabling can make previously accepted, retained tasks eligible again. Revocation cannot erase history that a recipient has already downloaded.
 
-Copy an invitation when it is created: the server stores its token hashed and cannot show it again. **Replace invitation link** creates a new token and invalidates the previous token for future acceptance. It preserves the entry's original context and its existing members. To capture newer context, choose **Create new sharing snapshot**.
+New invitations can be copied again when you return to their management page. The server retains a recoverable encrypted token for the owner; anonymous visitors cannot request it. Older invitations created before this support still work, but their token cannot be recovered if you did not save the link. **Replace invitation link** creates a new token and invalidates the previous token for future acceptance. It preserves the entry's original context and its existing members. To capture newer context, choose **Create new sharing snapshot**.
 
 Invitation links have no expiry or redemption limit. A forwarded link can be accepted by another eligible Google account. Replacing the link does not disable people who already accepted it; manage those members individually.
 

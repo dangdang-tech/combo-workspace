@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getActionSpec, isActionSpecSurfacedOn, type ActionId } from '@happier-dev/protocol';
 
 import type { Credentials } from '@/persistence';
+import { readCurrentHappierSessionIdFromEnv } from '@/agent/runtime/session/currentSessionIdEnv';
 import { registerHappierMcpResources } from '@/mcp/resources/registerHappierMcpResources';
 import { createActionToolExecutorBridge } from '@/agent/tools/happierTools/createActionToolExecutorBridge';
 import { createChangeTitleToolHandler } from '@/agent/tools/happierTools/createChangeTitleToolHandler';
@@ -30,12 +31,14 @@ export function createExternalMcpServer(params: Readonly<{
 
   const ctx = resolveSessionEncryptionContextFromCredentials(params.credentials);
   let defaultSessionId: string | null = normalizeId(params.defaultSessionId) || null;
+  // Caller authority is fixed at bridge creation; selecting a target cannot shed it.
+  const callerSessionId = defaultSessionId ?? readCurrentHappierSessionIdFromEnv() ?? 'cli-global';
 
   const { executor } = createCliActionExecutorHarness(
     {
       token: params.credentials.token,
       credentials: params.credentials,
-      sessionId: 'cli-global',
+      sessionId: callerSessionId,
       ctx,
     },
     {

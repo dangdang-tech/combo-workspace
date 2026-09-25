@@ -586,6 +586,8 @@ export const ja: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
+        publisher: "公開者",
+        googleAuthUnavailable: "このサーバーでは Google ログインが有効になっていません。公開者にお問い合わせください。",
         guidePrepareTitle: "共有する会話を準備",
         guideSteps: "1 会話を準備 → 2 共有リンクを作成 → 3 相手が会話を続行",
         guidePrepareBody: "タスクと背景を入力して会話を始めましょう。準備ができたら「会話を共有」を選択します。",
@@ -1772,7 +1774,7 @@ export const ja: TranslationStructure = {
     externalAuthVerifiedTitle: ({ provider }: { provider: string }) =>
       `${provider} の認証が完了しました`,
     externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-      `${provider} に紐づく既存の Happier アカウントが見つかりました。この端末でサインインを完了するには、QRコードまたはシークレットキーでアカウントキーを復元してください。`,
+      `${provider} に紐づく既存の COMBO アカウントが見つかりました。この端末でサインインを完了するには、QRコードまたはシークレットキーでアカウントキーを復元してください。`,
     restoreWithSecretKeyInstead: "秘密鍵で復元する",
     restoreWithSecretKeyDescription:
       "アカウントへのアクセスを復元するには秘密鍵を入力してください。",

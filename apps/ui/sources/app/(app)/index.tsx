@@ -1,7 +1,8 @@
+import { createExternalProviderAuthActions } from '@/auth/flows/createExternalProviderAuthActions';
 import { useAuth } from "@/auth/context/AuthContext";
 import { View, Platform, Linking } from 'react-native';
 import * as React from 'react';
-import { decodeBase64, encodeBase64 } from "@/encryption/base64";
+import { encodeBase64 } from "@/encryption/base64";
 import { authGetToken } from "@/auth/flows/getToken";
 import { router, useRouter, useLocalSearchParams } from "expo-router";
 import { StyleSheet } from "react-native-unistyles";
@@ -10,11 +11,8 @@ import { trackAccountCreated, trackAccountRestored } from '@/track';
 import { MainView } from "@/components/navigation/shell/MainView";
 import { t } from '@/text';
 import { TokenStorage } from "@/auth/storage/tokenStorage";
-import sodium from '@/encryption/libsodium.lib';
-import { getAuthProvider } from "@/auth/providers/registry";
 import { Modal } from "@/modal";
 import { getPendingTerminalConnect } from "@/sync/domains/pending/pendingTerminalConnect";
-import { isSafeExternalAuthUrl } from "@/auth/providers/externalAuthUrl";
 import { fireAndForget } from "@/utils/system/fireAndForget";
 import { formatOperationFailedDebugMessage } from "@/utils/errors/formatOperationFailedDebugMessage";
 import { HappyError } from "@/utils/errors/errors";
@@ -23,8 +21,6 @@ import { getServerFeaturesSnapshot } from "@/sync/api/capabilities/serverFeature
 import { getServerRetentionPolicy } from '@/sync/api/capabilities/serverRetentionPolicyClient';
 import { formatServerRetentionDisclosure } from '@/sync/domains/server/retention/formatServerRetentionPolicy';
 import { buildDataKeyCredentialsForToken } from "@/auth/flows/buildDataKeyCredentialsForToken";
-import { digest } from "@/platform/digest";
-import { encodeHex } from "@/encryption/hex";
 import { resolveAppUrlScheme } from "@/utils/url/appScheme";
 import { readConfiguredServerUrlEnv } from "@/sync/domains/server/readConfiguredServerUrlEnv";
 import { getPendingSetupIntent, setPendingSetupIntent } from "@/sync/domains/pending/pendingSetupIntent";
@@ -134,13 +130,6 @@ function Authenticated() {
 function resolveAuthReturnToRoute(returnTo?: unknown): string {
     const pendingSetupIntent = getPendingSetupIntent();
     return resolveInternalAuthReturnToRoute(returnTo, pendingSetupIntent?.phase === 'awaiting_auth' && isTauriDesktop());
-}
-
-function isAuthServerSnapshotCurrent(snapshot: ReturnType<typeof getActiveServerSnapshot>): boolean {
-    const current = getActiveServerSnapshot();
-    return current.serverId === snapshot.serverId
-        && current.serverUrl === snapshot.serverUrl
-        && current.generation === snapshot.generation;
 }
 
 function NotAuthenticated() {
@@ -291,135 +280,10 @@ function NotAuthenticated() {
         }
     }
 
-    const createAccountViaProvider = async (providerId: string) => {
-        const snapshot = getActiveServerSnapshot();
-        let preservePendingSecret = false;
-        let pendingWritten = false;
-        try {
-            const pending = await TokenStorage.getPendingExternalAuth();
-            if (!isAuthServerSnapshotCurrent(snapshot)) throw new Error('Server changed during authentication');
-            const recoveryPending = pending?.finalizeAttempted && pending.secret ? pending : null;
-            preservePendingSecret = Boolean(recoveryPending);
-            if (recoveryPending && recoveryPending.provider !== providerId) {
-                await Modal.alert(t('common.error'), t('errors.operationFailed'));
-                return;
-            }
-            const proofBytes = await getRandomBytesAsync(32);
-            const proof = encodeBase64(proofBytes, 'base64url');
-            const proofHashBytes = await digest('SHA-256', new TextEncoder().encode(proof));
-            const proofHash = encodeHex(proofHashBytes).toLowerCase();
-
-            const secretBytes = recoveryPending?.secret
-                ? decodeBase64(recoveryPending.secret, 'base64url')
-                : await getRandomBytesAsync(32);
-            const secret = encodeBase64(secretBytes, 'base64url');
-            const signingKeyPair = sodium.crypto_sign_seed_keypair(secretBytes);
-            const publicKey = encodeBase64(signingKeyPair.publicKey);
-
-            if (!isAuthServerSnapshotCurrent(snapshot)) throw new Error('Server changed during authentication');
-            const serverUrl = snapshot.serverUrl ? String(snapshot.serverUrl).trim() : '';
-            pendingWritten = await TokenStorage.setPendingExternalAuth({
-                ...recoveryPending,
-                provider: providerId,
-                proof,
-                secret,
-                returnTo: resolveAuthReturnToRoute(recoveryPending?.returnTo ?? returnTo),
-                ...(snapshot.serverId ? { serverId: snapshot.serverId } : {}),
-                ...(serverUrl ? { serverUrl } : {}),
-            });
-            if (!pendingWritten) throw new Error('Failed to save pending external auth');
-            if (!isAuthServerSnapshotCurrent(snapshot)) throw new Error('Server changed during authentication');
-
-            const provider = getAuthProvider(providerId);
-            if (!provider) {
-                if (!preservePendingSecret) await TokenStorage.clearPendingExternalAuth();
-                await Modal.alert(t('common.error'), t('errors.operationFailed'));
-                return;
-            }
-
-            const url = await provider.getExternalAuthUrl({ mode: 'keyed', proofHash, publicKey });
-            if (!isAuthServerSnapshotCurrent(snapshot)) throw new Error('Server changed during authentication');
-            if (!isSafeExternalAuthUrl(url)) {
-                if (!preservePendingSecret) await TokenStorage.clearPendingExternalAuth();
-                await Modal.alert(t('common.error'), t('errors.operationFailed'));
-                return;
-            }
-            if (Platform.OS === 'web') {
-                const location = (globalThis as any)?.window?.location;
-                if (location && typeof location.assign === 'function') {
-                    location.assign(url);
-                    return;
-                }
-                if (location && typeof location.href === 'string') {
-                    location.href = url;
-                    return;
-                }
-            }
-            await Linking.openURL(url);
-        } catch (error) {
-            if (pendingWritten && !preservePendingSecret && isAuthServerSnapshotCurrent(snapshot)) await TokenStorage.clearPendingExternalAuth();
-            await Modal.alert(t('common.error'), t('errors.operationFailed'));
-        }
-    };
-
-    const loginWithKeylessProvider = async (providerId: string) => {
-        const snapshot = getActiveServerSnapshot();
-        let pendingWritten = false;
-        try {
-            const pending = await TokenStorage.getPendingExternalAuth();
-            if (!isAuthServerSnapshotCurrent(snapshot)) throw new Error('Server changed during authentication');
-            if (pending?.finalizeAttempted && pending.secret) {
-                await Modal.alert(t('common.error'), t('errors.operationFailed'));
-                return;
-            }
-            const proofBytes = await getRandomBytesAsync(32);
-            const proof = encodeBase64(proofBytes, "base64url");
-            const proofHashBytes = await digest('SHA-256', new TextEncoder().encode(proof));
-            const proofHash = encodeHex(proofHashBytes).toLowerCase();
-
-            if (!isAuthServerSnapshotCurrent(snapshot)) throw new Error('Server changed during authentication');
-            const serverUrl = snapshot.serverUrl ? String(snapshot.serverUrl).trim() : '';
-            pendingWritten = await TokenStorage.setPendingExternalAuth({
-                provider: providerId,
-                proof,
-                returnTo: resolveAuthReturnToRoute(returnTo),
-                ...(snapshot.serverId ? { serverId: snapshot.serverId } : {}),
-                ...(serverUrl ? { serverUrl } : {}),
-            });
-            if (!pendingWritten) throw new Error('Failed to save pending external auth');
-            if (!isAuthServerSnapshotCurrent(snapshot)) throw new Error('Server changed during authentication');
-
-            const provider = getAuthProvider(providerId);
-            if (!provider) {
-                await TokenStorage.clearPendingExternalAuth();
-                await Modal.alert(t('common.error'), t('errors.operationFailed'));
-                return;
-            }
-
-            const url = await provider.getExternalAuthUrl({ mode: 'keyless', proofHash });
-            if (!isAuthServerSnapshotCurrent(snapshot)) throw new Error('Server changed during authentication');
-            if (!isSafeExternalAuthUrl(url)) {
-                await TokenStorage.clearPendingExternalAuth();
-                await Modal.alert(t('common.error'), t('errors.operationFailed'));
-                return;
-            }
-            if (Platform.OS === 'web') {
-                const location = (globalThis as any)?.window?.location;
-                if (location && typeof location.assign === 'function') {
-                    location.assign(url);
-                    return;
-                }
-                if (location && typeof location.href === 'string') {
-                    location.href = url;
-                    return;
-                }
-            }
-            await Linking.openURL(url);
-        } catch {
-            if (pendingWritten && isAuthServerSnapshotCurrent(snapshot)) await TokenStorage.clearPendingExternalAuth();
-            await Modal.alert(t('common.error'), t('errors.operationFailed'));
-        }
-    };
+    const { createAccountViaProvider, loginWithKeylessProvider } = createExternalProviderAuthActions({
+        returnTo,
+        resolveReturnTo: resolveAuthReturnToRoute,
+    });
 
     const loginWithMtls = async () => {
         try {

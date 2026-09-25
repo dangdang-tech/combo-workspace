@@ -18,6 +18,7 @@ const RESULT_REQUIRED_BLOCKING_ACTION_IDS = [
   'execution.run.list',
   'execution.run.get',
   'execution.run.wait',
+  'session.publish',
   'session.status.get',
   'session.work_state.get',
   'session.goal.get',

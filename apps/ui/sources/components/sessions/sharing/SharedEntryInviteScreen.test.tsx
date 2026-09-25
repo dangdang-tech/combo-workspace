@@ -2,15 +2,21 @@ import React from 'react';
 import { act } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDeferred, renderScreen } from '@/dev/testkit';
-const boundary = vi.hoisted(() => ({ fetch: vi.fn(), push: vi.fn(), replace: vi.fn(), authenticated: true, switchServer: vi.fn(), copy: vi.fn(), prompt: vi.fn() }));
-vi.mock('@/sync/http/client', () => ({ serverFetch: boundary.fetch }));
+const boundary = vi.hoisted(() => ({ openUrl: vi.fn(), features: vi.fn(), externalUrl: vi.fn(), pendingAuth: vi.fn(), previewFetch: vi.fn(), fetch: vi.fn(), push: vi.fn(), replace: vi.fn(), authenticated: true, authToken: 'account-a', switchServer: vi.fn(), copy: vi.fn(), prompt: vi.fn() }));
+vi.mock('@/sync/api/capabilities/serverFeaturesClient', () => ({ getServerFeaturesSnapshot: boundary.features }));
+vi.mock('@/auth/providers/registry', () => ({ getAuthProvider: () => ({ displayName: 'Google', getExternalAuthUrl: boundary.externalUrl }) }));
+vi.mock('@/auth/storage/tokenStorage', () => ({ TokenStorage: { getPendingExternalAuth: async () => null, setPendingExternalAuth: boundary.pendingAuth, clearPendingExternalAuth: vi.fn() } }));
+vi.mock('@/platform/cryptoRandom', () => ({ getRandomBytesAsync: async (length: number) => new Uint8Array(length).fill(7) }));
+vi.mock('@/encryption/libsodium.lib', () => ({ default: { crypto_sign_seed_keypair: (seed: Uint8Array) => ({ publicKey: seed, privateKey: seed }) } }));
+vi.mock('@/sync/domains/server/serverRuntime', () => ({ getActiveServerSnapshot: () => ({ serverId: 'relay', serverUrl: 'https://relay.example', generation: 1 }) }));
+vi.mock('@/sync/http/client', () => ({ serverFetch: (path: string, init?: RequestInit) => path === '/v1/shared-session-entries/preview' ? boundary.previewFetch(path, init) : boundary.fetch(path, init) }));
 vi.mock('@/sync/runtime/orchestration/serverScopedRpc/createSessionRequestWithServerScope', () => ({ createSessionRequestWithServerScope: ({ activeRequest }: { activeRequest: unknown }) => activeRequest }));
-vi.mock('@/auth/context/AuthContext', () => ({ useAuth: () => ({ isAuthenticated: boundary.authenticated, refreshFromActiveServer: async () => {} }) }));
+vi.mock('@/auth/context/AuthContext', () => ({ useAuth: () => ({ isAuthenticated: boundary.authenticated, credentials: boundary.authenticated ? { token: boundary.authToken } : null, refreshFromActiveServer: async () => {} }) }));
 vi.mock('@/sync/domains/server/serverProfiles', () => ({ getActiveServerSnapshot: () => ({ serverId: 'relay', serverUrl: 'https://relay.example' }), getServerProfileById: (id: string) => ({ id, serverUrl: id === 'relay-b' ? 'https://second-relay.example' : 'https://relay.example' }) }));
 vi.mock('@/sync/domains/server/activeServerSwitch', () => ({ upsertActivateAndSwitchServer: boundary.switchServer }));
 vi.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 vi.mock('expo-router', async () => { const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router'); return createExpoRouterMock({ router: { push: boundary.push, replace: boundary.replace } }).module; });
-vi.mock('react-native', async () => { const { createReactNativeWebMock } = await import('@/dev/testkit/mocks/reactNative'); return createReactNativeWebMock(); });
+vi.mock('react-native', async () => { const { createReactNativeWebMock } = await import('@/dev/testkit/mocks/reactNative'); return createReactNativeWebMock({ Linking: { openURL: boundary.openUrl } }); });
 vi.mock('react-native-unistyles', async () => { const { createUnistylesMock } = await import('@/dev/testkit/mocks/unistyles'); return createUnistylesMock(); });
 vi.mock('@/text', async () => { const { createTextModuleMock } = await import('@/dev/testkit/mocks/text'); return createTextModuleMock(); });
 vi.mock('@/components/ui/lists/Item', () => ({ Item: (props: any) => React.createElement('Item', props) }));
@@ -20,14 +26,122 @@ const access = { entryId: 'e', title: 'Website', memberId: 'm', status: 'pending
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 
 describe('SharedEntryInviteScreen', () => {
-    beforeEach(() => { vi.clearAllMocks(); boundary.fetch.mockReset(); boundary.authenticated = true; });
-    it('preserves the invite and server on the existing login route without redeeming signed out', async () => {
+    beforeEach(() => { vi.clearAllMocks(); boundary.fetch.mockReset(); boundary.previewFetch.mockReset().mockImplementation(async () => response({ preview: { title: 'Interview coach', description: 'Practice one question at a time', publisherDisplayName: 'Publisher' }, access: null })); boundary.authenticated = true; boundary.authToken = 'account-a';
+        boundary.features.mockReset().mockResolvedValue({ status: 'ready', features: { capabilities: { auth: { methods: [{ id: 'google', actions: [{ id: 'provision', enabled: true, mode: 'keyed' }] }] } } } });
+        boundary.externalUrl.mockReset().mockResolvedValue('https://accounts.google.com/o/oauth2/v2/auth');
+        boundary.pendingAuth.mockReset().mockResolvedValue(true);
+    });
+    it('shows the public publication before sign-in without redeeming it', async () => {
+        boundary.authenticated = false;
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="public-token" />);
+        expect(boundary.previewFetch).toHaveBeenCalledWith('/v1/shared-session-entries/preview', expect.objectContaining({ body: JSON.stringify({ inviteToken: 'public-token' }) }));
+        expect(screen.findByTestId('shared-entry-publication')?.props.title).toBe('Interview coach');
+        expect(screen.findByTestId('shared-entry-publication')?.props.subtitle).toBe('Practice one question at a time');
+        expect(screen.findByTestId('shared-entry-publisher')?.props.subtitle).toBe('Publisher');
+        expect(boundary.fetch).not.toHaveBeenCalled();
+    });
+    it('reopens a ready copy from read-only preview after reload without accepting again', async () => {
+        boundary.previewFetch.mockResolvedValueOnce(response({ preview: { title: 'Interview coach', description: null, publisherDisplayName: null }, access: { ...access, status: 'ready', sessionId: 'existing-child' } }));
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        await renderScreen(<SharedEntryInviteScreen token="public-token" />);
+        expect(boundary.replace).toHaveBeenCalledWith('/session/existing-child?serverId=relay');
+        expect(boundary.fetch).not.toHaveBeenCalled();
+    });
+    it('resumes a pending copy with read-only status instead of another redemption', async () => {
+        boundary.previewFetch.mockResolvedValueOnce(response({ preview: { title: 'Interview coach', description: null, publisherDisplayName: null }, access }));
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="public-token" />);
+        expect(screen.findByTestId('shared-entry-preparing')).not.toBeNull();
+        expect(screen.findByTestId('shared-entry-accept')).toBeNull();
+        boundary.fetch.mockResolvedValueOnce(response({ access: { ...access, status: 'ready', sessionId: 'existing-child' } }));
+        await act(async () => { screen.pressByTestId('shared-entry-refresh'); });
+        expect(boundary.fetch.mock.calls).toEqual([['/v1/shared-session-entries/e/access', undefined]]);
+        expect(boundary.replace).toHaveBeenCalledWith('/session/existing-child?serverId=relay');
+    });
+    it('does not navigate using an authenticated preview after the account signs out', async () => {
+        const delayed = createDeferred<Response>();
+        boundary.previewFetch.mockReturnValueOnce(delayed.promise);
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="public-token" />);
+        expect(boundary.previewFetch).toHaveBeenCalledTimes(1);
+        boundary.authenticated = false;
+        await screen.update(<SharedEntryInviteScreen token="public-token" />);
+        await act(async () => { delayed.resolve(response({ preview: { title: 'Interview coach', description: null, publisherDisplayName: null }, access: { ...access, status: 'ready', sessionId: 'old-account-child' } })); });
+        expect(boundary.replace).not.toHaveBeenCalled();
+    });
+    it('starts Google directly with the invite continuation and account key before navigating externally', async () => {
         boundary.authenticated = false;
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token="token" serverUrl="https://relay.example" />);
         await act(async () => { screen.pressByTestId('shared-entry-accept'); });
         expect(boundary.fetch).not.toHaveBeenCalled();
-        expect(boundary.push).toHaveBeenCalledWith({ pathname: '/', params: { returnTo: '/invite/token?server=https%3A%2F%2Frelay.example' } });
+        expect(boundary.push).not.toHaveBeenCalled();
+        expect(boundary.externalUrl).toHaveBeenCalledWith(expect.objectContaining({ mode: 'keyed', publicKey: expect.any(String), proofHash: expect.any(String) }));
+        expect(boundary.openUrl).toHaveBeenCalledWith('https://accounts.google.com/o/oauth2/v2/auth');
+        expect(boundary.pendingAuth).toHaveBeenCalledWith(expect.objectContaining({ provider: 'google', secret: expect.any(String), returnTo: '/invite/token?server=https%3A%2F%2Frelay.example', serverId: 'relay' }));
+    });
+    it('uses the enabled Google keyless action when keyed signup is unavailable', async () => {
+        boundary.authenticated = false;
+        boundary.features.mockResolvedValueOnce({ status: 'ready', features: { capabilities: { auth: { methods: [{ id: 'google', actions: [{ id: 'login', enabled: true, mode: 'keyless' }] }] } } } });
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
+        await act(async () => { screen.pressByTestId('shared-entry-accept'); });
+        expect(boundary.externalUrl).toHaveBeenCalledWith(expect.objectContaining({ mode: 'keyless', proofHash: expect.any(String) }));
+        expect(boundary.pendingAuth.mock.calls[0][0]).not.toHaveProperty('secret');
+        expect(boundary.push).not.toHaveBeenCalled();
+    });
+    it('does not start disabled Google auth or allocate when capabilities do not allow it', async () => {
+        boundary.authenticated = false;
+        boundary.features.mockResolvedValueOnce({ status: 'ready', features: { capabilities: { auth: { methods: [{ id: 'google', actions: [{ id: 'provision', enabled: false, mode: 'keyed' }] }] } } } });
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
+        await act(async () => { screen.pressByTestId('shared-entry-accept'); });
+        expect(screen.findByTestId('shared-entry-error')?.props.title).toBe('sharedEntry.googleAuthUnavailable');
+        expect(boundary.externalUrl).not.toHaveBeenCalled();
+        expect(boundary.pendingAuth).not.toHaveBeenCalled();
+        expect(boundary.fetch).not.toHaveBeenCalled();
+    });
+    it('ignores a ready preview from another authenticated account', async () => {
+        const delayed = createDeferred<Response>();
+        boundary.previewFetch.mockReturnValueOnce(delayed.promise);
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
+        expect(boundary.previewFetch).toHaveBeenCalledTimes(1);
+        boundary.authToken = 'account-b';
+        await screen.update(<SharedEntryInviteScreen token="token" />);
+        await act(async () => { delayed.resolve(response({ preview: { title: 'Old account', description: null, publisherDisplayName: null }, access: { ...access, status: 'ready', sessionId: 'old-account-child' } })); });
+        expect(boundary.replace).not.toHaveBeenCalled();
+        expect(screen.findByTestId('shared-entry-accept')).not.toBeNull();
+    });
+    it.each(['Not Found', 'not_found'])('keeps explicit redemption available on a predecessor server without preview (%s)', async (code) => {
+        boundary.previewFetch.mockResolvedValueOnce(response({ error: code }, 404));
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
+        expect(screen.findByTestId('shared-entry-accept')).not.toBeNull();
+        expect(boundary.fetch).not.toHaveBeenCalled();
+        boundary.fetch.mockResolvedValueOnce(response({ access }));
+        await act(async () => { screen.pressByTestId('shared-entry-accept'); });
+        expect(boundary.fetch.mock.calls).toEqual([['/v1/shared-session-entries/redeem', expect.objectContaining({ method: 'POST' })]]);
+        expect(screen.findByTestId('shared-entry-preparing')).not.toBeNull();
+    });
+    it('does not treat an invalid invite token as an unsupported preview endpoint', async () => {
+        boundary.previewFetch.mockResolvedValueOnce(response({ error: 'invite_not_found' }, 404));
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
+        expect(screen.findByTestId('shared-entry-accept')).toBeNull();
+        expect(screen.findByTestId('shared-entry-error')?.props.title).toBe('sharedEntry.inviteInvalid');
+        expect(boundary.fetch).not.toHaveBeenCalled();
+    });
+    it('retries a failed read-only preview before enabling allocation', async () => {
+        boundary.previewFetch.mockResolvedValueOnce(response({ error: 'operation_failed' }, 503));
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
+        expect(screen.findByTestId('shared-entry-accept')).toBeNull();
+        await act(async () => { screen.pressByTestId('shared-entry-preview-retry'); });
+        expect(screen.findByTestId('shared-entry-accept')).not.toBeNull();
+        expect(boundary.previewFetch).toHaveBeenCalledTimes(2);
+        expect(boundary.fetch).not.toHaveBeenCalled();
     });
     it('keeps allocation pending visible until a real ready response, then enters the dedicated session', async () => {
         boundary.fetch.mockResolvedValueOnce(response({ access }));
@@ -141,6 +255,70 @@ describe('SharedEntryManagement', () => {
     const legacy = { id: 'legacy', title: 'Original invitation', sourceSessionId: 'source', machineId: 'host', createdAt: 1, hasContextSnapshot: false };
     const fresh = { ...legacy, id: 'fresh', title: 'New context', createdAt: 2, hasContextSnapshot: true };
     const oldMember = { id: 'member', userId: 'old-user', username: 'original guest', enabled: true, status: 'ready', sessionId: 'original-child', errorCode: null };
+
+    it('retrieves the same published link on return without rotating or creating another entry', async () => {
+        boundary.fetch.mockImplementation(async (path: string) => {
+            if (path === '/v1/shared-session-entries') return response({ entries: [{ ...fresh, hasReusableInvite: true }] });
+            if (path.endsWith('/members')) return response({ members: [oldMember] });
+            if (path.endsWith('/invite')) return response({ inviteToken: 'original-reusable-token' });
+            throw new Error(`Unexpected request: ${path}`);
+        });
+        const { SharedEntryManagement } = await import('./SharedEntryManagement');
+        const screen = await renderScreen(<SharedEntryManagement sourceSessionId="source" machineId="host" title="Website" serverId="relay" />);
+        expect(screen.findByTestId('shared-entry-copy')).not.toBeNull();
+        expect(screen.findByTestId('shared-entry-link-unavailable')).toBeNull();
+        await act(async () => { screen.pressByTestId('shared-entry-copy'); });
+        expect(boundary.copy).toHaveBeenLastCalledWith(expect.stringContaining('/invite/original-reusable-token?server='));
+        expect(boundary.fetch.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
+        expect(screen.findByTestId('shared-entry-member-member')?.props.title).toBe('original guest');
+    });
+
+    it('retries a failed link read without replacing the invitation', async () => {
+        let failed = true;
+        boundary.fetch.mockImplementation(async (path: string) => {
+            if (path === '/v1/shared-session-entries') return response({ entries: [{ ...fresh, hasReusableInvite: true }] });
+            if (path.endsWith('/members')) return response({ members: [] });
+            if (path.endsWith('/invite')) {
+                if (failed) return response({ error: 'operation_failed' }, 503);
+                return response({ inviteToken: 'same-token' });
+            }
+            throw new Error(`Unexpected request: ${path}`);
+        });
+        const { SharedEntryManagement } = await import('./SharedEntryManagement');
+        const screen = await renderScreen(<SharedEntryManagement sourceSessionId="source" machineId="host" title="Website" serverId="relay" />);
+        expect(screen.findByTestId('shared-entry-management-error')).not.toBeNull();
+        expect(screen.findByTestId('shared-entry-rotate')).toBeNull();
+        failed = false;
+        await act(async () => { screen.pressByTestId('shared-entry-members-refresh'); });
+        await act(async () => { screen.pressByTestId('shared-entry-copy'); });
+        expect(boundary.copy).toHaveBeenLastCalledWith(expect.stringContaining('/invite/same-token?server='));
+        expect(boundary.fetch.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
+    });
+
+    it.each(['initial load', 'entry selection'])('allows explicit link replacement after a confirmed unavailable invite secret during %s', async (step) => {
+        const damaged = { ...fresh, id: 'damaged', hasReusableInvite: true };
+        boundary.fetch.mockResolvedValueOnce(response({ entries: step === 'initial load' ? [damaged] : [fresh, damaged] }))
+            .mockResolvedValueOnce(response({ members: [oldMember] }));
+        if (step === 'initial load') boundary.fetch.mockResolvedValueOnce(response({ error: 'invite_secret_unavailable' }, 409));
+        const { SharedEntryManagement } = await import('./SharedEntryManagement');
+        const screen = await renderScreen(<SharedEntryManagement sourceSessionId="source" machineId="host" title="Website" serverId="relay" />);
+        if (step === 'entry selection') {
+            await act(async () => { screen.pressByTestId('shared-entry-management-toggle'); });
+            boundary.fetch.mockResolvedValueOnce(response({ members: [oldMember] }))
+                .mockResolvedValueOnce(response({ error: 'invite_secret_unavailable' }, 409));
+            await act(async () => { screen.pressByTestId('shared-entry-select-damaged'); });
+        }
+        expect(screen.findByTestId('shared-entry-member-member')?.props.title).toBe('original guest');
+        expect(screen.findByTestId('shared-entry-rotate')).not.toBeNull();
+        expect(screen.findByTestId('shared-entry-copy')).toBeNull();
+        expect(screen.findByTestId('shared-entry-management-error')).toBeNull();
+        expect(boundary.fetch.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
+        boundary.fetch.mockResolvedValueOnce(response({ inviteToken: 'replacement-token' }));
+        await act(async () => { screen.pressByTestId('shared-entry-rotate'); });
+        const mutations = boundary.fetch.mock.calls.filter(([, init]) => init?.method === 'POST');
+        expect(mutations).toEqual([['/v1/shared-session-entries/damaged/invite', expect.objectContaining({ method: 'POST' })]]);
+        expect(screen.findByTestId('shared-entry-copy')).not.toBeNull();
+    });
 
     it('keeps low-frequency invitation management collapsed until explicitly expanded', async () => {
         boundary.fetch.mockResolvedValueOnce(response({ entries: [fresh, legacy] })).mockResolvedValueOnce(response({ members: [oldMember] }));

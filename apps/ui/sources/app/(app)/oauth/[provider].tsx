@@ -307,7 +307,7 @@ export default function OAuthProviderReturn() {
                 if (err === 'restore-required') {
                     await clearUncommittedPendingExternalAuth();
                     pendingAuthContextRef.current = null;
-                    router.replace(withAuthReturnTo('/restore', ctx.returnTo));
+                    router.replace(buildRestoreRedirectUrl({ providerId: ctx.providerId, reason: 'provider_already_linked', returnTo: ctx.returnTo }));
                     return;
                 }
                 if (err === 'username-required' || err === 'username-taken' || err === 'invalid-username') {
@@ -540,7 +540,7 @@ export default function OAuthProviderReturn() {
 
                     if (resolvedAccountMode === 'e2ee') {
                         if (state.finalizeAttempted && secret) finalizeAuth({ mode: 'e2ee' });
-                        else safeReplace(withAuthReturnTo('/restore', returnTo));
+                        else safeReplace(buildRestoreRedirectUrl({ providerId, reason: 'provider_already_linked', returnTo }));
                         return;
                     }
 

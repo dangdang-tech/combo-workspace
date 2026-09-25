@@ -116,6 +116,38 @@ describe('bootstrapActiveServerFromWebLocation', () => {
         expect(window.history.replaceState).toHaveBeenCalledWith(null, '', '/session/session-1');
     });
 
+    it.each([
+        '/session/child?serverId=relay',
+        '/invite/another?server=https%3A%2F%2Fother.example.test',
+    ])('does not replay the initial invite URL after navigation to %s during auth refresh', async (destination) => {
+        process.env.EXPO_PUBLIC_HAPPY_STORAGE_SCOPE = randomScope();
+        process.env.EXPO_PUBLIC_HAPPY_SERVER_URL = 'https://relay.example.test';
+        stubWebLocation('https://app.example.test/invite/original?server=https%3A%2F%2Frelay.example.test');
+        const { commitWebServerUrlOverride, readWebServerUrlOverrideFromLocation } = await importFreshBootstrap();
+        let finish!: () => void;
+        let started!: () => void;
+        const startedPromise = new Promise<void>((resolve) => { started = resolve; });
+        const refreshAuth = () => { started(); return new Promise<void>((resolve) => { finish = resolve; }); };
+        const pending = commitWebServerUrlOverride({ override: readWebServerUrlOverrideFromLocation()!, refreshAuth });
+        await startedPromise;
+        window.location.href = `https://app.example.test${destination}`;
+        finish();
+        await pending;
+        expect(window.history.replaceState).not.toHaveBeenCalled();
+        expect(window.location.href).toBe(`https://app.example.test${destination}`);
+    });
+
+    it('preserves router history state when cleaning an unchanged server intent', async () => {
+        process.env.EXPO_PUBLIC_HAPPY_STORAGE_SCOPE = randomScope();
+        process.env.EXPO_PUBLIC_HAPPY_SERVER_URL = 'https://relay.example.test';
+        stubWebLocation('https://app.example.test/invite/original?server=https%3A%2F%2Frelay.example.test');
+        const routerState = { key: 'invite-route', index: 2 };
+        Object.assign(window.history, { state: routerState });
+        const { commitWebServerUrlOverride, readWebServerUrlOverrideFromLocation } = await importFreshBootstrap();
+        await commitWebServerUrlOverride({ override: readWebServerUrlOverrideFromLocation()!, refreshAuth: async () => {} });
+        expect(window.history.replaceState).toHaveBeenCalledWith(routerState, '', '/invite/original');
+    });
+
     it('promotes an equivalent tab override to the device active server from the web query string', async () => {
         process.env.EXPO_PUBLIC_HAPPY_STORAGE_SCOPE = randomScope();
         process.env.EXPO_PUBLIC_HAPPY_SERVER_URL = 'https://device.example.test';

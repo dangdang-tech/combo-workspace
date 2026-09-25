@@ -618,6 +618,8 @@ export const ru: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     sharedEntry: {
+        publisher: "Автор публикации",
+        googleAuthUnavailable: "Вход через Google на этом сервере не включён. Свяжитесь с автором публикации.",
         guidePrepareTitle: "Подготовьте беседу для отправки",
         guideSteps: "1 Подготовьте → 2 Создайте ссылку → 3 Гость продолжит",
         guidePrepareBody: "Опишите задачу и начните беседу. Когда всё будет готово, выберите «Поделиться беседой».",
@@ -1416,7 +1418,7 @@ export const ru: TranslationStructure = {
     externalAuthVerifiedTitle: ({ provider }: { provider: string }) =>
       `${provider} подтверждён`,
     externalAuthVerifiedBody: ({ provider }: { provider: string }) =>
-      `Мы нашли существующий аккаунт Happier, связанный с ${provider}. Чтобы завершить вход на этом устройстве, восстановите ключ аккаунта с помощью QR‑кода или секретного ключа.`,
+      `Мы нашли существующий аккаунт COMBO, связанный с ${provider}. Чтобы завершить вход на этом устройстве, восстановите ключ аккаунта с помощью QR‑кода или секретного ключа.`,
     restoreWithSecretKeyInstead: "Восстановить по секретному ключу",
     restoreWithSecretKeyDescription:
       "Введите секретный ключ, чтобы восстановить доступ к аккаунту.",

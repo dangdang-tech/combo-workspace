@@ -7,11 +7,17 @@ const accessSchema = z.object({
     entryId: z.string(), title: z.string(), memberId: z.string(), status: statusSchema,
     sessionId: z.string().nullable(), hostOnline: z.boolean(), errorCode: z.string().nullable(),
 }).refine((access) => access.status !== 'ready' || Boolean(access.sessionId));
+const publicMetadataSchema = z.object({ v: z.literal(1), description: z.string().max(1000).optional(), publisherDisplayName: z.string().max(80).optional() });
+const previewSchema = z.object({ title: z.string(), description: z.string().nullable(), publisherDisplayName: z.string().nullable() });
 const entrySchema = z.object({
     id: z.string(), title: z.string(), sourceSessionId: z.string(), machineId: z.string(), createdAt: z.number(),
     hasContextSnapshot: z.boolean().default(false),
+    hasReusableInvite: z.boolean().default(false),
+    publicMetadata: publicMetadataSchema.nullable().default(null),
 });
 const memberSchema = z.object({ id: z.string(), userId: z.string(), username: z.string().nullable(), status: statusSchema, enabled: z.boolean(), sessionId: z.string().nullable(), errorCode: z.string().nullable() });
+export type SharedEntryPreview = z.infer<typeof previewSchema>;
+export type SharedEntryPublicMetadata = z.infer<typeof publicMetadataSchema>;
 export type SharedEntryAccess = z.infer<typeof accessSchema>;
 export type SharedEntry = z.infer<typeof entrySchema>;
 export type SharedEntryMember = z.infer<typeof memberSchema>;
@@ -33,7 +39,9 @@ export function createSharedEntryClient(serverId?: string | null) {
     const body = (value: unknown, method = 'POST'): RequestInit => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
     return {
         list: async () => z.object({ entries: z.array(entrySchema) }).parse(await json(base)).entries,
-        create: async (input: { title: string; sourceSessionId: string; machineId: string }) => z.object({ entry: entrySchema, inviteToken: z.string() }).parse(await json(base, body(input))),
+        create: async (input: { title: string; sourceSessionId: string; machineId: string; publicMetadata?: SharedEntryPublicMetadata; reuseExisting?: boolean }) => z.object({ entry: entrySchema, inviteToken: z.string() }).parse(await json(base, body(input))),
+        getInvite: async (entryId: string) => z.object({ inviteToken: z.string() }).parse(await json(`${base}/${encodeURIComponent(entryId)}/invite`)).inviteToken,
+        preview: async (inviteToken: string) => z.object({ preview: previewSchema, access: accessSchema.nullable() }).parse(await json(`${base}/preview`, body({ inviteToken }))),
         rotateInvite: async (entryId: string) => z.object({ inviteToken: z.string() }).parse(await json(`${base}/${encodeURIComponent(entryId)}/invite`, body({}))).inviteToken,
         redeem: async (inviteToken: string) => z.object({ access: accessSchema }).parse(await json(`${base}/redeem`, body({ inviteToken }))).access,
         access: async (entryId: string) => z.object({ access: accessSchema }).parse(await json(`${base}/${encodeURIComponent(entryId)}/access`)).access,

@@ -335,3 +335,50 @@ describe('ActionExecutor prepared invocation', () => {
     });
   });
 });
+
+
+describe('session.publish action', () => {
+  const published = { sourceSessionId: 'source-1', entryId: 'entry-1', inviteUrl: 'https://combo.test/invite/example' };
+
+  it('publishes the explicitly bound COMBO session when source is omitted', async () => {
+    const deps = createDeps();
+    deps.sessionPublish = vi.fn(async () => published);
+    const result = await createActionExecutor(deps).execute('session.publish', { title: 'Share context' }, {
+      surface: 'session_agent', defaultSessionId: 'bound-session',
+    });
+    expect(result).toEqual({ ok: true, result: published });
+    expect(deps.sessionPublish).toHaveBeenCalledWith({ source: { kind: 'session', sessionId: 'bound-session' }, title: 'Share context' });
+  });
+
+  it('preserves explicit native identity instead of replacing it with the bound session', async () => {
+    const deps = createDeps();
+    deps.sessionPublish = vi.fn(async () => published);
+    const input = { source: { kind: 'codex', threadId: 'native-thread', codexHome: '/fixture/codex' }, title: 'Native context', description: 'Selected history', publisherDisplayName: 'Owner' };
+    const result = await createActionExecutor(deps).execute('session.publish', input, { surface: 'mcp', defaultSessionId: 'bound-session' });
+    expect(result).toEqual({ ok: true, result: published });
+    expect(deps.sessionPublish).toHaveBeenCalledWith(input);
+  });
+
+  it.each([undefined, 'cli-global'])('refuses missing source and non-session binding %s before publishing', async (defaultSessionId) => {
+    const deps = createDeps();
+    deps.sessionPublish = vi.fn(async () => published);
+    const result = await createActionExecutor(deps).execute('session.publish', { title: 'No source' }, { surface: 'mcp', defaultSessionId });
+    expect(result).toMatchObject({ ok: false, errorCode: 'session_not_selected' });
+    expect(deps.sessionPublish).not.toHaveBeenCalled();
+  });
+
+  it('refuses incomplete or conflicting native source parameters', async () => {
+    const deps = createDeps();
+    deps.sessionPublish = vi.fn(async () => published);
+    for (const source of [{ kind: 'codex', threadId: 'native-thread' }, { kind: 'codex', threadId: 'native-thread', codexHome: '/fixture/codex', sessionId: 'other' }]) {
+      expect(await createActionExecutor(deps).execute('session.publish', { source, title: 'Invalid' }, { surface: 'mcp' })).toMatchObject({ ok: false });
+    }
+    expect(deps.sessionPublish).not.toHaveBeenCalled();
+  });
+
+  it('keeps publisher failure visible', async () => {
+    const deps = createDeps();
+    deps.sessionPublish = vi.fn(async () => ({ ok: false, errorCode: 'not_authenticated', error: 'not_authenticated' }));
+    expect(await createActionExecutor(deps).execute('session.publish', { source: { kind: 'session', sessionId: 'source-1' }, title: 'Share' }, { surface: 'cli' })).toMatchObject({ ok: false, errorCode: 'not_authenticated' });
+  });
+});

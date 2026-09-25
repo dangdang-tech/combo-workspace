@@ -15,6 +15,7 @@ type ReactActEnvironmentGlobal = typeof globalThis & {
 
 const navigationState = vi.hoisted(() => ({
     isFocused: true,
+    pairingState: 'enabled',
 }));
 const modalAlertSpy = vi.hoisted(() => vi.fn(async () => {}));
 
@@ -45,7 +46,7 @@ installRestoreScanComputerQrViewCommonModuleMocks({
 });
 
 vi.mock('@/hooks/server/useFeatureDecision', () => ({
-    useFeatureDecision: () => ({ state: 'enabled' }),
+    useFeatureDecision: () => ({ state: navigationState.pairingState }),
 }));
 
 vi.mock('@/utils/platform/platform', () => ({
@@ -56,9 +57,20 @@ vi.mock('@/auth/context/AuthContext', () => ({
     useAuth: () => ({ login: vi.fn(async () => {}), refreshFromActiveServer: vi.fn(async () => {}) }),
 }));
 
-vi.mock('@/sync/domains/server/serverProfiles', () => ({
-    getActiveServerUrl: () => 'https://stack.example.test',
-}));
+vi.mock('@/sync/domains/server/serverProfiles', async (importOriginal) => {
+    const { createServerProfilesModuleMock } = await import('@/dev/testkit/mocks/serverProfiles');
+    return createServerProfilesModuleMock({
+        importOriginal,
+        overrides: {
+            getActiveServerUrl: () => 'https://stack.example.test',
+            getActiveServerSnapshot: () => ({
+                serverId: 'stack',
+                serverUrl: 'https://stack.example.test',
+                generation: 0,
+            }),
+        },
+    });
+});
 
 vi.mock('@/sync/api/account/apiPairingAuth', () => ({
     pairingRequest: vi.fn(async () => ({ ok: false, reason: 'not_found', status: 404 })),
@@ -95,8 +107,20 @@ describe('RestoreScanComputerQrView (web phone)', () => {
         vi.resetModules();
         resetRestoreScanComputerQrViewCommonModuleMockState();
         navigationState.isFocused = true;
+        navigationState.pairingState = 'enabled';
         lastScannerProps = null;
         modalAlertSpy.mockClear();
+    });
+
+    it.each(['enabled', 'disabled', 'unknown'])('explains an already verified Google account before recovery when QR pairing is %s', async (pairingState) => {
+        navigationState.pairingState = pairingState;
+        restoreScanComputerQrViewModuleState.routeParams = { provider: 'google', reason: 'provider_already_linked', returnTo: '/invite/mobile' };
+        const { RestoreScanComputerQrView } = await import('./RestoreScanComputerQrView');
+        const screen = await renderScreen(<RestoreScanComputerQrView />);
+        expect(screen.findByTestId('restore-provider-notice')).not.toBeNull();
+        expect(screen.getTextContent()).toContain('connect.externalAuthVerifiedBody');
+        await act(async () => { await screen.findByTestId('restore-open-manual')?.props.action(); });
+        expect(restoreScanComputerQrViewModuleState.routerPushSpy).toHaveBeenCalledWith('/restore/manual?returnTo=%2Finvite%2Fmobile');
     });
 
     it('preserves the invitation in scanner alternatives and after pairing approval', async () => {

@@ -263,6 +263,20 @@ const SessionTitleSetInputSchema = z.object({
   title: z.string().trim().min(1),
 }).passthrough();
 
+export const SessionPublishInputSchema = z.object({
+  source: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('session'), sessionId: z.string().trim().min(1) }).strict(),
+    z.object({ kind: z.literal('codex'), threadId: z.string().trim().min(1), codexHome: z.string().trim().min(1) }).strict(),
+  ]).optional(),
+  title: z.string().trim().min(1),
+  description: z.string().optional(),
+  publisherDisplayName: z.string().trim().min(1).optional(),
+  machineId: z.string().trim().min(1).optional(),
+}).strict();
+
+export type SessionPublishInput = z.infer<typeof SessionPublishInputSchema>;
+export type SessionPublishActionInput = SessionPublishInput & { source: NonNullable<SessionPublishInput['source']> };
+
 const SessionPermissionModeSetInputSchema = z.object({
   sessionId: z.string().min(1),
   permissionMode: SessionPermissionModeInputSchema,
@@ -2347,6 +2361,30 @@ export const ACTION_SPECS: readonly ActionSpec[] = Object.freeze([
       ],
     },
     inputSchema: SessionTitleSetInputSchema,
+  },
+  {
+    id: 'session.publish',
+    title: 'Publish a session invitation',
+    description: 'Only when the user requests sharing, publish committed text history as a shared-entry invitation. Current output not yet persisted is excluded. Omit source only for an explicitly bound COMBO session; native Codex requires an explicit threadId and codexHome. This creates a link others can redeem.',
+    safety: 'safe',
+    sideEffectClass: 'external',
+    approval: APPROVAL_RESULT_REQUIRED,
+    placements: [],
+    bindings: { mcpToolName: 'session_publish' },
+    surfaces: {
+      ui_button: false,
+      ui_slash_command: false,
+      voice_tool: false,
+      voice_action_block: false,
+      session_agent: true,
+      mcp: true,
+      cli: true,
+    },
+    inputHints: {
+      title: 'Publish session',
+      fields: [{ path: 'title', title: 'Invitation title', widget: 'text', required: true }],
+    },
+    inputSchema: SessionPublishInputSchema,
   },
   {
     id: 'session.permission_mode.set',

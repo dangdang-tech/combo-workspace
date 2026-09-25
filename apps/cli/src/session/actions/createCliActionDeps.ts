@@ -68,6 +68,7 @@ import { setSessionArchivedState } from '@/session/services/setSessionArchivedSt
 import { setSessionModel } from '@/session/services/setSessionModel';
 import { setSessionMode } from '@/session/services/setSessionMode';
 import { setSessionPermissionMode } from '@/session/services/setSessionPermissionMode';
+import { publishSession } from '@/session/sharing/publishSession';
 import { setSessionTitle } from '@/session/services/setSessionTitle';
 import { waitForSessionIdle } from '@/session/services/waitForSessionIdle';
 
@@ -1655,6 +1656,37 @@ export function createCliActionDeps(params: Readonly<{
         return { ok: false, errorCode: 'not_authenticated', error: 'not_authenticated' };
       }
       return await requestSessionStop({ credentials: params.credentials, idOrPrefix: sessionId });
+    },
+
+    sessionPublish: async (args) => {
+      if (!params.credentials) {
+        return { ok: false, errorCode: 'not_authenticated', error: 'not_authenticated' };
+      }
+      // Shared-child runtimes use the host owner's credentials. Authorize the immutable
+      // caller, never the requested source or a mutable MCP target/cached metadata value.
+      const callerSessionId = normalizeString(params.sessionId);
+      if (callerSessionId && callerSessionId !== 'cli-global') {
+        let callerMetadata: Record<string, unknown> | null = null;
+        try {
+          const caller = await fetchSessionById({ token: params.token, sessionId: callerSessionId });
+          if (caller?.id === callerSessionId) {
+            callerMetadata = readSessionMetadata({
+              rawSession: caller,
+              mode: resolveSessionStoredContentEncryptionMode(caller),
+              ctx: resolveSessionEncryptionContextFromCredentials(params.credentials, caller),
+            });
+          }
+        } catch {
+          // Missing, unreadable, or undecryptable caller state fails closed below.
+        }
+        if (!callerMetadata) {
+          return { ok: false, errorCode: 'caller_session_unavailable', error: 'caller_session_unavailable' };
+        }
+        if (normalizeString(callerMetadata.sharedSessionEntryId)) {
+          return { ok: false, errorCode: 'shared_session_publish_forbidden', error: 'shared_session_publish_forbidden' };
+        }
+      }
+      return await publishSession({ credentials: params.credentials, ...args });
     },
 
     sessionTitleSet: async ({ sessionId, title }) => {

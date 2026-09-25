@@ -1,4 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
+import { z } from "zod";
+import { decryptString, encryptString } from "@/modules/encrypt";
 import * as privacyKit from "privacy-kit";
 import { ENCRYPTED_DATA_KEY_ENVELOPE_V1_VERSION_BYTE } from "@happier-dev/protocol";
 import { db } from "@/storage/db";
@@ -30,9 +32,42 @@ export function newInvite() {
     return { token, hash: hashInvite(token) };
 }
 export function hashInvite(token: string) { return createHash("sha256").update(token).digest("hex"); }
-export function publicEntry(entry: Pick<Entry, "id" | "title" | "sourceSessionId" | "machineId" | "createdAt" | "sourceSnapshot">) {
+export const entryInviteTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+export const entryPublicMetadataSchema = z.object({
+    v: z.literal(1),
+    description: z.string().trim().max(1000).optional(),
+    publisherDisplayName: z.string().trim().max(80).optional(),
+}).strict();
+
+function readPublicMetadata(value: unknown) {
+    const parsed = entryPublicMetadataSchema.safeParse(value);
+    return parsed.success ? parsed.data : null;
+}
+function inviteEncryptionPath(entry: Pick<Entry, "id" | "ownerId">) {
+    return ["share", "session-entry", entry.ownerId, entry.id, "invite", "v1"];
+}
+export function encryptEntryInvite(entry: Pick<Entry, "id" | "ownerId">, token: string) {
+    return encryptString(inviteEncryptionPath(entry), token);
+}
+/** Recovery never rotates an invitation or invents a secret for a legacy hash-only row. */
+export function recoverEntryInvite(entry: Pick<Entry, "id" | "ownerId" | "inviteTokenHash" | "inviteTokenEncrypted">): string {
+    try {
+        if (entry.inviteTokenEncrypted) {
+            const token = decryptString(inviteEncryptionPath(entry), new Uint8Array(entry.inviteTokenEncrypted));
+            if (typeof token === "string" && entryInviteTokenSchema.safeParse(token).success && hashInvite(token) === entry.inviteTokenHash) return token;
+        }
+    } catch { /* Missing or incompatible encryption material must fail closed without exposing it. */ }
+    throw new SessionEntryError(409, "invite_secret_unavailable");
+}
+/** Owner-only summary; anonymous callers must use entryPreview instead. */
+export function publicEntry(entry: Pick<Entry, "id" | "title" | "sourceSessionId" | "machineId" | "createdAt" | "sourceSnapshot" | "publicMetadata" | "inviteTokenEncrypted">) {
     return { id: entry.id, title: entry.title, sourceSessionId: entry.sourceSessionId, machineId: entry.machineId,
-        createdAt: entry.createdAt.getTime(), hasContextSnapshot: Boolean(entry.sourceSnapshot) };
+        createdAt: entry.createdAt.getTime(), hasContextSnapshot: Boolean(entry.sourceSnapshot),
+        hasReusableInvite: Boolean(entry.inviteTokenEncrypted), publicMetadata: readPublicMetadata(entry.publicMetadata) };
+}
+export function entryPreview(entry: Pick<Entry, "title" | "publicMetadata">) {
+    const metadata = readPublicMetadata(entry.publicMetadata);
+    return { title: entry.title, description: metadata?.description || null, publisherDisplayName: metadata?.publisherDisplayName || null };
 }
 export function memberSummary(member: Member) {
     return { id: member.id, userId: member.userId, username: member.user.username, status: member.enabled ? member.status : "revoked", enabled: member.enabled, sessionId: member.sessionId, errorCode: member.errorCode };

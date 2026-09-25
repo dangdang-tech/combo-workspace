@@ -8,6 +8,7 @@ import type { Credentials } from '@/persistence';
 import { openSessionDataEncryptionKey } from '@/api/client/openSessionDataEncryptionKey';
 import type { SpawnDaemonSessionRequest } from '@/rpc/handlers/spawnSessionOptionsContract';
 import { provisionSharedSession, type SharedSessionAssignment } from './provisionSharedSession';
+import { pollSharedSessionEntry } from './sharedSessionEntryWorker';
 
 // HTTP and process launch are the boundaries; session creation, metadata, and crypto stay real.
 vi.mock('axios', async (importOriginal) => {
@@ -142,6 +143,25 @@ describe('provisionSharedSession', () => {
       recipientSecretKeyOrSeed: new Uint8Array(32).fill(99) })).toBeNull();
     expect(createdChild!.metadata).not.toContain('/same-project');
     expect(imported.every(item => !JSON.stringify(item.content).includes('BEFORE_SHARE'))).toBe(true);
+  });
+
+  it('names the new recipient conversation after the published invitation', async () => {
+    snapshotMetadata = { summary: { text: 'Technical source title', updatedAt: 1 } };
+    const originalPost = vi.mocked(axios.post).getMockImplementation()!;
+    vi.mocked(axios.post).mockImplementation(async (...args) => {
+      if (String(args[0]).endsWith('/claim')) return { data: { assignment: {
+        ...assignment, title: '  产品经理面试教练  ', sourceSnapshot: snapshot(),
+      } } };
+      if (String(args[0]).endsWith('/complete')) return { data: { ok: true } };
+      return await originalPost(...args);
+    });
+    await pollSharedSessionEntry({ credentials, machineId: 'machine', isOnline: () => online,
+      directTransport: { spawn: async (request) => { launches.push(request); return { success: true, sessionId: 'child' }; } },
+    });
+    const key = openSessionDataEncryptionKey({ credential: credentials, encryptedDataEncryptionKeyBase64: createdChild!.dataEncryptionKey });
+    const metadata = decrypt(key!, 'dataKey', decode(createdChild!.metadata)) as any;
+    expect(metadata.summary.text).toBe('产品经理面试教练');
+    expect(snapshotMetadata.summary).toEqual({ text: 'Technical source title', updatedAt: 1 });
   });
 
   it('inherits the frozen owner model and excludes later source metadata and same-seq message updates', async () => {
