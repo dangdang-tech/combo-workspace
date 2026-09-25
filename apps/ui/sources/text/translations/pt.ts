@@ -654,9 +654,9 @@ export const pt: TranslationStructure = {
     sharedEntry: {
         publisher: "Publicado por",
         googleAuthUnavailable: "O login com o Google não está ativado neste servidor. Entre em contato com quem publicou a sessão.",
-        guidePrepareTitle: "Prepare uma conversa para compartilhar",
-        guideSteps: "1 Prepare → 2 Crie um link → 3 Seu convidado continua",
-        guidePrepareBody: "Descreva a tarefa e inicie uma conversa. Quando estiver pronta, escolha “Compartilhar conversa”.",
+        guidePrepareTitle: "Compartilhe uma conversa existente ou comece aqui",
+        guideSteps: "1 Escolha uma conversa → 2 Peça ao Codex para publicar um link → 3 Seu convidado continua na web",
+        guidePrepareBody: "Se você já tem uma conversa no Codex, peça ao Codex para publicar a conversa que escolher; não é preciso recriá-la na web. Você também pode iniciar uma nova conversa abaixo e, quando estiver pronta, escolher “Compartilhar conversa”.",
         inviteSteps: "1 Entrar · 2 Preparar sua cópia · 3 Conversar",
         inviteStepSignIn: "Etapa 1: entre com o Google",
         inviteStepPrepare: "Etapa 2: prepare sua própria conversa",

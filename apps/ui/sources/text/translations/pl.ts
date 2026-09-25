@@ -616,9 +616,9 @@ export const pl: TranslationStructure = {
     sharedEntry: {
         publisher: "Opublikowane przez",
         googleAuthUnavailable: "Logowanie przez Google nie jest włączone na tym serwerze. Skontaktuj się z osobą publikującą sesję.",
-        guidePrepareTitle: "Przygotuj rozmowę do udostępnienia",
-        guideSteps: "1 Przygotuj → 2 Utwórz link → 3 Gość kontynuuje",
-        guidePrepareBody: "Opisz zadanie i rozpocznij rozmowę. Gdy będzie gotowa, wybierz „Udostępnij rozmowę”.",
+        guidePrepareTitle: "Udostępnij istniejącą rozmowę lub zacznij tutaj",
+        guideSteps: "1 Wybierz rozmowę → 2 Poproś Codex o opublikowanie linku → 3 Gość kontynuuje w przeglądarce",
+        guidePrepareBody: "Jeśli masz już rozmowę w Codex, poproś go o opublikowanie wybranej rozmowy; nie musisz tworzyć jej ponownie w przeglądarce. Możesz też rozpocząć nową rozmowę poniżej, a gdy będzie gotowa, wybrać „Udostępnij rozmowę”.",
         inviteSteps: "1 Zaloguj się · 2 Przygotuj kopię · 3 Rozmawiaj",
         inviteStepSignIn: "Krok 1: zaloguj się przez Google",
         inviteStepPrepare: "Krok 2: przygotuj własną rozmowę",

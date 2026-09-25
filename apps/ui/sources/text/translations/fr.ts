@@ -430,9 +430,9 @@ export const fr: TranslationStructure = {
     sharedEntry: {
         publisher: "Publié par",
         googleAuthUnavailable: "La connexion Google n’est pas activée sur ce serveur. Contactez la personne qui a publié cette session.",
-        guidePrepareTitle: "Préparer une conversation à partager",
-        guideSteps: "1 Préparer → 2 Créer un lien → 3 Votre invité continue",
-        guidePrepareBody: "Décrivez votre tâche et lancez une conversation. Lorsqu’elle est prête, choisissez « Partager la conversation ».",
+        guidePrepareTitle: "Partager une conversation existante, ou commencer ici",
+        guideSteps: "1 Choisir une conversation → 2 Demander à Codex de publier un lien → 3 Votre invité continue sur le Web",
+        guidePrepareBody: "Si vous avez déjà une conversation dans Codex, demandez à Codex de publier celle que vous avez choisie, sans la recréer sur le Web. Vous pouvez aussi en commencer une nouvelle ci-dessous, puis choisir « Partager la conversation » lorsqu’elle est prête.",
         inviteSteps: "1 Se connecter · 2 Préparer sa copie · 3 Discuter",
         inviteStepSignIn: "Étape 1 : connectez-vous avec Google",
         inviteStepPrepare: "Étape 2 : préparez votre conversation",

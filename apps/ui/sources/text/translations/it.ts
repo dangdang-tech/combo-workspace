@@ -603,9 +603,9 @@ export const it: TranslationStructure = {
     sharedEntry: {
         publisher: "Pubblicato da",
         googleAuthUnavailable: "L’accesso con Google non è abilitato su questo server. Contatta chi ha pubblicato la sessione.",
-        guidePrepareTitle: "Prepara una conversazione da condividere",
-        guideSteps: "1 Prepara → 2 Crea un link → 3 L’ospite continua",
-        guidePrepareBody: "Descrivi l’attività e avvia una conversazione. Quando è pronta, scegli «Condividi conversazione».",
+        guidePrepareTitle: "Condividi una conversazione esistente o inizia qui",
+        guideSteps: "1 Scegli una conversazione → 2 Chiedi a Codex di pubblicare un link → 3 L’ospite continua sul web",
+        guidePrepareBody: "Se hai già una conversazione in Codex, chiedi a Codex di pubblicare quella che scegli, senza ricrearla sul web. Puoi anche iniziare una nuova conversazione qui sotto e, quando è pronta, scegliere «Condividi conversazione».",
         inviteSteps: "1 Accedi · 2 Prepara la copia · 3 Conversa",
         inviteStepSignIn: "Passaggio 1: accedi con Google",
         inviteStepPrepare: "Passaggio 2: prepara la tua conversazione",

@@ -588,9 +588,9 @@ export const ja: TranslationStructure = {
     sharedEntry: {
         publisher: "公開者",
         googleAuthUnavailable: "このサーバーでは Google ログインが有効になっていません。公開者にお問い合わせください。",
-        guidePrepareTitle: "共有する会話を準備",
-        guideSteps: "1 会話を準備 → 2 共有リンクを作成 → 3 相手が会話を続行",
-        guidePrepareBody: "タスクと背景を入力して会話を始めましょう。準備ができたら「会話を共有」を選択します。",
+        guidePrepareTitle: "既存の会話を共有するか、ここから始める",
+        guideSteps: "1 会話を選ぶ → 2 Codex にリンクの発行を依頼 → 3 相手が Web で会話を続ける",
+        guidePrepareBody: "Codex に既存の会話がある場合、Web で作り直す必要はありません。共有したい会話を指定し、Codex に公開を依頼してください。ここで新しく始める場合は下にタスクを入力し、準備ができたら「会話を共有」を選びます。",
         inviteSteps: "1 ログイン · 2 コピーを準備 · 3 会話を開始",
         inviteStepSignIn: "ステップ1：Google アカウントでログイン",
         inviteStepPrepare: "ステップ2：自分専用の会話を準備",

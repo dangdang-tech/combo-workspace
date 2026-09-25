@@ -430,9 +430,9 @@ export const de: TranslationStructure = {
     sharedEntry: {
         publisher: "Veröffentlicht von",
         googleAuthUnavailable: "Die Google-Anmeldung ist auf diesem Server nicht aktiviert. Bitte kontaktiere den Herausgeber.",
-        guidePrepareTitle: "Eine Unterhaltung zum Teilen vorbereiten",
-        guideSteps: "1 Vorbereiten → 2 Link erstellen → 3 Gast setzt fort",
-        guidePrepareBody: "Beschreibe deine Aufgabe und starte eine Unterhaltung. Wähle danach „Unterhaltung teilen“.",
+        guidePrepareTitle: "Eine bestehende Unterhaltung teilen oder hier beginnen",
+        guideSteps: "1 Unterhaltung wählen → 2 Codex um einen Freigabelink bitten → 3 Der Gast setzt sie im Web fort",
+        guidePrepareBody: "Wenn du bereits eine Unterhaltung in Codex hast, bitte Codex, die von dir ausgewählte Unterhaltung zu veröffentlichen. Du musst sie im Web nicht neu erstellen. Du kannst unten auch eine neue Unterhaltung beginnen und anschließend „Unterhaltung teilen“ wählen.",
         inviteSteps: "1 Anmelden · 2 Kopie vorbereiten · 3 Chatten",
         inviteStepSignIn: "Schritt 1: Mit Google anmelden",
         inviteStepPrepare: "Schritt 2: Eigene Unterhaltung vorbereiten",

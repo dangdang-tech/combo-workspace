@@ -428,9 +428,9 @@ export const en = {
     sharedEntry: {
         publisher: "Published by",
         googleAuthUnavailable: "Google sign-in is not enabled on this server. Contact the publisher.",
-        guidePrepareTitle: "Prepare a session to share",
-        guideSteps: "1 Prepare a session → 2 Create a share link → 3 Your guest continues",
-        guidePrepareBody: "Describe your task and start a conversation. When it is ready, choose “Share session”.",
+        guidePrepareTitle: "Share an existing session, or start here",
+        guideSteps: "1 Choose a session → 2 Ask Codex to publish a link → 3 Your guest continues on the web",
+        guidePrepareBody: "If you already have a native Codex session, ask Codex to publish the session you choose. You do not need to recreate it on the web. You can also start a new conversation below, then choose “Share session” when it is ready.",
         inviteSteps: "1 Sign in · 2 Prepare your copy · 3 Start chatting",
         inviteStepSignIn: "Step 1: Sign in with your Google account",
         inviteStepPrepare: "Step 2: Prepare your own conversation",

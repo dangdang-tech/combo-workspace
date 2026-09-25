@@ -624,9 +624,9 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
     sharedEntry: {
         publisher: "發佈者",
         googleAuthUnavailable: "此伺服器尚未啟用 Google 登入，請聯絡發佈者。",
-        guidePrepareTitle: "先準備要分享的對話",
-        guideSteps: "1 準備對話 → 2 產生分享連結 → 3 對方接著聊",
-        guidePrepareBody: "輸入任務和背景，開始對話。準備好後，在對話中選擇「分享對話」。",
+        guidePrepareTitle: "分享現有對話，或從這裡開始",
+        guideSteps: "1 選好對話 → 2 讓 Codex 發布連結 → 3 對方在網頁繼續聊",
+        guidePrepareBody: "已有原生 Codex 對話時，無需在網頁重新建立；讓 Codex 發布你指定的對話即可。也可以在下方輸入任務建立新對話，準備好後選擇「分享對話」。",
         inviteSteps: "1 登入 · 2 準備副本 · 3 開始聊天",
         inviteStepSignIn: "第 1 步：登入你的 Google 帳號",
         inviteStepPrepare: "第 2 步：準備你的獨立對話",

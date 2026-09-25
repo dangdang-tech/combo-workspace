@@ -603,9 +603,9 @@ export const zhHans: TranslationStructure = {
     sharedEntry: {
         publisher: "发布者",
         googleAuthUnavailable: "此服务器尚未启用 Google 登录，请联系发布者。",
-        guidePrepareTitle: "先准备要分享的会话",
-        guideSteps: "1 准备会话 → 2 生成分享链接 → 3 对方接着聊",
-        guidePrepareBody: "输入任务和背景，开始对话。准备好后，在会话中选择“分享会话”。",
+        guidePrepareTitle: "分享已有会话，或从这里开始",
+        guideSteps: "1 选好会话 → 2 让 Codex 发布链接 → 3 对方在网页续聊",
+        guidePrepareBody: "已有原生 Codex 会话时，无需在网页重新创建；让 Codex 发布你指定的会话即可。也可以在下方输入任务新建，准备好后选择“分享会话”。",
         inviteSteps: "1 登录 · 2 准备副本 · 3 开始聊天",
         inviteStepSignIn: "第 1 步：登录你的 Google 账号",
         inviteStepPrepare: "第 2 步：准备你的独立会话",
