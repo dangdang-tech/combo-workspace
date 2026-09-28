@@ -41,6 +41,7 @@ const publishMethod = 'daemon.directSessions.publish';
 async function openPreview() {
     const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
     const screen = await renderScreen(<NativeSessionPublishScreen />);
+    await act(async () => { screen.pressByTestId('direct-session-directory-toggle:/home/owner/project'); });
     await act(async () => { screen.pressByTestId('direct-session-candidate:native-thread'); });
     return screen;
 }
@@ -74,14 +75,18 @@ describe('NativeSessionPublishScreen', () => {
         expect(directoryGroups().map(node => node.props.testID)).toEqual([
             'direct-session-directory:/work/two/shared', 'direct-session-directory:/work/one/shared', 'direct-session-directory:unassigned',
         ]);
+        expect(screen.findByTestId('direct-session-candidate:a-new')).toBeNull();
+        await act(async () => { screen.pressByTestId('direct-session-directory-toggle:/work/one/shared'); });
         const group = screen.findByTestId('direct-session-directory:/work/one/shared');
-        expect(group?.findAllByType('Item').map(node => node.props.testID)).toEqual(['direct-session-candidate:a-new', 'direct-session-candidate:a-old']);
-        expect(screen.getTextContent()).toContain('/work/one/shared');
-        expect(screen.getTextContent()).toContain('/work/two/shared');
+        expect(group?.findAllByType('Item').filter(node => String(node.props.testID).startsWith('direct-session-candidate:')).map(node => node.props.testID)).toEqual(['direct-session-candidate:a-new', 'direct-session-candidate:a-old']);
+        expect(screen.findByTestId('direct-session-directory-toggle:/work/one/shared')?.props.subtitle).toBe('/work/one/shared');
+        expect(screen.findByTestId('direct-session-directory-toggle:/work/two/shared')?.props.subtitle).toBe('/work/two/shared');
         await act(async () => { screen.pressByTestId('direct-session-candidates-load-more'); });
-        expect(screen.findByTestId('direct-session-directory:/work/one/shared')?.findAllByType('Item').map(node => node.props.testID)).toEqual([
+        expect(screen.findByTestId('direct-session-directory:/work/one/shared')?.findAllByType('Item').filter(node => String(node.props.testID).startsWith('direct-session-candidate:')).map(node => node.props.testID)).toEqual([
             'direct-session-candidate:a-new', 'direct-session-candidate:a-old', 'direct-session-candidate:a-older',
         ]);
+        expect(screen.findByTestId('direct-session-candidate:no-directory')).toBeNull();
+        await act(async () => { screen.pressByTestId('direct-session-directory-toggle:unassigned'); });
         expect(screen.findByTestId('direct-session-candidate:no-directory')).not.toBeNull();
         await act(async () => { screen.pressByTestId('direct-session-candidate:a-older'); });
         expect(calls(previewMethod).at(-1)?.[0].payload.remoteSessionId).toBe('a-older');
@@ -97,10 +102,11 @@ describe('NativeSessionPublishScreen', () => {
         const groups = screen.findAllByType('View').filter(node => String(node.props.testID ?? '').startsWith('direct-session-directory:'));
         expect(groups).toHaveLength(1);
         expect(groups[0].props.testID).toBe('direct-session-directory:C:/work/shared');
-        expect(groups[0].findAllByType('Item').map(node => node.props.testID)).toEqual([
+        await act(async () => { screen.pressByTestId('direct-session-directory-toggle:C:/work/shared'); });
+        expect(groups[0].findAllByType('Item').filter(node => String(node.props.testID).startsWith('direct-session-candidate:')).map(node => node.props.testID)).toEqual([
             'direct-session-candidate:windows-new', 'direct-session-candidate:windows-old',
         ]);
-        expect(screen.getTextContent()).toContain('C:/work/shared');
+        expect(screen.findByTestId('direct-session-directory-toggle:C:/work/shared')?.props.subtitle).toBe('C:/work/shared');
     });
 
     it('regroups search results without retaining old projects and keeps directory-path fallback', async () => {
@@ -116,9 +122,47 @@ describe('NativeSessionPublishScreen', () => {
             await act(async () => { await vi.advanceTimersByTimeAsync(300); });
             expect(screen.findByTestId('direct-session-directory:/home/owner/project')).toBeNull();
             expect(screen.findByTestId('direct-session-directory:C:/work/other')).not.toBeNull();
+            expect(screen.findByTestId('direct-session-candidate:search-match')).toBeNull();
+            await act(async () => { screen.pressByTestId('direct-session-directory-toggle:C:/work/other'); });
             expect(screen.findByTestId('direct-session-candidate:search-match')).not.toBeNull();
-            expect(screen.getTextContent()).toContain('C:/work/other');
+            expect(screen.findByTestId('direct-session-directory-toggle:C:/work/other')?.props.subtitle).toBe('C:/work/other');
         } finally { vi.useRealTimers(); }
+    });
+
+    it('switches between collapsed projects and recent sessions while retaining search and project expansion', async () => {
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod ? ready : {
+            ok: true, candidates: [{ ...candidate, remoteSessionId: 'newest', updatedAtMs: 3 },
+                { ...candidate, remoteSessionId: 'middle', updatedAtMs: 2, details: { cwd: '/other/project' } },
+                { ...candidate, remoteSessionId: 'oldest', updatedAtMs: 1 }], nextCursor: null,
+        });
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        expect(screen.findByTestId('direct-session-directory-toggle:/home/owner/project')?.props.accessibilityState).toEqual({ expanded: false });
+        expect(screen.findByTestId('direct-session-candidate:newest')).toBeNull();
+        await act(async () => { screen.pressByTestId('direct-session-directory-toggle:/home/owner/project'); });
+        await act(async () => { screen.pressByTestId('direct-session-view:recent'); });
+        expect(screen.findAllByType('Item').filter(node => String(node.props.testID).startsWith('direct-session-candidate:')).map(node => node.props.testID)).toEqual([
+            'direct-session-candidate:newest', 'direct-session-candidate:middle', 'direct-session-candidate:oldest',
+        ]);
+        expect(screen.findByTestId('direct-session-directory:/home/owner/project')).toBeNull();
+        await act(async () => { screen.findByTestId('direct-session-candidates-search-input')?.props.onChangeText('project'); });
+        await act(async () => { screen.pressByTestId('direct-session-view:projects'); });
+        expect(screen.findByTestId('direct-session-candidates-search-input')?.props.value).toBe('project');
+        expect(screen.findByTestId('direct-session-directory-toggle:/home/owner/project')?.props.accessibilityState).toEqual({ expanded: true });
+        expect(screen.findByTestId('direct-session-candidate:middle')).toBeNull();
+    });
+
+    it('reflects selection, review, publication and return in the step indicator', async () => {
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        expect(screen.findByTestId('native-publish-step-1')?.props['aria-current']).toBe('step');
+        await act(async () => { screen.pressByTestId('direct-session-directory-toggle:/home/owner/project'); });
+        await act(async () => { screen.pressByTestId('direct-session-candidate:native-thread'); });
+        expect(screen.findByTestId('native-publish-step-2')?.props['aria-current']).toBe('step');
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        expect(screen.findByTestId('native-publish-step-3')?.props['aria-current']).toBe('step');
+        await act(async () => { screen.pressByTestId('native-publish-choose-another'); });
+        expect(screen.findByTestId('native-publish-step-1')?.props['aria-current']).toBe('step');
     });
 
     it('lists the selected host and previews actual text without publishing or taking over', async () => {
@@ -223,7 +267,7 @@ describe('NativeSessionPublishScreen', () => {
         expect(boundary.push).not.toHaveBeenCalled();
         boundary.machines = [{ id: 'machine-a', active: true, metadata: { displayName: 'My Mac' } }];
         await screen.update(<NativeSessionPublishScreen />);
-        expect(screen.findByTestId('direct-session-candidate:native-thread')).not.toBeNull();
+        expect(screen.findByTestId('direct-session-directory-toggle:/home/owner/project')).not.toBeNull();
         expect(screen.findByTestId('session-getting-started-source-guide')).toBeNull();
     });
 

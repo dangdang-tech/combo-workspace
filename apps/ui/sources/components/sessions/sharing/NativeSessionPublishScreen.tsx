@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { StyleSheet } from 'react-native-unistyles';
 import type { DirectSessionPublishPreviewResponse, DirectSessionPublishResponse } from '@happier-dev/protocol';
@@ -27,6 +27,15 @@ type Publication = Extract<DirectSessionPublishResponse, { ok: true }>['publicat
 
 const stylesheet = StyleSheet.create((theme) => ({
     container: { flex: 1 },
+    steps: { flexDirection: 'row', alignItems: 'flex-start', padding: theme.margins.md },
+    step: { flex: 1, alignItems: 'center', gap: theme.margins.sm },
+    stepCircle: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border.default, alignItems: 'center', justifyContent: 'center' },
+    stepActive: { backgroundColor: theme.colors.button.primary.background, borderColor: theme.colors.button.primary.background },
+    stepNumber: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
+    stepNumberActive: { color: theme.colors.button.primary.tint },
+    stepLabel: { ...Typography.rowMeta(), color: theme.colors.text.secondary, textAlign: 'center' },
+    stepLabelActive: { color: theme.colors.text.primary, fontWeight: '600' },
+    stepConnector: { height: 1, flex: 0.25, marginTop: 14, backgroundColor: theme.colors.border.default },
     content: { padding: theme.margins.lg, gap: theme.margins.md },
     title: { ...Typography.rowTitle(), color: theme.colors.text.primary },
     detail: { ...Typography.body(), color: theme.colors.text.secondary },
@@ -40,6 +49,23 @@ const stylesheet = StyleSheet.create((theme) => ({
     inputFocused: { borderColor: theme.colors.focus.ring },
     message: { gap: theme.margins.sm, padding: theme.margins.lg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border.default },
 }));
+
+function NativePublishSteps({ current }: { current: 1 | 2 | 3 }) {
+    const labels = [t('nativeSessionSharing.stepChoose'), t('nativeSessionSharing.stepReview'), t('nativeSessionSharing.stepShare')];
+    return <ItemGroup><View style={stylesheet.steps}>
+        {labels.map((label, index) => <React.Fragment key={index}>
+            {index > 0 ? <View style={stylesheet.stepConnector} /> : null}
+            <View testID={`native-publish-step-${index + 1}`} accessible accessibilityRole="text"
+                accessibilityLabel={`${index + 1}. ${label}${current === index + 1 ? ` · ${t('nativeSessionSharing.currentStep')}` : ''}`}
+                {...(Platform.OS === 'web' ? { 'aria-current': current === index + 1 ? 'step' as const : undefined } : {})} style={stylesheet.step}>
+                <View style={[stylesheet.stepCircle, index + 1 <= current ? stylesheet.stepActive : null]}>
+                    <Text style={[stylesheet.stepNumber, index + 1 <= current ? stylesheet.stepNumberActive : null]}>{index + 1 < current ? '✓' : index + 1}</Text>
+                </View>
+                <Text style={[stylesheet.stepLabel, current === index + 1 ? stylesheet.stepLabelActive : null]}>{label}</Text>
+            </View>
+        </React.Fragment>)}
+    </View></ItemGroup>;
+}
 
 function errorMessage(code: string | null, phase: 'load' | 'preview' | 'publish') {
     if (code === RPC_ERROR_CODES.METHOD_NOT_AVAILABLE || code === RPC_ERROR_CODES.METHOD_NOT_FOUND) return t('nativeSessionSharing.hostUpdateRequired');
@@ -74,7 +100,7 @@ function MachineSelection({ serverId, serverUrl }: { serverId: string; serverUrl
             serverUrl, serverName: serverUrl, showServerSetup: true }} />
     </View>;
     return <ItemList keyboardAware keyboardShouldPersistTaps="handled">
-        <ItemGroup title={t('nativeSessionSharing.title')} footer={t('nativeSessionSharing.steps')}>
+        <ItemGroup>
             <Item title={t('nativeSessionSharing.chooseMachine')} subtitle={t('nativeSessionSharing.machineScope')} subtitleLines={0} showChevron={false} />
             {machines.map(machine => <Item key={machine.id} testID={`native-publish-machine-${machine.id}`}
                 title={machine.metadata?.displayName || machine.metadata?.host || t('nativeSessionSharing.connectedComputer')}
@@ -86,7 +112,7 @@ function MachineSelection({ serverId, serverUrl }: { serverId: string; serverUrl
                 <Item testID="native-publish-connect-machine" title={t('nativeSessionSharing.connectMachine')} onPress={() => setShowSetup(true)} />
             </> : !selected.active ? <Item testID="native-publish-offline" title={t('nativeSessionSharing.offline')} titleLines={0} showChevron={false} /> : null}
         </ItemGroup>
-        {selected ? <NativeSessionPublishFlow key={selected.id} machineId={selected.id} serverId={serverId} online={selected.active} /> : null}
+        {selected ? <NativeSessionPublishFlow key={selected.id} machineId={selected.id} serverId={serverId} online={selected.active} /> : <NativePublishSteps current={1} />}
     </ItemList>;
 }
 
@@ -148,6 +174,7 @@ function NativeSessionPublishFlow({ machineId, serverId, online }: { machineId: 
     };
     const terminalError = error && ['publication_capture_conflict', 'context_snapshot_too_large', 'not_authenticated'].includes(error.code ?? '');
     return <>
+        <NativePublishSteps current={publication ? 3 : candidate ? 2 : 1} />
         {!candidate ? (online ? <NativeConversationPicker machineId={machineId} serverId={serverId} onSelect={loadPreview} /> : null) : <>
             <ItemGroup>
                 <Item testID="native-publish-choose-another" title={candidate.title || t('nativeSessionSharing.untitledSession')} titleLines={2} subtitle={t('nativeSessionSharing.chooseAnother')} disabled={busy === 'publish' || busy === 'copy'} onPress={chooseAnother} />
@@ -187,7 +214,7 @@ function NativePublishReview({ candidate, preview, busy, online, onPublish }: { 
     const [focusedField, setFocusedField] = useState<'title' | 'description' | null>(null);
     return <>
         {preview ? <NativeTextPreview key={preview.snapshotFingerprint} preview={preview} /> : null}
-        {preview ? <ItemGroup title={t('sharedEntry.generateStep')}><View style={stylesheet.content}>
+        {preview ? <ItemGroup><View style={stylesheet.content}>
             <View style={stylesheet.field}>
                 <Text style={stylesheet.title}>{t('sharedEntry.name')}</Text>
                 <TextInput testID="native-publish-title" value={title} onChangeText={setTitle} maxLength={120} editable={!busy}

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 
+import { SegmentedTabBar } from '@/components/ui/navigation/SegmentedTabBar';
 import { Item } from '@/components/ui/lists/Item';
 import { ItemGroup } from '@/components/ui/lists/ItemGroup';
 import { Text, TextInput } from '@/components/ui/text/Text';
@@ -53,24 +54,10 @@ const stylesheet = StyleSheet.create((theme: AppTheme) => ({
         right: 22,
         top: 22,
     },
-    directoryHeading: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: theme.margins.sm,
-    },
-    directoryLabels: {
-        flex: 1,
-        minWidth: 0,
-        gap: theme.margins.xs,
-    },
-    directoryTitle: {
-        ...Typography.rowTitle(),
-        color: theme.colors.text.primary,
-    },
-    directoryPath: {
-        ...Typography.rowMeta(),
-        color: theme.colors.text.secondary,
-    },
+    toolbar: { padding: theme.margins.md, gap: theme.margins.md },
+    heading: { ...Typography.rowTitle(), color: theme.colors.text.primary },
+    directory: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.default },
+    directoryChildren: { paddingLeft: theme.margins.md },
     loadingRow: {
         paddingVertical: 18,
         alignItems: 'center',
@@ -95,6 +82,8 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
     const { theme } = useUnistyles() as { theme: AppTheme };
     const styles = stylesheet;
     const itemDensity = useResolvedItemDensity(undefined);
+    const [view, setView] = React.useState<'projects' | 'recent'>('projects');
+    const [expandedDirectories, setExpandedDirectories] = React.useState<ReadonlySet<string>>(() => new Set());
     const hasSearchQuery = props.searchQuery.trim().length > 0;
 
     const directoryGroups = React.useMemo(() => {
@@ -110,7 +99,7 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
         }
         return Array.from(groups, ([key, group]) => ({ key, ...group }));
     }, [props.candidates, props.groupByDirectory]);
-    const showDirectories = props.groupByDirectory && !props.loading && !props.error && props.candidates.length > 0;
+    const showDirectories = props.groupByDirectory && view === 'projects' && !props.loading && !props.error && props.candidates.length > 0;
     const renderCandidate = (candidate: DirectBrowseCandidate) => (
         <Item
             key={candidate.remoteSessionId}
@@ -132,8 +121,8 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
     ) : null;
 
     return (
-        <>
-            <ItemGroup title={t('directSessions.browseCandidates')}>
+        <ItemGroup>
+            <View testID="direct-session-browser">
                 <View style={styles.searchContainer}>
                     <TextInput
                         testID="direct-session-candidates-search-input"
@@ -148,6 +137,13 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
                             <ActivitySpinner size="small" color={theme.colors.text.secondary} />
                         </View>
                     ) : null}
+                </View>
+
+                <View style={styles.toolbar}>
+                    <Text style={styles.heading}>{t('directSessions.browseCandidates')}</Text>
+                    {props.groupByDirectory ? <SegmentedTabBar
+                        tabs={[{ id: 'projects', label: t('directSessions.browseProjects') }, { id: 'recent', label: t('directSessions.browseRecent') }]}
+                        activeTabId={view} onSelectTab={setView} testIDPrefix="direct-session-view" /> : null}
                 </View>
 
                 {props.loading ? (
@@ -172,29 +168,29 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
                         {loadMore}
                     </>
                 )}
-            </ItemGroup>
             {showDirectories ? <>
                 {directoryGroups.map(({ key, directory, candidates }) => {
                     const pathLabel = formatDirectBrowseCandidatePathLabel(directory);
                     const title = pathLabel?.split('/').filter(Boolean).at(-1) ?? pathLabel ?? t('directSessions.browseUnassignedDirectory');
                     return (
-                        <View key={key} testID={`direct-session-directory:${key || 'unassigned'}`}>
-                            <ItemGroup title={
-                                <View style={styles.directoryHeading}>
-                                    <Ionicons name="folder-outline" size={18} color={theme.colors.text.secondary} />
-                                    <View style={styles.directoryLabels}>
-                                        <Text style={styles.directoryTitle}>{title}</Text>
-                                        {pathLabel ? <Text selectable style={styles.directoryPath}>{pathLabel}</Text> : null}
-                                    </View>
-                                </View>
-                            }>
-                                {candidates.map(renderCandidate)}
-                            </ItemGroup>
+                        <View key={key} testID={`direct-session-directory:${key || 'unassigned'}`} style={styles.directory}>
+                            <Item testID={`direct-session-directory-toggle:${key || 'unassigned'}`}
+                                title={title} subtitle={pathLabel ?? undefined} subtitleLines={0}
+                                icon={<Ionicons name="folder-outline" size={18} color={theme.colors.text.secondary} />}
+                                rightElement={<Ionicons name={expandedDirectories.has(key) ? 'chevron-down' : 'chevron-forward'} size={18} color={theme.colors.text.secondary} />}
+                                accessibilityState={{ expanded: expandedDirectories.has(key) }}
+                                onPress={() => setExpandedDirectories(current => {
+                                    const next = new Set(current);
+                                    if (next.has(key)) next.delete(key); else next.add(key);
+                                    return next;
+                                })} />
+                            {expandedDirectories.has(key) ? <View style={styles.directoryChildren}>{candidates.map(renderCandidate)}</View> : null}
                         </View>
                     );
                 })}
-                {loadMore ? <ItemGroup>{loadMore}</ItemGroup> : null}
+                {loadMore}
             </> : null}
-        </>
+            </View>
+        </ItemGroup>
     );
 });
