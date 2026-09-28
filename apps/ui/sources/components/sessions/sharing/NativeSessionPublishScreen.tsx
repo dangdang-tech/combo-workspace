@@ -149,8 +149,8 @@ function NativeSessionPublishFlow({ machineId, serverId, online }: { machineId: 
     const terminalError = error && ['publication_capture_conflict', 'context_snapshot_too_large', 'not_authenticated'].includes(error.code ?? '');
     return <>
         {!candidate ? (online ? <NativeConversationPicker machineId={machineId} serverId={serverId} onSelect={loadPreview} /> : null) : <>
-            <ItemGroup title={candidate.title || t('nativeSessionSharing.untitledSession')}>
-                <Item testID="native-publish-choose-another" title={t('nativeSessionSharing.chooseAnother')} disabled={busy === 'publish' || busy === 'copy'} onPress={chooseAnother} />
+            <ItemGroup>
+                <Item testID="native-publish-choose-another" title={candidate.title || t('nativeSessionSharing.untitledSession')} titleLines={2} subtitle={t('nativeSessionSharing.chooseAnother')} disabled={busy === 'publish' || busy === 'copy'} onPress={chooseAnother} />
             </ItemGroup>
             {busy === 'preview' ? <ItemGroup><Item title={t('common.loading')} showChevron={false} /></ItemGroup> : null}
             {publication ? <ItemGroup title={t('nativeSessionSharing.linkReady')}>
@@ -209,12 +209,21 @@ function NativePublishReview({ candidate, preview, busy, online, onPublish }: { 
 
 function NativeTextPreview({ preview }: { preview: ReadyPreview }) {
     const [visibleCount, setVisibleCount] = useState(20);
-    return <ItemGroup title={t('nativeSessionSharing.previewTitle')} footer={t('nativeSessionSharing.previewDetail')}>
-        <View style={stylesheet.content}><Text style={stylesheet.detail}>{t('nativeSessionSharing.previewCount', { count: preview.messages.length })}</Text></View>
-        {preview.messages.slice(0, visibleCount).map((message, index) => <View key={index} style={stylesheet.message}>
+    const [expanded, setExpanded] = useState(false);
+    return <ItemGroup title={t('nativeSessionSharing.previewTitle')}>
+        <View style={stylesheet.content}>
+            <Text style={stylesheet.text}>{t('nativeSessionSharing.shareOutcome')}</Text>
+            <Text style={stylesheet.detail}>{t('nativeSessionSharing.sharedExecution')}</Text>
+        </View>
+        <Item testID="native-publish-preview-toggle"
+            title={expanded ? t('common.collapse') : t('nativeSessionSharing.previewCount', { count: preview.messages.length })}
+            titleLines={0} accessibilityState={{ expanded }} showChevron={false}
+            onPress={() => setExpanded(value => !value)} />
+        {expanded ? <View style={stylesheet.content}><Text style={stylesheet.detail}>{t('nativeSessionSharing.previewDetail')}</Text></View> : null}
+        {expanded ? preview.messages.slice(0, visibleCount).map((message, index) => <View key={index} style={stylesheet.message}>
             <Text style={stylesheet.title}>{t(message.role === 'user' ? 'nativeSessionSharing.user' : 'nativeSessionSharing.assistant')}</Text>
             <Text testID={`native-publish-preview-message-${index}`} selectable style={stylesheet.text}>{message.text}</Text>
-        </View>)}
-        {visibleCount < preview.messages.length ? <Item testID="native-publish-preview-more" title={t('directSessions.browseLoadMore')} onPress={() => setVisibleCount(count => count + 20)} /> : null}
+        </View>) : null}
+        {expanded && visibleCount < preview.messages.length ? <Item testID="native-publish-preview-more" title={t('directSessions.browseLoadMore')} onPress={() => setVisibleCount(count => count + 20)} /> : null}
     </ItemGroup>;
 }

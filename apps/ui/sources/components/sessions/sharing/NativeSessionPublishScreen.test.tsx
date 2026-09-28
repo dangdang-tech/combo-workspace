@@ -123,12 +123,35 @@ describe('NativeSessionPublishScreen', () => {
 
     it('lists the selected host and previews actual text without publishing or taking over', async () => {
         const screen = await openPreview();
+        await act(async () => { screen.pressByTestId('native-publish-preview-toggle'); });
         expect(screen.findByTestId('native-publish-preview-message-0')?.props.children).toBe('Practice with me');
         expect(screen.findByTestId('native-publish-preview-message-1')?.props.children).toBe('What did you learn?');
         expect(calls(previewMethod)[0][0]).toMatchObject({ machineId: 'machine-a', serverId: 'server-a', payload: { remoteSessionId: 'native-thread', source: { kind: 'codexHome', home: 'user' } } });
         expect(calls(publishMethod)).toHaveLength(0);
         expect(boundary.rpc.mock.calls.some(([request]) => /link.ensure|takeover/.test(request.method))).toBe(false);
         expect(screen.findByTestId('native-publish-title')?.props.value).toBe('Interview practice');
+    });
+
+    it('keeps long history collapsed, reveals every message on demand and preserves the form', async () => {
+        const messages = Array.from({ length: 41 }, (_, index) => ({ role: 'user', text: `Message ${index}` }));
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod ? { ...ready, messages }
+            : { ok: true, candidates: [candidate], nextCursor: null });
+        const screen = await openPreview();
+        expect(screen.findByTestId('native-publish-preview-message-0')).toBeNull();
+        expect(screen.findByTestId('native-publish-preview-toggle')?.props.accessibilityState).toEqual({ expanded: false });
+        expect(screen.findByTestId('native-publish-generate')).not.toBeNull();
+        await act(async () => { screen.findByTestId('native-publish-title')?.props.onChangeText('My title'); });
+        await act(async () => { screen.pressByTestId('native-publish-preview-toggle'); });
+        expect(screen.findByTestId('native-publish-preview-message-19')?.props.children).toBe('Message 19');
+        expect(screen.findByTestId('native-publish-preview-message-20')).toBeNull();
+        await act(async () => { screen.pressByTestId('native-publish-preview-more'); });
+        await act(async () => { screen.pressByTestId('native-publish-preview-more'); });
+        expect(screen.findByTestId('native-publish-preview-message-40')?.props.children).toBe('Message 40');
+        expect(screen.findByTestId('native-publish-preview-more')).toBeNull();
+        await act(async () => { screen.pressByTestId('native-publish-preview-toggle'); });
+        expect(screen.findByTestId('native-publish-preview-message-0')).toBeNull();
+        expect(screen.findByTestId('native-publish-title')?.props.value).toBe('My title');
+        expect(calls(publishMethod)).toHaveLength(0);
     });
 
     it('publishes only after review with the exact fingerprint and user-entered title and purpose', async () => {
@@ -215,6 +238,7 @@ describe('NativeSessionPublishScreen', () => {
         const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
         await screen.update(<NativeSessionPublishScreen />);
         expect(screen.findByTestId('native-publish-offline')).not.toBeNull();
+        await act(async () => { screen.pressByTestId('native-publish-preview-toggle'); });
         expect(screen.findByTestId('native-publish-preview-message-0')?.props.children).toBe('Practice with me');
         expect(screen.findByTestId('native-publish-title')?.props.value).toBe('Edited title');
         expect(screen.findByTestId('native-publish-generate')?.props.disabled).toBe(true);
@@ -248,6 +272,7 @@ describe('NativeSessionPublishScreen', () => {
         const screen = await openPreview();
         expect(screen.findByTestId('native-publish-preview-retry')).not.toBeNull();
         await act(async () => { screen.pressByTestId('native-publish-preview-retry'); });
+        await act(async () => { screen.pressByTestId('native-publish-preview-toggle'); });
         expect(screen.findByTestId('native-publish-preview-message-0')?.props.children).toBe('Practice with me');
         expect(calls(publishMethod)).toHaveLength(0);
     });
