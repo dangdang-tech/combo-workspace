@@ -6064,6 +6064,7 @@ deps: {
         browseSourceAcpAgentSessions: "Sessions de l'agent",
         browseSourcePiDefault: "Directori per defecte de l'agent Pi",
         browseCandidates: "Sessions disponibles",
+        browseUnassignedDirectory: "Directori no especificat",
         browseNoMachines: "Encara no hi ha màquines disponibles per a sessions directes.",
         browseNoCandidates: "No s'han trobat sessions del proveïdor per a aquesta màquina i aquest proveïdor.",
         browseActivityRunning: "En execució",

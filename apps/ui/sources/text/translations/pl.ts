@@ -6441,6 +6441,7 @@ export const pl: TranslationStructure = {
     browseSourceAcpAgentSessions: 'Sesje agenta',
     browseSourcePiDefault: "Domyślny katalog agenta Pi",
     browseCandidates: "Dostępne sesje",
+    browseUnassignedDirectory: "Nieokreślony katalog",
     browseNoMachines: "Na razie nie ma dostępnych maszyn dla sesji bezpośrednich.",
     browseNoCandidates: "Nie znaleziono sesji dostawcy dla tej maszyny i dostawcy.",
     browseActivityRunning: "Uruchomiona",

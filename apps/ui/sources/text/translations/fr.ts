@@ -6050,6 +6050,7 @@ export const fr: TranslationStructure = {
         browseSourceAcpAgentSessions: 'Sessions de l’agent',
         browseSourcePiDefault: 'Répertoire de l’agent Pi par défaut',
         browseCandidates: 'Sessions disponibles',
+        browseUnassignedDirectory: 'Dossier non précisé',
         browseNoMachines: 'Aucune machine n’est disponible pour les sessions directes.',
         browseNoCandidates: 'Aucune session provider trouvée pour cette machine et ce provider.',
         browseActivityRunning: 'En cours',

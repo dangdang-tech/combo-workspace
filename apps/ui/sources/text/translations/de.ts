@@ -6063,6 +6063,7 @@ export const de: TranslationStructure = {
         browseSourceAcpAgentSessions: 'Agent-Sitzungen',
         browseSourcePiDefault: 'Standard-Pi-Agent-Verzeichnis',
         browseCandidates: 'Verfügbare Sessions',
+        browseUnassignedDirectory: 'Nicht angegebenes Verzeichnis',
         browseNoMachines: 'Für direkte Sessions sind noch keine Rechner verfügbar.',
         browseNoCandidates: 'Für diesen Rechner und Provider wurden keine Provider-Sessions gefunden.',
         browseActivityRunning: 'Läuft',

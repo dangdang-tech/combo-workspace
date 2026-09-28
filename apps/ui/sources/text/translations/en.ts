@@ -6084,6 +6084,7 @@ export const en = {
         browseSourceAcpAgentSessions: 'Agent sessions',
         browseSourcePiDefault: 'Default Pi agent directory',
         browseCandidates: 'Available sessions',
+        browseUnassignedDirectory: 'Unspecified directory',
         browseNoMachines: 'No machines are available for direct sessions yet.',
         browseNoCandidates: 'No provider sessions were found for this machine and provider.',
         browseActivityRunning: 'Running',

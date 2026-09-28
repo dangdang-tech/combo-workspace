@@ -197,6 +197,7 @@ describe('DirectSessionsBrowseScreen', () => {
         expect(sourceDropdown?.props?.popoverBoundaryRef).toBe(popoverBoundaryRef);
         const itemGroups = screen.findAllByType('ItemGroup' as any);
         expect(itemGroups[0]?.props.title).toBe('directSessions.browseFiltersTitle');
+        expect(screen.findAllByType('View').some(node => String(node.props.testID ?? '').startsWith('direct-session-directory:'))).toBe(false);
         expect(machineDropdown?.props?.itemTrigger?.itemProps?.density).toBeUndefined();
         expect(providerDropdown?.props?.itemTrigger?.itemProps?.density).toBeUndefined();
         expect(sourceDropdown?.props?.itemTrigger?.itemProps?.density).toBeUndefined();

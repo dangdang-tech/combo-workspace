@@ -5441,6 +5441,7 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         browseSourceAcpAgentSessions: '代理工作階段',
         browseSourcePiDefault: "預設 Pi 代理目錄",
         browseCandidates: "可用工作階段",
+        browseUnassignedDirectory: "未指定目錄",
         browseNoMachines: "目前尚無可用於直接工作階段的機器。",
         browseNoCandidates: "找不到這台機器與提供者對應的工作階段。",
         browseActivityRunning: "執行中",

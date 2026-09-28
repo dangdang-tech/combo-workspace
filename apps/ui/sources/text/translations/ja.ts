@@ -6687,6 +6687,7 @@ localTailscale: {
     browseSourceAcpAgentSessions: 'エージェントのセッション',
     browseSourcePiDefault: "デフォルトの Pi エージェントディレクトリ",
     browseCandidates: "利用可能なセッション",
+    browseUnassignedDirectory: "ディレクトリ未指定",
     browseNoMachines: "直接セッションに利用できるマシンはまだありません。",
     browseNoCandidates: "このマシンとプロバイダーに対するセッションは見つかりませんでした。",
     browseActivityRunning: "実行中",

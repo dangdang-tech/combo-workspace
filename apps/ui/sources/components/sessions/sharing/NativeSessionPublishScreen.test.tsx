@@ -26,7 +26,7 @@ vi.mock('react-native-unistyles', async () => { const { createUnistylesMock } = 
 vi.mock('@/text', async () => { const { createTextModuleMock } = await import('@/dev/testkit/mocks/text'); return createTextModuleMock({ translate: (key) => key }); });
 vi.mock('expo-clipboard', () => ({ setStringAsync: boundary.copy }));
 vi.mock('@/components/ui/lists/Item', () => ({ Item: (props: any) => React.createElement('Item', props) }));
-vi.mock('@/components/ui/lists/ItemGroup', () => ({ ItemGroup: (props: any) => React.createElement('ItemGroup', props, props.children) }));
+vi.mock('@/components/ui/lists/ItemGroup', () => ({ ItemGroup: (props: any) => React.createElement('ItemGroup', props, props.title, props.children) }));
 vi.mock('@/components/ui/lists/ItemList', () => ({ ItemList: (props: any) => React.createElement('ItemList', props, props.children) }));
 vi.mock('@/components/ui/status/StatusDot', () => ({ StatusDot: 'StatusDot' }));
 
@@ -57,6 +57,68 @@ describe('NativeSessionPublishScreen', () => {
             if (method === publishMethod) return { ok: true, publication };
             throw new Error('Unexpected RPC');
         });
+    });
+
+    it('groups native conversations by full directory and preserves recent order, missing paths and page selection', async () => {
+        const items = [
+            { ...candidate, remoteSessionId: 'b-new', updatedAtMs: 30, details: { cwd: '/work/two/shared' } },
+            { ...candidate, remoteSessionId: 'a-new', updatedAtMs: 20, details: { cwd: '/work/one/shared' } },
+            { ...candidate, remoteSessionId: 'a-old', updatedAtMs: 10, details: { cwd: '/work/one/shared' } },
+            { ...candidate, remoteSessionId: 'no-directory', updatedAtMs: 5, details: {} },
+        ];
+        boundary.rpc.mockImplementation(async ({ method, payload }) => method === previewMethod ? ready
+            : { ok: true, candidates: payload.cursor ? [{ ...candidate, remoteSessionId: 'a-older', updatedAtMs: 1, details: { cwd: '/work/one/shared' } }] : items, nextCursor: payload.cursor ? null : 'older' });
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        const directoryGroups = () => screen.findAllByType('View').filter(node => String(node.props.testID ?? '').startsWith('direct-session-directory:'));
+        expect(directoryGroups().map(node => node.props.testID)).toEqual([
+            'direct-session-directory:/work/two/shared', 'direct-session-directory:/work/one/shared', 'direct-session-directory:unassigned',
+        ]);
+        const group = screen.findByTestId('direct-session-directory:/work/one/shared');
+        expect(group?.findAllByType('Item').map(node => node.props.testID)).toEqual(['direct-session-candidate:a-new', 'direct-session-candidate:a-old']);
+        expect(screen.getTextContent()).toContain('/work/one/shared');
+        expect(screen.getTextContent()).toContain('/work/two/shared');
+        await act(async () => { screen.pressByTestId('direct-session-candidates-load-more'); });
+        expect(screen.findByTestId('direct-session-directory:/work/one/shared')?.findAllByType('Item').map(node => node.props.testID)).toEqual([
+            'direct-session-candidate:a-new', 'direct-session-candidate:a-old', 'direct-session-candidate:a-older',
+        ]);
+        expect(screen.findByTestId('direct-session-candidate:no-directory')).not.toBeNull();
+        await act(async () => { screen.pressByTestId('direct-session-candidate:a-older'); });
+        expect(calls(previewMethod).at(-1)?.[0].payload.remoteSessionId).toBe('a-older');
+    });
+
+    it('keeps separator and trailing-slash variants of the same directory together', async () => {
+        boundary.rpc.mockResolvedValue({ ok: true, candidates: [
+            { ...candidate, remoteSessionId: 'windows-new', updatedAtMs: 30, details: { cwd: 'C:\\work\\shared' } },
+            { ...candidate, remoteSessionId: 'windows-old', updatedAtMs: 20, details: { cwd: 'C:/work/shared/' } },
+        ], nextCursor: null });
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        const groups = screen.findAllByType('View').filter(node => String(node.props.testID ?? '').startsWith('direct-session-directory:'));
+        expect(groups).toHaveLength(1);
+        expect(groups[0].props.testID).toBe('direct-session-directory:C:/work/shared');
+        expect(groups[0].findAllByType('Item').map(node => node.props.testID)).toEqual([
+            'direct-session-candidate:windows-new', 'direct-session-candidate:windows-old',
+        ]);
+        expect(screen.getTextContent()).toContain('C:/work/shared');
+    });
+
+    it('regroups search results without retaining old projects and keeps directory-path fallback', async () => {
+        boundary.rpc.mockImplementation(async ({ payload }) => ({ ok: true, candidates: payload.searchTerm
+            ? [{ ...candidate, remoteSessionId: 'search-match', details: { path: 'C:\\work\\other' } }]
+            : [candidate], nextCursor: null }));
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        expect(screen.findByTestId('direct-session-directory:/home/owner/project')).not.toBeNull();
+        vi.useFakeTimers();
+        try {
+            await act(async () => { screen.findByTestId('direct-session-candidates-search-input')?.props.onChangeText('other'); });
+            await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+            expect(screen.findByTestId('direct-session-directory:/home/owner/project')).toBeNull();
+            expect(screen.findByTestId('direct-session-directory:C:/work/other')).not.toBeNull();
+            expect(screen.findByTestId('direct-session-candidate:search-match')).not.toBeNull();
+            expect(screen.getTextContent()).toContain('C:/work/other');
+        } finally { vi.useRealTimers(); }
     });
 
     it('lists the selected host and previews actual text without publishing or taking over', async () => {

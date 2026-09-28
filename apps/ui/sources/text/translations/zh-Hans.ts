@@ -6221,6 +6221,7 @@ export const zhHans: TranslationStructure = {
     browseSourceAcpAgentSessions: '代理会话',
     browseSourcePiDefault: "默认 Pi 代理目录",
     browseCandidates: "可用会话",
+    browseUnassignedDirectory: "未指定目录",
     browseNoMachines: "尚无可用于直连会话的机器。",
     browseNoCandidates: "未找到此机器和提供方对应的会话。",
     browseActivityRunning: "运行中",

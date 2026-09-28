@@ -5402,6 +5402,7 @@ export const ru: TranslationStructure = {
     browseSourceAcpAgentSessions: 'Сессии агента',
     browseSourcePiDefault: "Каталог агента Pi по умолчанию",
     browseCandidates: "Доступные сессии",
+    browseUnassignedDirectory: "Каталог не указан",
     browseNoMachines: "Для прямых сессий пока нет доступных машин.",
     browseNoCandidates: "Для этой машины и провайдера сессии не найдены.",
     browseActivityRunning: "Запущена",
