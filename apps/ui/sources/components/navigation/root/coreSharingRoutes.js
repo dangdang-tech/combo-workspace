@@ -8,6 +8,7 @@ function isWorkspaceRoute(segments) {
     const [root, section, detail] = path;
     if (!root) return true;
     if (['invite', 'oauth', 'restore', 'terminal', 'scan', 'account', 'setup', 'server'].includes(root)) return true;
+    if (root === 'share') return path.length === 2 && section === 'codex';
     if (root === 'settings') return path.length === 1 || ['account', 'machines'].includes(section ?? '');
     if (root === 'machine') return path.length === 2;
     if (root === 'new') return path.length === 1 || (section === 'pick' && ['machine', 'path'].includes(detail ?? ''));

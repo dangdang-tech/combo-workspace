@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Socket } from "socket.io";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { RPC_METHODS, SESSION_RPC_METHODS } from "@happier-dev/protocol/rpc";
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from "fastify-type-provider-zod";
 import { db } from "@/storage/db";
 import { eventRouter } from "@/app/events/eventRouter";
@@ -12,6 +13,7 @@ import { canApprovePermissions, canManageSharing, checkSessionAccess } from "@/a
 import { isSessionEntryHostLive, sessionEntryLiveTaskRejection } from "@/app/share/sessionEntryPresence";
 import { registerSessionMessageRoutes } from "../session/registerSessionMessageRoutes";
 import { authorizeSessionScopedMachineBinding } from "@/app/api/socket/sessionRelayAuthCache";
+import { resolveRpcCallTarget } from "@/app/api/socket/resolveRpcCallTarget";
 import { registerSessionDraftRoutes } from "@/app/account/sessionDrafts/registerSessionDraftRoutes";
 import { sessionDraftPhysicalKey } from "@/app/account/sessionDrafts/sessionDraftService";
 
@@ -96,7 +98,7 @@ describe("private session entry lifecycle", () => {
     }
     async function claim(memberId: string) {
         const result = await post(ownerId, `/v1/machines/${machineId}/shared-session-entries/claim`);
-        expect(result.statusCode).toBe(200);
+        expect(result.statusCode, result.body).toBe(200);
         expect(result.json().assignment.memberId).toBe(memberId);
         const assigned = await db.sharedSessionEntryMember.findUniqueOrThrow({ where: { id: memberId }, include: { entry: true } });
         expect(result.json().assignment.title).toBe(assigned.entry.title);
@@ -632,6 +634,33 @@ describe("private session entry lifecycle", () => {
         const retried = await redeem(created.inviteToken);
         expect(retried.json().access.memberId).toBe(access.memberId);
         expect(retried.json().access.status).toBe("pending");
+    });
+
+    it.each([
+        RPC_METHODS.DAEMON_DIRECT_SESSION_PUBLISH_PREVIEW,
+        RPC_METHODS.DAEMON_DIRECT_SESSION_PUBLISH,
+    ])("never delegates native publication RPC %s to a different account", async (rpcMethod) => {
+        const session = await child();
+        await db.sessionShare.create({ data: {
+            sessionId: session.id, sharedByUserId: ownerId, sharedWithUserId: guestId,
+            accessLevel: "edit", canApprovePermissions: true,
+        } });
+        expect(await canApprovePermissions(guestId, session.id)).toBe(true);
+
+        // A valid permission delegate still cannot browse or publish the host's native sessions.
+        const approvalMethod = `${session.id}:${SESSION_RPC_METHODS.SESSION_PERMISSION_RESPOND_LEGACY}`;
+        const nativeMethods = [machineId, session.id].map((scope) => `${scope}:${rpcMethod}`);
+        const ownerListeners = new Map<string, Socket>([
+            [approvalMethod, hostSocket],
+            ...nativeMethods.map((method): [string, Socket] => [method, hostSocket]),
+        ]);
+        const allRpcListeners = new Map<string, Map<string, Socket>>([[ownerId, ownerListeners]]);
+        await expect(resolveRpcCallTarget({ callerUserId: guestId, method: approvalMethod, allRpcListeners }))
+            .resolves.toEqual({ type: "target", targetUserId: ownerId, targetSocket: hostSocket });
+        for (const method of nativeMethods) {
+            await expect(resolveRpcCallTarget({ callerUserId: guestId, method, allRpcListeners }))
+                .resolves.toEqual({ type: "target", targetUserId: guestId, targetSocket: undefined });
+        }
     });
 
     it("keeps managed permissions binary even when a legacy share row is escalated or assigned to another guest", async () => {

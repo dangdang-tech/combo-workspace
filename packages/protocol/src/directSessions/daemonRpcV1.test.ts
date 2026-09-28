@@ -102,3 +102,24 @@ describe('direct session follow lifecycle schemas', () => {
     });
   });
 });
+
+describe('native publication review contract', () => {
+  const target = { machineId: 'm1', providerId: 'codex', remoteSessionId: 'thread-1', source: { kind: 'codexHome', home: 'user' } };
+  it('requires an exact reviewed fingerprint before publication', () => {
+    expect(directSessionsRpc.DirectSessionPublishPreviewRequestSchema.parse(target)).toEqual(target);
+    expect(directSessionsRpc.DirectSessionPublishRequestSchema.safeParse({ ...target, title: 'Shared' }).success).toBe(false);
+    expect(directSessionsRpc.DirectSessionPublishRequestSchema.parse({ ...target, title: ' Shared ', expectedSnapshotFingerprint: 'a'.repeat(64) }).title).toBe('Shared');
+  });
+  it('rejects path-like native identities and non-Codex providers', () => {
+    for (const remoteSessionId of ['../private', 'a/b', 'a\\\\b', '.', '..']) {
+      expect(directSessionsRpc.DirectSessionPublishPreviewRequestSchema.safeParse({ ...target, remoteSessionId }).success).toBe(false);
+    }
+    expect(directSessionsRpc.DirectSessionPublishPreviewRequestSchema.safeParse({ ...target, providerId: 'claude' }).success).toBe(false);
+  });
+  it('keeps new text previews distinct from an already published frozen link', () => {
+    const publication = { sourceSessionId: 's1', entryId: 'e1', inviteUrl: 'https://combo.test/invite/token' };
+    expect(directSessionsRpc.DirectSessionPublishPreviewResponseSchema.parse({ ok: true, status: 'already_published', publication })).toEqual({ ok: true, status: 'already_published', publication });
+    expect(directSessionsRpc.DirectSessionPublishPreviewResponseSchema.safeParse({ ok: true, status: 'ready', snapshotFingerprint: 'b'.repeat(64), directory: '/project', messages: [{ role: 'tool', text: 'private' }] }).success).toBe(false);
+    expect(directSessionsRpc.DirectSessionPublishResponseSchema.parse({ ok: false, errorCode: 'snapshot_changed', error: 'Preview again' }).errorCode).toBe('snapshot_changed');
+  });
+});

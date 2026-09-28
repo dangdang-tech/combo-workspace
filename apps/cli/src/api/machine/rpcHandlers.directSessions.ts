@@ -1,3 +1,4 @@
+import { registerMachineDirectSessionPublicationRpcHandlers } from './rpcHandlers.directSessionPublication';
 import { RPC_METHODS } from '@happier-dev/protocol/rpc';
 import {
   DirectSessionAttachRequestSchema,
@@ -132,6 +133,7 @@ export function registerMachineDirectSessionsRpcHandlers(params: Readonly<{
 }>): void {
   const { rpcHandlerManager, emitDirectSessionTranscriptUpdate } = params;
   const followLeaseManager = createDirectSessionFollowLeaseManager();
+  registerMachineDirectSessionPublicationRpcHandlers(rpcHandlerManager);
 
   rpcHandlerManager.registerHandler(RPC_METHODS.DAEMON_DIRECT_SESSION_ATTACH, async (raw: unknown) => {
     const parsed = DirectSessionAttachRequestSchema.safeParse(raw);

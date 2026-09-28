@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SHARED_SESSION_ENTRY_SNAPSHOT_MAX_MESSAGES } from '../sharedSessionEntries.js';
 
 import { AgentRuntimeDescriptorV1Schema } from '../sessionMetadata/agentRuntimeDescriptorV1.js';
 import { CODEX_BACKEND_MODES } from '../providers/codex/backendMode.js';
@@ -408,3 +409,46 @@ export const DirectSessionTakeoverPersistResponseSchema = z.union([
     .passthrough(),
 ]);
 export type DirectSessionTakeoverPersistResponse = z.infer<typeof DirectSessionTakeoverPersistResponseSchema>;
+
+const DirectSessionPublicationSchema = z.object({
+  sourceSessionId: z.string().min(1),
+  entryId: z.string().min(1),
+  inviteUrl: z.string().url(),
+});
+const DirectSessionPublicationErrorSchema = z.object({
+  ok: z.literal(false),
+  errorCode: z.enum(['invalid_request', 'not_authenticated', 'snapshot_changed', 'publication_capture_conflict', 'context_snapshot_too_large', 'context_snapshot_unavailable', 'machine_offline', 'internal_error']),
+  error: z.string().min(1),
+});
+
+export const DirectSessionPublishPreviewRequestSchema = z.object({
+  machineId: z.string().min(1),
+  providerId: z.literal('codex'),
+  source: DirectSessionsCodexHomeSourceSchema,
+  remoteSessionId: z.string().trim().min(1).max(2000).regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/),
+});
+export type DirectSessionPublishPreviewRequest = z.infer<typeof DirectSessionPublishPreviewRequestSchema>;
+export const DirectSessionPublishRequestSchema = DirectSessionPublishPreviewRequestSchema.extend({
+  title: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).optional(),
+  publisherDisplayName: z.string().trim().max(80).optional(),
+  expectedSnapshotFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+});
+export type DirectSessionPublishRequest = z.infer<typeof DirectSessionPublishRequestSchema>;
+export const DirectSessionPublishPreviewResponseSchema = z.union([
+  z.object({
+    ok: z.literal(true),
+    status: z.literal('ready'),
+    snapshotFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    directory: z.string().min(1),
+    messages: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().min(1) })).min(1).max(SHARED_SESSION_ENTRY_SNAPSHOT_MAX_MESSAGES),
+  }),
+  z.object({ ok: z.literal(true), status: z.literal('already_published'), publication: DirectSessionPublicationSchema }),
+  DirectSessionPublicationErrorSchema,
+]);
+export type DirectSessionPublishPreviewResponse = z.infer<typeof DirectSessionPublishPreviewResponseSchema>;
+export const DirectSessionPublishResponseSchema = z.union([
+  z.object({ ok: z.literal(true), publication: DirectSessionPublicationSchema }),
+  DirectSessionPublicationErrorSchema,
+]);
+export type DirectSessionPublishResponse = z.infer<typeof DirectSessionPublishResponseSchema>;

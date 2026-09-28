@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import axios from 'axios';
@@ -9,7 +9,10 @@ import { reloadConfiguration } from '@/configuration';
 import { decryptStoredSessionPayload, resolveSessionEncryptionContextFromCredentials, tryDecryptSessionMetadata } from '@/session/transport/encryption/sessionEncryptionContext';
 import { createEnvKeyScope } from '@/testkit/env/envScope';
 import type { RawSessionRecord } from '@/session/transport/http/sessionsHttp';
-import { publishSession } from './publishSession';
+import { publishSession, previewNativeSessionPublication } from './publishSession';
+import { RPC_METHODS } from '@happier-dev/protocol/rpc';
+import { registerMachineDirectSessionsRpcHandlers } from '@/api/machine/rpcHandlers.directSessions';
+import type { RpcHandler } from '@/api/rpc/types';
 import { decryptTranscriptReplaySlice } from '@/session/replay/decryptTranscriptReplaySlice';
 
 let home: string;
@@ -39,11 +42,13 @@ async function nativeFixture(tail = '') {
 
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), 'combo-publish-http-'));
-  env = createEnvKeyScope(['HAPPIER_HOME_DIR', 'HAPPIER_SERVER_URL', 'HAPPIER_WEBAPP_URL']);
+  env = createEnvKeyScope(['HAPPIER_HOME_DIR', 'HAPPIER_SERVER_URL', 'HAPPIER_WEBAPP_URL', 'CODEX_HOME']);
   process.env.HAPPIER_HOME_DIR = home;
+  process.env.CODEX_HOME = join(home, 'codex');
   process.env.HAPPIER_SERVER_URL = 'https://relay.example.test';
   process.env.HAPPIER_WEBAPP_URL = 'https://combo.example.test';
   reloadConfiguration();
+  vi.spyOn(persistence, 'readCredentials').mockResolvedValue(credentials);
   vi.spyOn(persistence, 'readSettings').mockResolvedValue({ schemaVersion: 6, onboardingCompleted: true, machineId: 'local-machine' });
   vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
   source = null; entry = null; rejectCommit = false; failCommitAfter = null; rejectPublishResponse = false; messages = new Map(); requestBodies.length = 0;
@@ -78,6 +83,98 @@ beforeEach(async () => {
 afterEach(async () => { vi.restoreAllMocks(); vi.unstubAllGlobals(); env.restore(); reloadConfiguration(); await rm(home, { recursive: true, force: true }); });
 
 describe('publishSession', () => {
+  it('rejects a capture that exceeds the actual replay framing budget before preview or publication writes', async () => {
+    const f = await nativeFixture();
+    const rows = await readFile(f.file, 'utf8');
+    await writeFile(f.file, rows.replace('prior answer', 'x'.repeat(120_000)));
+    const target = { credentials, source: { kind: 'codex' as const, threadId: 'exact-thread', codexHome: f.codexHome } };
+    await expect(previewNativeSessionPublication(target)).rejects.toMatchObject({ code: 'context_snapshot_too_large' });
+    await expect(publishSession({ ...target, title: 'Too long' })).rejects.toMatchObject({ code: 'context_snapshot_too_large' });
+    expect(requestBodies).toHaveLength(0);
+  });
+  it.each([{ label: 'changed text', answer: 'changed after partial import' }, { label: 'beyond replay budget', answer: 'x'.repeat(120_000) }])('never mixes a partially imported capture with subsequently changed native text ($label)', async ({ answer }) => {
+    const f = await nativeFixture();
+    const target = { credentials, source: { kind: 'codex' as const, threadId: 'exact-thread', codexHome: f.codexHome } };
+    failCommitAfter = 1;
+    await expect(publishSession({ ...target, title: 'Partial' })).rejects.toThrow('not acknowledged');
+    await writeFile(f.file, (await readFile(f.file, 'utf8')).replace('prior answer', answer));
+    const writesBefore = requestBodies.length;
+    await expect(previewNativeSessionPublication(target)).rejects.toMatchObject({ code: 'publication_capture_conflict' });
+    await expect(publishSession({ ...target, title: 'Partial' })).rejects.toMatchObject({ code: 'publication_capture_conflict' });
+    expect(messages.size).toBe(1);
+    expect(requestBodies.slice(writesBefore).some((request) => request.url.endsWith('/messages') || request.url.endsWith('/v1/shared-session-entries'))).toBe(false);
+  });
+  it('serves authenticated RPC preview and publication only from the daemon configured home', async () => {
+    await nativeFixture();
+    const handlers = new Map<string, unknown>();
+    registerMachineDirectSessionsRpcHandlers({ rpcHandlerManager: { registerHandler: (method, handler) => handlers.set(method, handler) } });
+    // The transport fixture dispatches unknown wire payloads; each real handler validates its schema.
+    const preview = handlers.get(RPC_METHODS.DAEMON_DIRECT_SESSION_PUBLISH_PREVIEW) as RpcHandler<unknown, unknown> | undefined;
+    const publish = handlers.get(RPC_METHODS.DAEMON_DIRECT_SESSION_PUBLISH) as RpcHandler<unknown, unknown> | undefined;
+    expect(typeof preview).toBe('function');
+    expect(typeof publish).toBe('function');
+    if (!preview || !publish) throw new Error('Publication RPC unavailable');
+    const target = { machineId: 'local-machine', providerId: 'codex', source: { kind: 'codexHome', home: 'user' }, remoteSessionId: 'exact-thread' };
+    expect(await preview({ ...target, source: { ...target.source, homePath: '/arbitrary/private-home' } })).toMatchObject({ ok: false, errorCode: 'invalid_request' });
+    expect(await preview({ ...target, machineId: 'other-host' })).toMatchObject({ ok: false, errorCode: 'invalid_request' });
+    expect(await preview({ ...target, remoteSessionId: '../thread' })).toMatchObject({ ok: false, errorCode: 'invalid_request' });
+    expect(requestBodies).toHaveLength(0);
+    const reviewed = await preview(target) as { ok: boolean; status: string; snapshotFingerprint: string };
+    expect(reviewed).toMatchObject({ ok: true, status: 'ready' });
+    expect(requestBodies).toHaveLength(0);
+    expect(await publish({ ...target, title: 'RPC publication', expectedSnapshotFingerprint: reviewed.snapshotFingerprint })).toMatchObject({ ok: true, publication: { entryId: 'entry-1' } });
+    vi.mocked(persistence.readCredentials).mockResolvedValue(null);
+    expect(await preview(target)).toMatchObject({ ok: false, errorCode: 'not_authenticated' });
+  });
+
+
+  it('refuses publication before any write when the reviewed native snapshot changed', async () => {
+    const f = await nativeFixture();
+    await expect(publishSession({
+      credentials, source: { kind: 'codex', threadId: 'exact-thread', codexHome: f.codexHome },
+      title: 'Reviewed copy', expectedSnapshotFingerprint: '0'.repeat(64),
+    })).rejects.toMatchObject({ code: 'snapshot_changed' });
+    expect(requestBodies).toHaveLength(0);
+  });
+  it('previews only the exact text without creating a source, then publishes that reviewed capture', async () => {
+    const f = await nativeFixture();
+    const target = { credentials, source: { kind: 'codex' as const, threadId: 'exact-thread', codexHome: f.codexHome } };
+    const preview = await previewNativeSessionPublication(target);
+    expect(preview).toMatchObject({ status: 'ready', directory: '/owned/project', messages: [
+      { role: 'user', text: 'prior question' }, { role: 'assistant', text: 'prior answer' },
+    ] });
+    expect(requestBodies).toHaveLength(0);
+    if (preview.status !== 'ready') throw new Error('expected a new snapshot');
+    expect(preview.snapshotFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    await expect(publishSession({ ...target, title: 'Reviewed copy', expectedSnapshotFingerprint: preview.snapshotFingerprint }))
+      .resolves.toMatchObject({ entryId: 'entry-1' });
+    expect(messages.size).toBe(2);
+  });
+  it('requires a new preview when native text is appended after review', async () => {
+    const f = await nativeFixture();
+    const target = { credentials, source: { kind: 'codex' as const, threadId: 'exact-thread', codexHome: f.codexHome } };
+    const preview = await previewNativeSessionPublication(target);
+    if (preview.status !== 'ready') throw new Error('expected a new snapshot');
+    await nativeFixture(JSON.stringify({ type: 'response_item', payload: {
+      type: 'message', role: 'user', content: [{ type: 'input_text', text: 'not approved in preview' }],
+    } }) + '\n');
+    await expect(publishSession({ ...target, title: 'Reviewed copy', expectedSnapshotFingerprint: preview.snapshotFingerprint }))
+      .rejects.toMatchObject({ code: 'snapshot_changed' });
+    expect(requestBodies).toHaveLength(0);
+  });
+  it('previews an existing publication as its original link without displaying newly appended native text', async () => {
+    const f = await nativeFixture();
+    const target = { credentials, source: { kind: 'codex' as const, threadId: 'exact-thread', codexHome: f.codexHome } };
+    const published = await publishSession({ ...target, title: 'Original' });
+    requestBodies.length = 0;
+    await writeFile(f.file, '{native is writing an unrelated later turn');
+    const preview = await previewNativeSessionPublication(target);
+    expect(preview).toEqual({ status: 'already_published', publication: published });
+    expect(preview).not.toHaveProperty('messages');
+    await expect(publishSession({ ...target, title: 'Changed title', expectedSnapshotFingerprint: '0'.repeat(64) }))
+      .resolves.toEqual(published);
+    expect(requestBodies).toHaveLength(0);
+  });
   it('imports native text into a new encrypted source, awaits every commit, and publishes a configured public URL', async () => {
     const f = await nativeFixture();
     const result = await publishSession({ credentials, source: { kind: 'codex', threadId: 'exact-thread', codexHome: f.codexHome }, title: 'Shared project', description: 'A public description' });

@@ -51,6 +51,8 @@ export const RPC_METHODS = {
   DAEMON_PROMPT_REGISTRY_DOWNLOAD_FINALIZE: 'daemon.promptRegistry.download.finalize',
   DAEMON_PROMPT_REGISTRY_DOWNLOAD_ABORT: 'daemon.promptRegistry.download.abort',
   DAEMON_PROMPT_REGISTRY_INSTALL: 'daemon.promptRegistry.install',
+    DAEMON_DIRECT_SESSION_PUBLISH_PREVIEW: 'daemon.directSessions.publish.preview',
+    DAEMON_DIRECT_SESSION_PUBLISH: 'daemon.directSessions.publish',
   DAEMON_DIRECT_SESSIONS_CANDIDATES_LIST: 'daemon.directSessions.candidates.list',
   DAEMON_DIRECT_SESSION_LINK_ENSURE: 'daemon.directSessions.link.ensure',
   DAEMON_DIRECT_SESSION_ATTACH: 'daemon.directSessions.attach',

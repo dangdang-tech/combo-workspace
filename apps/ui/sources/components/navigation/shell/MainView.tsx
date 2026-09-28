@@ -16,6 +16,7 @@ import {
     resolveSidebarSessionListSurfaceInteractive,
     SESSION_LIST_SURFACE_OWNER_SIDEBAR,
 } from '@/components/sessions/shell/surface/sessionListSurfaceOwnership';
+import { RoundButton } from '@/components/ui/buttons/RoundButton';
 import { FABWide } from '@/components/ui/buttons/FABWide';
 import { SessionsListWrapper } from '@/components/sessions/shell/SessionsListWrapper';
 import { Header } from '@/components/navigation/Header';
@@ -43,6 +44,7 @@ type MainViewLoadedProps = MainViewProps & Readonly<{
 }>;
 
 const styles = StyleSheet.create((theme) => ({
+    shareAction: { paddingHorizontal: theme.margins.lg, paddingVertical: theme.margins.md },
     container: {
         flex: 1,
     },
@@ -162,6 +164,15 @@ const HeaderTitle = React.memo(() => (
     </View>
 ));
 
+const ShareCodexSessionAction = React.memo(function ShareCodexSessionAction() {
+    const router = useRouter();
+    return <View style={styles.shareAction}>
+        <RoundButton testID="main-share-codex-session" title={t('nativeSessionSharing.title')}
+            accessibilityLabel={t('nativeSessionSharing.title')} size="normal"
+            onPress={() => router.push('/share/codex')} />
+    </View>;
+});
+
 const HeaderRight = React.memo(() => {
     const router = useRouter();
     const resolveNewSessionOrdinaryEntryRoute = useResolveNewSessionOrdinaryEntryRoute();
@@ -272,6 +283,7 @@ const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
 
     return (
         <>
+            <ShareCodexSessionAction />
             {content}
             <FABWide onPress={handleNewSession} />
         </>
@@ -284,10 +296,11 @@ const PhoneMainViewContent = React.memo(function PhoneMainViewContent({ isTablet
     if (isTablet) {
         const buildPolicyDecision = getFeatureBuildPolicyDecision(SESSION_GETTING_STARTED_GUIDANCE_FEATURE_ID);
         if (buildPolicyDecision !== 'deny') {
-            return <SessionGettingStartedGuidance variant="primaryPane" />;
+            return <View style={styles.container}><ShareCodexSessionAction /><SessionGettingStartedGuidance variant="primaryPane" /></View>;
         }
         return (
             <View testID="mainview-tablet-primary-pane-fallback" style={styles.primaryPaneFallback}>
+                <ShareCodexSessionAction />
                 <Text style={styles.primaryPaneFallbackText}>
                     {t('components.emptyMainScreen.readyToCode')}
                 </Text>
@@ -306,6 +319,7 @@ const PhoneMainViewContent = React.memo(function PhoneMainViewContent({ isTablet
                     headerTransparent={true}
                 />
             </View>
+            <ShareCodexSessionAction />
             <SessionsListWrapper pathname="/" />
         </View>
     );

@@ -2,7 +2,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { decryptString, encryptString } from "@/modules/encrypt";
 import * as privacyKit from "privacy-kit";
-import { ENCRYPTED_DATA_KEY_ENVELOPE_V1_VERSION_BYTE } from "@happier-dev/protocol";
+import {
+    ENCRYPTED_DATA_KEY_ENVELOPE_V1_VERSION_BYTE,
+    SHARED_SESSION_ENTRY_SNAPSHOT_MAX_BYTES,
+    SHARED_SESSION_ENTRY_SNAPSHOT_MAX_MESSAGES,
+} from "@happier-dev/protocol";
 import { db } from "@/storage/db";
 import { afterTx, type Tx } from "@/storage/inTx";
 import { markAccountChanged } from "@/app/changes/markAccountChanged";
@@ -165,12 +169,12 @@ export async function captureEntrySourceSnapshot(tx: Tx, sourceSessionId: string
     const session = await tx.session.findUniqueOrThrow({ where: { id: sourceSessionId },
         select: { id: true, seq: true, metadata: true, encryptionMode: true, dataEncryptionKey: true } });
     const messages = await tx.sessionMessage.findMany({ where: { sessionId: sourceSessionId, seq: { lte: session.seq }, sidechainId: null },
-        orderBy: { seq: "asc" }, take: 5_001, select: { seq: true, createdAt: true, content: true, messageRole: true } });
+        orderBy: { seq: "asc" }, take: SHARED_SESSION_ENTRY_SNAPSHOT_MAX_MESSAGES + 1, select: { seq: true, createdAt: true, content: true, messageRole: true } });
     const snapshot = { v: 1, session: { ...session,
         dataEncryptionKey: session.dataEncryptionKey ? privacyKit.encodeBase64(new Uint8Array(session.dataEncryptionKey)) : null },
         messages: messages.map((message) => ({ ...message, createdAt: message.createdAt.getTime() })) };
     // Refuse oversized shares; never silently replace a snapshot with a later live read.
-    if (messages.length > 5_000 || Buffer.byteLength(JSON.stringify(snapshot), "utf8") > 2_000_000) {
+    if (messages.length > SHARED_SESSION_ENTRY_SNAPSHOT_MAX_MESSAGES || Buffer.byteLength(JSON.stringify(snapshot), "utf8") > SHARED_SESSION_ENTRY_SNAPSHOT_MAX_BYTES) {
         throw new SessionEntryError(409, "context_snapshot_too_large");
     }
     return snapshot;

@@ -1,0 +1,287 @@
+import React from 'react';
+import { RPC_ERROR_CODES } from '@happier-dev/protocol/rpc';
+import { act } from 'react-test-renderer';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDeferred, renderScreen } from '@/dev/testkit';
+
+const boundary = vi.hoisted(() => ({
+    rpc: vi.fn(), copy: vi.fn(), push: vi.fn(), token: 'account-a',
+    server: { serverId: 'server-a', serverUrl: 'https://relay.example', generation: 1 },
+    machines: [] as Array<{ id: string; active: boolean; metadata: { displayName: string; homeDir?: string } }>,
+}));
+vi.mock('@/sync/runtime/orchestration/serverScopedRpc/serverScopedMachineRpc', () => ({ machineRpcWithServerScope: boundary.rpc }));
+vi.mock('@/auth/context/AuthContext', () => ({ useAuth: () => ({ isAuthenticated: Boolean(boundary.token), credentials: { token: boundary.token } }) }));
+vi.mock('@/sync/domains/server/serverRuntime', () => ({ getActiveServerSnapshot: () => boundary.server, subscribeActiveServer: () => () => {} }));
+vi.mock('@/sync/domains/state/storage', async () => {
+    const { createStorageModuleStub } = await import('@/dev/testkit/mocks/storage');
+    return createStorageModuleStub({ useAllMachines: () => boundary.machines, storage: { getState: () => ({ machines: Object.fromEntries(boundary.machines.map(machine => [machine.id, machine])) }) } });
+});
+vi.mock('@/sync/store/hooks', async () => {
+    const { createStorageModuleStub } = await import('@/dev/testkit/mocks/storage');
+    return createStorageModuleStub({ useLocalSetting: (key: string) => key === 'uiFontScale' ? 1 : 'comfortable' });
+});
+vi.mock('expo-router', async () => { const { createExpoRouterMock } = await import('@/dev/testkit/mocks/router'); return createExpoRouterMock({ router: { push: boundary.push } }).module; });
+vi.mock('react-native', async () => { const { createReactNativeWebMock } = await import('@/dev/testkit/mocks/reactNative'); return createReactNativeWebMock(); });
+vi.mock('react-native-unistyles', async () => { const { createUnistylesMock } = await import('@/dev/testkit/mocks/unistyles'); return createUnistylesMock(); });
+vi.mock('@/text', async () => { const { createTextModuleMock } = await import('@/dev/testkit/mocks/text'); return createTextModuleMock({ translate: (key) => key }); });
+vi.mock('expo-clipboard', () => ({ setStringAsync: boundary.copy }));
+vi.mock('@/components/ui/lists/Item', () => ({ Item: (props: any) => React.createElement('Item', props) }));
+vi.mock('@/components/ui/lists/ItemGroup', () => ({ ItemGroup: (props: any) => React.createElement('ItemGroup', props, props.children) }));
+vi.mock('@/components/ui/lists/ItemList', () => ({ ItemList: (props: any) => React.createElement('ItemList', props, props.children) }));
+vi.mock('@/components/ui/status/StatusDot', () => ({ StatusDot: 'StatusDot' }));
+
+const candidate = { remoteSessionId: 'native-thread', title: 'Interview practice', updatedAtMs: 1, details: { cwd: '/home/owner/project' } };
+const fingerprint = 'a'.repeat(64);
+const ready = { ok: true, status: 'ready', snapshotFingerprint: fingerprint, directory: '/home/owner/project', messages: [{ role: 'user', text: 'Practice with me' }, { role: 'assistant', text: 'What did you learn?' }] };
+const publication = { sourceSessionId: 'source', entryId: 'entry', inviteUrl: 'https://web.example/invite/token?server=https%3A%2F%2Frelay.example' };
+const calls = (method: string) => boundary.rpc.mock.calls.filter(([request]) => request.method === method);
+const previewMethod = 'daemon.directSessions.publish.preview';
+const publishMethod = 'daemon.directSessions.publish';
+
+async function openPreview() {
+    const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+    const screen = await renderScreen(<NativeSessionPublishScreen />);
+    await act(async () => { screen.pressByTestId('direct-session-candidate:native-thread'); });
+    return screen;
+}
+
+describe('NativeSessionPublishScreen', () => {
+    beforeEach(() => {
+        vi.clearAllMocks(); boundary.token = 'account-a';
+        boundary.server = { serverId: 'server-a', serverUrl: 'https://relay.example', generation: 1 };
+        boundary.machines = [{ id: 'machine-a', active: true, metadata: { displayName: 'My Mac', homeDir: '/home/owner' } }];
+        boundary.copy.mockResolvedValue(true);
+        boundary.rpc.mockReset().mockImplementation(async ({ method }) => {
+            if (method === 'daemon.directSessions.candidates.list') return { ok: true, candidates: [candidate], nextCursor: null };
+            if (method === previewMethod) return ready;
+            if (method === publishMethod) return { ok: true, publication };
+            throw new Error('Unexpected RPC');
+        });
+    });
+
+    it('lists the selected host and previews actual text without publishing or taking over', async () => {
+        const screen = await openPreview();
+        expect(screen.findByTestId('native-publish-preview-message-0')?.props.children).toBe('Practice with me');
+        expect(screen.findByTestId('native-publish-preview-message-1')?.props.children).toBe('What did you learn?');
+        expect(calls(previewMethod)[0][0]).toMatchObject({ machineId: 'machine-a', serverId: 'server-a', payload: { remoteSessionId: 'native-thread', source: { kind: 'codexHome', home: 'user' } } });
+        expect(calls(publishMethod)).toHaveLength(0);
+        expect(boundary.rpc.mock.calls.some(([request]) => /link.ensure|takeover/.test(request.method))).toBe(false);
+        expect(screen.findByTestId('native-publish-title')?.props.value).toBe('Interview practice');
+    });
+
+    it('publishes only after review with the exact fingerprint and user-entered title and purpose', async () => {
+        const screen = await openPreview();
+        await act(async () => {
+            screen.findByTestId('native-publish-title')?.props.onChangeText('Interview coach');
+            screen.findByTestId('native-publish-description')?.props.onChangeText('One question at a time');
+        });
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        expect(calls(publishMethod)[0][0].payload).toMatchObject({ title: 'Interview coach', description: 'One question at a time', expectedSnapshotFingerprint: fingerprint, remoteSessionId: 'native-thread' });
+        expect(screen.findByTestId('native-publish-link')?.props.value).toBe(publication.inviteUrl);
+        expect(boundary.copy).not.toHaveBeenCalled();
+        await act(async () => { screen.pressByTestId('native-publish-copy'); });
+        expect(boundary.copy).toHaveBeenCalledWith(publication.inviteUrl);
+        expect(screen.findByTestId('native-publish-copied')).not.toBeNull();
+    });
+
+    it('does not claim copied when the clipboard rejects the write', async () => {
+        boundary.copy.mockResolvedValue(false);
+        const screen = await openPreview();
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        await act(async () => { screen.pressByTestId('native-publish-copy'); });
+        expect(screen.findByTestId('native-publish-copied')).toBeNull();
+        expect(screen.findByTestId('native-publish-error')?.props.title).toBe('sharedEntry.copyFailed');
+        expect(screen.findByTestId('native-publish-link')?.props.value).toBe(publication.inviteUrl);
+    });
+
+    it('reuses an existing publication without previewing new history as its snapshot or publishing again', async () => {
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod
+            ? { ok: true, status: 'already_published', publication }
+            : { ok: true, candidates: [candidate], nextCursor: null });
+        const screen = await openPreview();
+        expect(screen.findByTestId('native-publish-reused')).not.toBeNull();
+        expect(screen.findByTestId('native-publish-link')?.props.value).toBe(publication.inviteUrl);
+        expect(screen.findByTestId('native-publish-preview-message-0')).toBeNull();
+        expect(screen.findByTestId('native-publish-generate')).toBeNull();
+        expect(calls(publishMethod)).toHaveLength(0);
+    });
+
+    it('requires a fresh preview after the source changes without automatically retrying publication', async () => {
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod ? ready
+            : method === publishMethod ? { ok: false, errorCode: 'snapshot_changed', error: 'changed' }
+            : { ok: true, candidates: [candidate], nextCursor: null });
+        const screen = await openPreview();
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        expect(screen.findByTestId('native-publish-generate')).toBeNull();
+        expect(screen.findByTestId('native-publish-preview-retry')).not.toBeNull();
+        expect(calls(publishMethod)).toHaveLength(1);
+        await act(async () => { screen.pressByTestId('native-publish-preview-retry'); });
+        expect(calls(previewMethod)).toHaveLength(2);
+        expect(calls(publishMethod)).toHaveLength(1);
+    });
+
+    it('explains that an empty account sees only its connected computers', async () => {
+        boundary.machines = [];
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        expect(screen.findByTestId('native-publish-no-machines')).not.toBeNull();
+        expect(boundary.rpc).not.toHaveBeenCalled();
+        expect(screen.findByTestId('native-publish-connect-machine')).not.toBeNull();
+    });
+
+    it('opens usable source setup for a new publisher and returns to selection once connected', async () => {
+        boundary.machines = [];
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        await act(async () => { screen.pressByTestId('native-publish-connect-machine'); });
+        expect(screen.findByTestId('session-getting-started-source-guide')).not.toBeNull();
+        expect(boundary.push).not.toHaveBeenCalled();
+        boundary.machines = [{ id: 'machine-a', active: true, metadata: { displayName: 'My Mac' } }];
+        await screen.update(<NativeSessionPublishScreen />);
+        expect(screen.findByTestId('direct-session-candidate:native-thread')).not.toBeNull();
+        expect(screen.findByTestId('session-getting-started-source-guide')).toBeNull();
+    });
+
+    it('keeps the selected host, reviewed text and form through an outage, then can publish after reconnection', async () => {
+        boundary.machines.push({ id: 'machine-b', active: true, metadata: { displayName: 'Other PC' } });
+        const screen = await openPreview();
+        await act(async () => {
+            screen.findByTestId('native-publish-title')?.props.onChangeText('Edited title');
+            screen.findByTestId('native-publish-description')?.props.onChangeText('Edited purpose');
+        });
+        boundary.machines = boundary.machines.map(machine => machine.id === 'machine-a' ? { ...machine, active: false } : machine);
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        await screen.update(<NativeSessionPublishScreen />);
+        expect(screen.findByTestId('native-publish-offline')).not.toBeNull();
+        expect(screen.findByTestId('native-publish-preview-message-0')?.props.children).toBe('Practice with me');
+        expect(screen.findByTestId('native-publish-title')?.props.value).toBe('Edited title');
+        expect(screen.findByTestId('native-publish-generate')?.props.disabled).toBe(true);
+        expect(boundary.rpc.mock.calls.some(([request]) => request.machineId === 'machine-b')).toBe(false);
+        boundary.machines = boundary.machines.map(machine => ({ ...machine, active: true }));
+        await screen.update(<NativeSessionPublishScreen />);
+        expect(screen.findByTestId('native-publish-description')?.props.value).toBe('Edited purpose');
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        expect(calls(publishMethod)[0][0].payload.title).toBe('Edited title');
+    });
+
+    it('can still copy the completed publication while its host is offline', async () => {
+        const screen = await openPreview();
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        boundary.machines = boundary.machines.map(machine => ({ ...machine, active: false }));
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        await screen.update(<NativeSessionPublishScreen />);
+        expect(screen.findByTestId('native-publish-link')?.props.value).toBe(publication.inviteUrl);
+        await act(async () => { screen.pressByTestId('native-publish-copy'); });
+        expect(screen.findByTestId('native-publish-copied')).not.toBeNull();
+        expect(calls(publishMethod)).toHaveLength(1);
+    });
+
+    it('can review again when native text is temporarily unavailable', async () => {
+        let firstRead = true;
+        boundary.rpc.mockImplementation(async ({ method }) => {
+            if (method === previewMethod && firstRead) { firstRead = false; return { ok: false, errorCode: 'context_snapshot_unavailable', error: 'still writing' }; }
+            if (method === previewMethod) return ready;
+            return { ok: true, candidates: [candidate], nextCursor: null };
+        });
+        const screen = await openPreview();
+        expect(screen.findByTestId('native-publish-preview-retry')).not.toBeNull();
+        await act(async () => { screen.pressByTestId('native-publish-preview-retry'); });
+        expect(screen.findByTestId('native-publish-preview-message-0')?.props.children).toBe('Practice with me');
+        expect(calls(publishMethod)).toHaveLength(0);
+    });
+
+    it('keeps an offline machine selectable and explains reconnection without reading it', async () => {
+        boundary.machines.push({ id: 'machine-b', active: false, metadata: { displayName: 'Offline PC' } });
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        await act(async () => { screen.pressByTestId('native-publish-machine-machine-b'); });
+        expect(screen.findByTestId('native-publish-offline')).not.toBeNull();
+        expect(boundary.rpc.mock.calls.some(([request]) => request.machineId === 'machine-b')).toBe(false);
+        expect(screen.findByTestId('direct-session-candidate:native-thread')).toBeNull();
+    });
+
+    it.each(['account', 'server', 'machine'])('drops a delayed preview after switching %s', async (scope) => {
+        const pending = createDeferred<unknown>();
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod ? pending.promise : { ok: true, candidates: [candidate], nextCursor: null });
+        boundary.machines.push({ id: 'machine-b', active: true, metadata: { displayName: 'Other PC' } });
+        const screen = await openPreview();
+        if (scope === 'machine') await act(async () => { screen.pressByTestId('native-publish-machine-machine-b'); });
+        else {
+            if (scope === 'account') boundary.token = 'account-b';
+            else boundary.server = { ...boundary.server, serverId: 'server-b', generation: 2 };
+            const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+            await screen.update(<NativeSessionPublishScreen />);
+        }
+        await act(async () => { pending.resolve(ready); });
+        expect(screen.findByTestId('native-publish-preview-message-0')).toBeNull();
+        expect(screen.findByTestId('native-publish-generate')).toBeNull();
+    });
+
+    it('waits for a real preview before asking for publication details', async () => {
+        const pending = createDeferred<unknown>();
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod ? pending.promise : { ok: true, candidates: [candidate], nextCursor: null });
+        const screen = await openPreview();
+        expect(screen.findByTestId('native-publish-title')).toBeNull();
+        expect(screen.findByTestId('native-publish-generate')).toBeNull();
+        await act(async () => { pending.resolve(ready); });
+        expect(screen.findByTestId('native-publish-title')).not.toBeNull();
+    });
+
+    it('keeps a long native title within the publication limit before the user submits', async () => {
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod ? ready
+            : method === publishMethod ? { ok: true, publication }
+            : { ok: true, candidates: [{ ...candidate, title: 'x'.repeat(160) }], nextCursor: null });
+        const screen = await openPreview();
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        expect(screen.findByTestId('native-publish-link')?.props.value).toBe(publication.inviteUrl);
+        expect(calls(publishMethod)[0][0].payload.title.length).toBeLessThanOrEqual(120);
+    });
+
+    it.each(['publication_capture_conflict', 'context_snapshot_too_large'])('does not offer blind retries for %s', async (errorCode) => {
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod ? ready
+            : method === publishMethod ? { ok: false, errorCode, error: 'private diagnostic details' }
+            : { ok: true, candidates: [candidate], nextCursor: null });
+        const screen = await openPreview();
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        expect(screen.findByTestId('native-publish-generate')).toBeNull();
+        expect(screen.findByTestId('native-publish-preview-retry')).toBeNull();
+        expect(screen.findByTestId('native-publish-choose-another')).not.toBeNull();
+        expect(screen.findByTestId('native-publish-error')?.props.title).not.toContain('private diagnostic');
+    });
+
+    it('retains the reviewed name and purpose while reloading a changed snapshot', async () => {
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod ? ready
+            : method === publishMethod ? { ok: false, errorCode: 'snapshot_changed', error: 'changed' }
+            : { ok: true, candidates: [candidate], nextCursor: null });
+        const screen = await openPreview();
+        await act(async () => {
+            screen.findByTestId('native-publish-title')?.props.onChangeText('My edited title');
+            screen.findByTestId('native-publish-description')?.props.onChangeText('My edited purpose');
+        });
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        await act(async () => { screen.pressByTestId('native-publish-preview-retry'); });
+        expect(screen.findByTestId('native-publish-title')?.props.value).toBe('My edited title');
+        expect(screen.findByTestId('native-publish-description')?.props.value).toBe('My edited purpose');
+    });
+
+    it('can retry a failed copy without publishing another session', async () => {
+        boundary.copy.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+        const screen = await openPreview();
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        await act(async () => { screen.pressByTestId('native-publish-copy'); });
+        await act(async () => { screen.pressByTestId('native-publish-copy'); });
+        expect(screen.findByTestId('native-publish-copied')).not.toBeNull();
+        expect(calls(publishMethod)).toHaveLength(1);
+        expect(screen.findByTestId('native-publish-error')).toBeNull();
+    });
+
+    it('explains unsupported hosts without exposing raw RPC details', async () => {
+        boundary.rpc.mockImplementation(async ({ method }) => {
+            if (method === previewMethod) throw Object.assign(new Error('private/path details'), { rpcErrorCode: RPC_ERROR_CODES.METHOD_NOT_AVAILABLE });
+            return { ok: true, candidates: [candidate], nextCursor: null };
+        });
+        const screen = await openPreview();
+        expect(screen.findByTestId('native-publish-error')?.props.title).toBe('nativeSessionSharing.hostUpdateRequired');
+        expect(screen.findByTestId('native-publish-preview-retry')).not.toBeNull();
+    });
+});

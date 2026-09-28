@@ -1,6 +1,6 @@
 import { realpath, stat } from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
-import type { DirectTranscriptRawMessageV1 } from '@happier-dev/protocol';
+import { SHARED_SESSION_ENTRY_SNAPSHOT_MAX_MESSAGES, SHARED_SESSION_ENTRY_SNAPSHOT_MAX_BYTES, type DirectTranscriptRawMessageV1 } from '@happier-dev/protocol';
 import { readJsonlFileForward } from '@/api/directSessions/filePaging/jsonlForwardReader';
 import { collectCodexSessionRolloutFiles } from './collectCodexSessionRolloutFiles';
 import { captureCodexRolloutFileBoundary, codexRolloutFileBoundaryMatches } from './codexDirectRolloutFileBoundary';
@@ -23,7 +23,7 @@ export async function readCodexSessionForPublishing(params: Readonly<{
   codexHome: string;
 }>): Promise<Readonly<{ directory: string; items: DirectTranscriptRawMessageV1[] }>> {
   const threadId = params.threadId.trim();
-  if (!threadId || !isAbsolute(params.codexHome)) throw new Error('An exact native thread ID and absolute Codex home are required');
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(threadId) || !isAbsolute(params.codexHome)) throw new Error('An exact native thread ID and absolute Codex home are required');
   const codexHome = await realpath(params.codexHome);
   const files = await collectCodexSessionRolloutFiles({ codexHome, remoteSessionId: threadId });
   if (files.length === 0) throw new Error('Native Codex transcript not found; no preview can replace its committed history');
@@ -32,6 +32,7 @@ export async function readCodexSessionForPublishing(params: Readonly<{
   if (new Set(names).size !== names.length) throw new Error('Native transcript has ambiguous duplicate rollout identities');
   const items: DirectTranscriptRawMessageV1[] = [];
   let directory: string | null = null;
+  let snapshotBytes = 0;
   // Capture every file boundary before reading. Later appends belong to a later publication.
   const captured = await Promise.all(files.map(async (file) => {
     const size = (await stat(file.filePath)).size;
@@ -63,6 +64,10 @@ export async function readCodexSessionForPublishing(params: Readonly<{
         if (role !== 'user' && role !== 'assistant' && role !== 'agent') continue;
         const text = readCodexMessageContentText(payload.content);
         if (!text || (role === 'user' && isNativeHarnessEnvelope(text))) continue;
+        snapshotBytes += Buffer.byteLength(text, 'utf8');
+        if (items.length >= SHARED_SESSION_ENTRY_SNAPSHOT_MAX_MESSAGES || snapshotBytes > SHARED_SESSION_ENTRY_SNAPSHOT_MAX_BYTES) {
+          throw Object.assign(new Error('Native text exceeds the shared snapshot limit'), { code: 'context_snapshot_too_large' });
+        }
         const id = `codex-publication:${threadId}:${basename(file.filePath)}:${line.startOffsetBytes}`;
         items.push({
           id, localId: id,

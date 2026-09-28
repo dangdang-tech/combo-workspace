@@ -71,7 +71,7 @@ describe('Metro core sharing route dependencies', () => {
     it.each(['web', 'ios', 'android'])('preserves core screens, layouts and intent entrypoints on %s', (platform) => {
         for (const route of [
             '_layout.tsx', '+native-intent.tsx', '+not-found.tsx', '(app)/_layout.tsx',
-            '(app)/index.tsx', '(app)/settings/_layout.tsx', '(app)/setup/_layout.tsx',
+            '(app)/share/codex.tsx', '(app)/index.tsx', '(app)/settings/_layout.tsx', '(app)/setup/_layout.tsx',
             '(app)/new/index.tsx', '(app)/new/pick/machine.tsx', '(app)/new/pick/path.tsx',
             '(app)/settings/account.tsx', '(app)/settings/machines/add.tsx',
             '(app)/machine/[id].tsx', '(app)/session/[id]/index.tsx',

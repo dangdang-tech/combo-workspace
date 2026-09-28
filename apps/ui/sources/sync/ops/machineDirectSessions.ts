@@ -1,4 +1,12 @@
 import {
+    DirectSessionPublishPreviewRequestSchema,
+    DirectSessionPublishPreviewResponseSchema,
+    DirectSessionPublishRequestSchema,
+    DirectSessionPublishResponseSchema,
+    type DirectSessionPublishPreviewRequest,
+    type DirectSessionPublishPreviewResponse,
+    type DirectSessionPublishRequest,
+    type DirectSessionPublishResponse,
     DirectSessionLinkEnsureRequestSchema,
     DirectSessionLinkEnsureResponseSchema,
     DirectSessionStatusGetRequestSchema,
@@ -164,6 +172,34 @@ export async function machineDirectSessionTakeoverPersist(
         input,
         requestSchema: DirectSessionTakeoverPersistRequestSchema,
         responseSchema: DirectSessionTakeoverPersistResponseSchema,
+        opts,
+    });
+}
+
+export async function machineDirectSessionPublishPreview(
+    input: DirectSessionPublishPreviewRequest,
+    opts?: MachineDirectSessionsOpts,
+): Promise<DirectSessionPublishPreviewResponse> {
+    return callDirectSessionMachineRpc({
+        machineId: input.machineId,
+        method: RPC_METHODS.DAEMON_DIRECT_SESSION_PUBLISH_PREVIEW,
+        input,
+        requestSchema: DirectSessionPublishPreviewRequestSchema,
+        responseSchema: DirectSessionPublishPreviewResponseSchema,
+        opts,
+    });
+}
+
+export async function machineDirectSessionPublish(
+    input: DirectSessionPublishRequest,
+    opts?: MachineDirectSessionsOpts,
+): Promise<DirectSessionPublishResponse> {
+    return callDirectSessionMachineRpc({
+        machineId: input.machineId,
+        method: RPC_METHODS.DAEMON_DIRECT_SESSION_PUBLISH,
+        input,
+        requestSchema: DirectSessionPublishRequestSchema,
+        responseSchema: DirectSessionPublishResponseSchema,
         opts,
     });
 }

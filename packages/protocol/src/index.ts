@@ -3533,3 +3533,15 @@ export { formatPermissionRequestSummary } from './activity/agentRequestSummary.j
 export { summarizeToolInputForNotification, type RequestNotificationLabels } from './activity/agentRequestNotificationContent.js';
 export { extractShellCommand, stripShellCommandPreludeForDisplay } from './activity/shellCommand.js';
 export { maybeParseJson } from './activity/parseJson.js';
+
+export { SHARED_SESSION_ENTRY_SNAPSHOT_MAX_MESSAGES, SHARED_SESSION_ENTRY_SNAPSHOT_MAX_BYTES } from './sharedSessionEntries.js';
+export {
+  DirectSessionPublishPreviewRequestSchema,
+  DirectSessionPublishPreviewResponseSchema,
+  DirectSessionPublishRequestSchema,
+  DirectSessionPublishResponseSchema,
+  type DirectSessionPublishPreviewRequest,
+  type DirectSessionPublishPreviewResponse,
+  type DirectSessionPublishRequest,
+  type DirectSessionPublishResponse,
+} from './directSessions/daemonRpcV1.js';

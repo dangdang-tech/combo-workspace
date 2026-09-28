@@ -2,6 +2,7 @@ import * as React from 'react';
 import type { DirectSessionActivityV1, DirectSessionsProviderId, DirectSessionsSource } from '@happier-dev/protocol';
 
 import { machineDirectSessionsCandidatesList } from '@/sync/ops/machineDirectSessions';
+import { readRpcErrorCode } from '@/sync/runtime/rpcErrors';
 import { t } from '@/text';
 
 export type DirectBrowseCandidate = Readonly<{
@@ -72,6 +73,7 @@ export function useDirectBrowseCandidates(params: Readonly<{
     const [loading, setLoading] = React.useState(false);
     const [loadingMore, setLoadingMore] = React.useState(false);
     const [searchAugmenting, setSearchAugmenting] = React.useState(false);
+    const [errorCode, setErrorCode] = React.useState<string | null>(null);
     const [error, setError] = React.useState<string | null>(null);
 
     const loadGenerationRef = React.useRef(0);
@@ -91,6 +93,7 @@ export function useDirectBrowseCandidates(params: Readonly<{
             setLoading(true);
             setSearchAugmenting(false);
             setError(null);
+            setErrorCode(null);
         }
 
         const normalizedSearchTerm = typeof searchTerm === 'string' ? searchTerm.trim() : '';
@@ -115,6 +118,7 @@ export function useDirectBrowseCandidates(params: Readonly<{
                     return false;
                 }
                 setError(result.error);
+                setErrorCode(result.errorCode);
                 if (!append) {
                     setCandidates([]);
                     setNextCursor(null);
@@ -173,6 +177,7 @@ export function useDirectBrowseCandidates(params: Readonly<{
             }
             const message = loadError instanceof Error ? loadError.message : t('directSessions.browseFailedToLoad');
             setError(message);
+            setErrorCode(readRpcErrorCode(loadError) ?? null);
             if (!append) {
                 setCandidates([]);
                 setNextCursor(null);
@@ -205,6 +210,8 @@ export function useDirectBrowseCandidates(params: Readonly<{
         loadingMore,
         searchAugmenting,
         error,
+        errorCode,
+        refresh: loadCandidates,
         loadMore,
     } as const;
 }

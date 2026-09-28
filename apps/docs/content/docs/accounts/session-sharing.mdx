@@ -16,6 +16,19 @@ This page describes the COMBO source build. Its product policy allows shared ses
 - A source conversation whose history does not depend on a fork ancestor. A member's managed conversation cannot be shared again.
 - On encrypted deployments, a per-session source key and the recipient's registered content keys. Restore or connect account keys before accepting an encrypted invitation.
 
+## Publish an existing Codex conversation from the web
+
+Use the matching COMBO source-build host on the computer where the Codex conversation is saved. Sign in to that host and the web workspace with the same COMBO account and server.
+
+1. Choose **Share a Codex conversation** on the workspace home screen.
+2. Select the connected computer, search the saved conversations, and choose the one to share.
+3. Review the user and assistant text that will be copied. Enter the public sharing title and purpose, then generate the invitation link.
+4. Copy the link for the recipient. They sign in with Google and prepare their own conversation.
+
+Choosing a conversation and reviewing its text do not publish it or take control of the original Codex thread. The host resolves the conversation location, so this flow does not require a thread ID or a filesystem path. If the original text changes after the preview, review it again before publishing. An already published native conversation returns its existing invitation and first imported context; it does not silently update that context.
+
+Reconnect an offline host before browsing its conversations. Update an older host if it does not support web publication. Project files, encryption, host usage, and snapshot limits follow the rules below.
+
 ## Publish from Codex
 
 The COMBO source-build CLI exposes `session publish`; its MCP tool is `session_publish`. Use the same authenticated server profile and connected host as your workspace. Tell Codex exactly which conversation to publish and give it a public title and purpose.

@@ -18,6 +18,15 @@ const message = (role: string, text: string) => ({ type: 'response_item', payloa
 afterEach(async () => { await Promise.all(homes.splice(0).map((home) => rm(home, { recursive: true, force: true }))); });
 
 describe('readCodexSessionForPublishing', () => {
+  it('rejects text beyond the shared snapshot row limit without silently truncating it', async () => {
+    const f = await fixture('too-many', [meta('too-many'), ...Array.from({ length: 5001 }, () => message('user', 'text'))]);
+    await expect(readCodexSessionForPublishing({ threadId: 'too-many', codexHome: f.home })).rejects.toMatchObject({ code: 'context_snapshot_too_large' });
+  });
+  it('rejects text beyond the shared snapshot byte limit without returning a partial preview', async () => {
+    const f = await fixture('too-large', [meta('too-large'), ...Array.from({ length: 10 }, () => message('assistant', '字'.repeat(70000)))]);
+    await expect(readCodexSessionForPublishing({ threadId: 'too-large', codexHome: f.home })).rejects.toMatchObject({ code: 'context_snapshot_too_large' });
+  });
+
   it('reads the exact thread complete text dialogue without resuming it or selecting newer neighbours', async () => {
     const selected = await fixture('selected-thread', [meta('selected-thread'), message('system', 'SYSTEM'), message('developer', 'DEVELOPER'),
       ...Array.from({ length: 251 }, (_, i) => message(i % 2 ? 'assistant' : 'user', `dialogue ${i}`)),

@@ -294,6 +294,18 @@ describe('MainView sidebar actions', () => {
         MainView = mainViewModule.MainView;
     }, 120_000);
 
+    it.each([
+        ['sidebar', true], ['phone', false], ['phone', true],
+    ] as const)('offers a labeled native Codex sharing entry on %s (tablet=%s)', async (variant, isTablet) => {
+        platformState.isTablet = isTablet;
+        const screen = await renderScreen(<MainView variant={variant} />);
+        const entry = screen.findByTestId('main-share-codex-session');
+        expect(entry).not.toBeNull();
+        expect(entry?.props.title).toBeTruthy();
+        screen.pressByTestId('main-share-codex-session');
+        expect(routerPushSpy).toHaveBeenCalledWith('/share/codex');
+    });
+
     it('renders the wide start-new-session CTA in the sidebar instead of header action buttons', async () => {
         let tree: renderer.ReactTestRenderer | null = null;
         tree = (await renderScreen(<MainView variant="sidebar" />)).tree;

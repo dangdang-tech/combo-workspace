@@ -166,7 +166,7 @@ describe('RootLayoutRedirectGate', () => {
     });
 
     it.each([
-        ['new'], ['new', 'pick', 'machine'], ['new', 'pick', 'path'],
+        ['share', 'codex'], ['new'], ['new', 'pick', 'machine'], ['new', 'pick', 'path'],
         ['settings', 'account'], ['settings', 'machines', 'add'], ['machine', '[id]'],
         ['session', '[id]'], ['session', '[id]', 'entry-sharing'],
         ['session', '[id]', 'message', '[messageId]'], ['session', 'archived'],
