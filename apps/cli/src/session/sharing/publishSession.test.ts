@@ -6,6 +6,7 @@ import { deriveBoxPublicKeyFromSeed, TranscriptRawRecordV1Schema } from '@happie
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as persistence from '@/persistence';
 import { reloadConfiguration } from '@/configuration';
+import { logger } from '@/utils/logger';
 import { decryptStoredSessionPayload, resolveSessionEncryptionContextFromCredentials, tryDecryptSessionMetadata } from '@/session/transport/encryption/sessionEncryptionContext';
 import { createEnvKeyScope } from '@/testkit/env/envScope';
 import type { RawSessionRecord } from '@/session/transport/http/sessionsHttp';
@@ -127,6 +128,39 @@ describe('publishSession', () => {
     expect(await preview(target)).toMatchObject({ ok: false, errorCode: 'not_authenticated' });
   });
 
+
+  it.each(['preview', 'publish'] as const)('logs safe %s failure diagnostics without leaking HTTP or session data', async (phase) => {
+    await nativeFixture();
+    const handlers = new Map<string, unknown>();
+    registerMachineDirectSessionsRpcHandlers({ rpcHandlerManager: { registerHandler: (method, handler) => handlers.set(method, handler) } });
+    // The RPC transport fixture passes unknown wire data to the real schema-validating handler.
+    const method = phase === 'preview' ? RPC_METHODS.DAEMON_DIRECT_SESSION_PUBLISH_PREVIEW : RPC_METHODS.DAEMON_DIRECT_SESSION_PUBLISH;
+    const handler = handlers.get(method) as RpcHandler<unknown, unknown>;
+    const sensitive = 'PRIVATE_AUTH_CHAT_TITLE_PATH_THREAD';
+    const knownTransportFailure = phase === 'preview';
+    const httpFailure = Object.assign(new Error(sensitive), {
+      name: knownTransportFailure ? 'AxiosError' : sensitive,
+      code: knownTransportFailure ? 'ECONNRESET' : sensitive,
+      response: { status: knownTransportFailure ? 503 : sensitive, data: { text: sensitive } },
+      config: { headers: { Authorization: credentials.token }, url: `${sensitive}/private`, data: sensitive },
+      request: { body: sensitive },
+    });
+    vi.mocked(axios.get).mockRejectedValueOnce(httpFailure);
+    const warnings = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    const result = await handler({ machineId: 'local-machine', providerId: 'codex',
+      source: { kind: 'codexHome', home: 'user' }, remoteSessionId: 'exact-thread',
+      title: sensitive, expectedSnapshotFingerprint: '0'.repeat(64) });
+    expect(result).toEqual({ ok: false, errorCode: 'internal_error', error: 'internal_error' });
+    expect(warnings).toHaveBeenCalledWith('[DIRECT SESSION PUBLICATION] Failed', {
+      phase, errorName: knownTransportFailure ? 'AxiosError' : 'UnknownError',
+      code: knownTransportFailure ? 'ECONNRESET' : null, httpStatus: knownTransportFailure ? 503 : null,
+    });
+    const logged = JSON.stringify(warnings.mock.calls);
+    for (const excluded of [sensitive, credentials.token, 'exact-thread', '/owned/project', 'prior question', 'prior answer', home]) {
+      expect(logged).not.toContain(excluded);
+    }
+    expect(requestBodies).toHaveLength(0);
+  });
 
   it('refuses publication before any write when the reviewed native snapshot changed', async () => {
     const f = await nativeFixture();

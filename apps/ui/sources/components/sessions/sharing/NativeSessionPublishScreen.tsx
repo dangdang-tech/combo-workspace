@@ -17,6 +17,7 @@ import { getActiveServerSnapshot, subscribeActiveServer } from '@/sync/domains/s
 import { machineDirectSessionPublish, machineDirectSessionPublishPreview } from '@/sync/ops/machineDirectSessions';
 import { readRpcErrorCode } from '@/sync/runtime/rpcErrors';
 import { t } from '@/text';
+import { Modal } from '@/modal';
 import { SessionGettingStartedGuidanceView } from '../guidance/SessionGettingStartedGuidance';
 import { DirectBrowseCandidatesList } from '../directSessions/browse/DirectBrowseCandidatesList';
 import { useDirectBrowseCandidates, type DirectBrowseCandidate } from '../directSessions/browse/useDirectBrowseCandidates';
@@ -124,6 +125,10 @@ function NativeSessionPublishFlow({ machineId, serverId, online }: { machineId: 
     const [copied, setCopied] = useState(false);
     const [busy, setBusy] = useState<'preview' | 'publish' | 'copy' | null>(null);
     const [error, setError] = useState<{ code: string | null; phase: 'preview' | 'publish' | 'copy' } | null>(null);
+    const reportError = (failure: NonNullable<typeof error>) => {
+        setError(failure);
+        Modal.alert(t('common.error'), failure.phase === 'copy' ? t('sharedEntry.copyFailed') : errorMessage(failure.code, failure.phase));
+    };
     const mounted = useRef(false);
     const request = useRef(0);
     const inFlight = useRef(false);
@@ -140,10 +145,10 @@ function NativeSessionPublishFlow({ machineId, serverId, online }: { machineId: 
         try {
             const result = await machineDirectSessionPublishPreview({ machineId, providerId: 'codex', source: CODEX_SOURCE, remoteSessionId: next.remoteSessionId }, { serverId });
             if (!isCurrent()) return;
-            if (!result.ok) setError({ code: result.errorCode, phase: 'preview' });
+            if (!result.ok) reportError({ code: result.errorCode, phase: 'preview' });
             else if (result.status === 'already_published') { setPublication(result.publication); setReused(true); }
             else setPreview(result);
-        } catch (failure) { if (isCurrent()) setError({ code: readRpcErrorCode(failure) ?? null, phase: 'preview' }); }
+        } catch (failure) { if (isCurrent()) reportError({ code: readRpcErrorCode(failure) ?? null, phase: 'preview' }); }
         finally { if (isCurrent()) { inFlight.current = false; setBusy(null); } }
     };
     const publish = async (title: string, description: string) => {
@@ -156,7 +161,7 @@ function NativeSessionPublishFlow({ machineId, serverId, online }: { machineId: 
                 expectedSnapshotFingerprint: preview.snapshotFingerprint, title: title.trim(), description: description.trim() }, { serverId });
             if (!isCurrent()) return;
             if (!result.ok) {
-                setError({ code: result.errorCode, phase: 'publish' });
+                reportError({ code: result.errorCode, phase: 'publish' });
                 if (['snapshot_changed', 'publication_capture_conflict', 'context_snapshot_too_large', 'context_snapshot_unavailable'].includes(result.errorCode)) setPreview(null);
             } else setPublication(result.publication);
         } catch (failure) {
@@ -173,7 +178,7 @@ function NativeSessionPublishFlow({ machineId, serverId, online }: { machineId: 
                     return;
                 }
             } catch { /* Keep the original failure if the host is still unreachable. */ }
-            if (isCurrent()) setError({ code: readRpcErrorCode(failure) ?? null, phase: 'publish' });
+            if (isCurrent()) reportError({ code: readRpcErrorCode(failure) ?? null, phase: 'publish' });
         }
         finally { if (isCurrent()) { inFlight.current = false; setBusy(null); } }
     };
@@ -184,7 +189,11 @@ function NativeSessionPublishFlow({ machineId, serverId, online }: { machineId: 
         inFlight.current = true; setBusy('copy'); setCopied(false); setError(null);
         try {
             const written = await Clipboard.setStringAsync(publication.inviteUrl).catch(() => false);
-            if (isCurrent()) { if (written) setCopied(true); else setError({ code: null, phase: 'copy' }); }
+            if (!isCurrent()) return;
+            if (written) {
+                setCopied(true);
+                Modal.alert(t('sharedEntry.copied'), t('sharedEntry.copiedDetail'));
+            } else reportError({ code: null, phase: 'copy' });
         } finally { if (isCurrent()) { inFlight.current = false; setBusy(null); } }
     };
     const terminalError = error && ['publication_capture_conflict', 'context_snapshot_too_large', 'not_authenticated'].includes(error.code ?? '');
@@ -201,10 +210,8 @@ function NativeSessionPublishFlow({ machineId, serverId, online }: { machineId: 
                     <Text style={stylesheet.detail}>{t('sharedEntry.sendLinkDetail')}</Text>
                     <TextInput testID="native-publish-link" value={publication.inviteUrl} editable={false} multiline accessibilityLabel={t('sharedEntry.copy')} style={stylesheet.input} />
                     <RoundButton testID="native-publish-copy" title={t(copied ? 'sharedEntry.copied' : 'sharedEntry.copy')} size="normal" loading={busy === 'copy'} onPress={() => void copy()} />
-                    {copied ? <Text testID="native-publish-copied" accessibilityLiveRegion="polite" style={stylesheet.detail}>{t('sharedEntry.copiedDetail')}</Text> : null}
                 </View>
             </ItemGroup> : <NativePublishReview key={candidate.remoteSessionId} candidate={candidate} preview={preview} busy={busy !== null} online={online} onPublish={publish} />}
-            {error ? <ItemGroup><Item testID="native-publish-error" title={error.phase === 'copy' ? t('sharedEntry.copyFailed') : errorMessage(error.code, error.phase)} titleLines={0} showChevron={false} /></ItemGroup> : null}
             {error && !publication && !preview && !terminalError ? <ItemGroup><Item testID="native-publish-preview-retry" title={t('nativeSessionSharing.reviewAgain')} disabled={!online || busy !== null} onPress={() => void loadPreview(candidate)} /></ItemGroup> : null}
         </>}
     </>;

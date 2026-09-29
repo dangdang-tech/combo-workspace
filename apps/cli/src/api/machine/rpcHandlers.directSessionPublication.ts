@@ -10,6 +10,8 @@ import {
 } from '@happier-dev/protocol';
 
 import type { RpcHandlerRegistrar } from '@/api/rpc/types';
+import { INVALID_RESPONSE_SHAPE_CODE, readHttpStatus } from '@/api/client/httpStatusError';
+import { logger } from '@/utils/logger';
 import { resolveConfiguredCodexHome } from '@/backends/codex/utils/resolveConfiguredCodexHome';
 import { readCredentials, readSettings } from '@/persistence';
 import { previewNativeSessionPublication, publishSession } from '@/session/sharing/publishSession';
@@ -18,8 +20,28 @@ type Failure = Extract<DirectSessionPublishResponse, { ok: false }>;
 function failure(errorCode: Failure['errorCode'], error = errorCode): Failure {
   return { ok: false, errorCode, error };
 }
-function publicationFailure(error: unknown): Failure {
+const diagnosticErrorNames = new Set([
+  'Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'URIError', 'EvalError',
+  'AggregateError', 'AxiosError', 'HttpStatusError', 'InvalidResponseShapeError', 'ZodError', 'AbortError',
+]);
+const diagnosticErrorCodes = new Set([
+  'invalid_request', 'not_authenticated', 'snapshot_changed', 'publication_capture_conflict',
+  'context_snapshot_too_large', 'context_snapshot_unavailable', 'machine_offline', INVALID_RESPONSE_SHAPE_CODE,
+  'ECONNABORTED', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'EAI_AGAIN',
+  'ERR_BAD_REQUEST', 'ERR_BAD_RESPONSE', 'ERR_NETWORK', 'ERR_CANCELED',
+]);
+function publicationFailure(error: unknown, phase: 'preview' | 'publish'): Failure {
   const code = error instanceof Error && 'code' in error ? error.code : null;
+  const name = error instanceof Error ? error.name : '';
+  const status = readHttpStatus(error);
+  // Error fields can contain HTTP bodies, credentials, paths or conversation text. Only fixed
+  // classifications and a numeric HTTP status may cross this diagnostic boundary.
+  logger.warn('[DIRECT SESSION PUBLICATION] Failed', {
+    phase,
+    errorName: diagnosticErrorNames.has(name) ? name : 'UnknownError',
+    code: typeof code === 'string' && diagnosticErrorCodes.has(code) ? code : null,
+    httpStatus: status !== null && Number.isInteger(status) && status >= 100 && status <= 599 ? status : null,
+  });
   switch (code) {
     case 'invalid_request':
     case 'snapshot_changed':
@@ -59,7 +81,7 @@ export function registerMachineDirectSessionPublicationRpcHandlers(rpcHandlerMan
       const source = await resolvePublicationSource(parsed.data);
       return { ok: true, ...await previewNativeSessionPublication({ credentials, source, machineId: parsed.data.machineId }) };
     } catch (error) {
-      return publicationFailure(error);
+      return publicationFailure(error, 'preview');
     }
   });
   rpcHandlerManager.registerHandler(RPC_METHODS.DAEMON_DIRECT_SESSION_PUBLISH, async (raw: unknown): Promise<DirectSessionPublishResponse> => {
@@ -72,7 +94,7 @@ export function registerMachineDirectSessionPublicationRpcHandlers(rpcHandlerMan
       const publication = await publishSession({ ...parsed.data, credentials, source });
       return { ok: true, publication };
     } catch (error) {
-      return publicationFailure(error);
+      return publicationFailure(error, 'publish');
     }
   });
 }

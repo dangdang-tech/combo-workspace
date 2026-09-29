@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDeferred, renderScreen } from '@/dev/testkit';
 
 const boundary = vi.hoisted(() => ({
-    rpc: vi.fn(), copy: vi.fn(), push: vi.fn(), token: 'account-a',
+    alert: vi.fn(), rpc: vi.fn(), copy: vi.fn(), push: vi.fn(), token: 'account-a',
     server: { serverId: 'server-a', serverUrl: 'https://relay.example', generation: 1 },
     machines: [] as Array<{ id: string; active: boolean; metadata: { displayName: string; homeDir?: string } }>,
 }));
@@ -24,6 +24,7 @@ vi.mock('expo-router', async () => { const { createExpoRouterMock } = await impo
 vi.mock('react-native', async () => { const { createReactNativeWebMock } = await import('@/dev/testkit/mocks/reactNative'); return createReactNativeWebMock(); });
 vi.mock('react-native-unistyles', async () => { const { createUnistylesMock } = await import('@/dev/testkit/mocks/unistyles'); return createUnistylesMock(); });
 vi.mock('@/text', async () => { const { createTextModuleMock } = await import('@/dev/testkit/mocks/text'); return createTextModuleMock({ translate: (key) => key }); });
+vi.mock('@/modal', async () => { const { createModalModuleMock } = await import('@/dev/testkit/mocks/modal'); return createModalModuleMock({ spies: { alert: boundary.alert } }).module; });
 vi.mock('expo-clipboard', () => ({ setStringAsync: boundary.copy }));
 vi.mock('@/components/ui/lists/Item', () => ({ Item: (props: any) => React.createElement('Item', props) }));
 vi.mock('@/components/ui/lists/ItemGroup', () => ({ ItemGroup: (props: any) => React.createElement('ItemGroup', props, props.title, props.children) }));
@@ -246,7 +247,8 @@ describe('NativeSessionPublishScreen', () => {
         expect(boundary.copy).not.toHaveBeenCalled();
         await act(async () => { screen.pressByTestId('native-publish-copy'); });
         expect(boundary.copy).toHaveBeenCalledWith(publication.inviteUrl);
-        expect(screen.findByTestId('native-publish-copied')).not.toBeNull();
+        expect(boundary.alert).toHaveBeenLastCalledWith('sharedEntry.copied', 'sharedEntry.copiedDetail');
+        expect(screen.findByTestId('native-publish-copied')).toBeNull();
     });
 
     it('does not claim copied when the clipboard rejects the write', async () => {
@@ -255,7 +257,7 @@ describe('NativeSessionPublishScreen', () => {
         await act(async () => { screen.pressByTestId('native-publish-generate'); });
         await act(async () => { screen.pressByTestId('native-publish-copy'); });
         expect(screen.findByTestId('native-publish-copied')).toBeNull();
-        expect(screen.findByTestId('native-publish-error')?.props.title).toBe('sharedEntry.copyFailed');
+        expect(boundary.alert).toHaveBeenLastCalledWith('common.error', 'sharedEntry.copyFailed');
         expect(screen.findByTestId('native-publish-link')?.props.value).toBe(publication.inviteUrl);
     });
 
@@ -270,8 +272,12 @@ describe('NativeSessionPublishScreen', () => {
         expect(screen.findByTestId('native-publish-title')?.props.value).toBe('Keep my title');
         expect(screen.findByTestId('native-publish-description')?.props.value).toBe('Keep my purpose');
         expect(screen.findByTestId('native-publish-generate')?.props.disabled).toBe(false);
-        expect(screen.findByTestId('native-publish-error')).not.toBeNull();
+        expect(boundary.alert).toHaveBeenCalledExactlyOnceWith('common.error', 'nativeSessionSharing.publishFailed');
+        expect(screen.findByTestId('native-publish-error')).toBeNull();
         expect(screen.findByTestId('native-publish-wait-detail')).toBeNull();
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        await screen.update(<NativeSessionPublishScreen />);
+        expect(boundary.alert).toHaveBeenCalledTimes(1);
     });
 
     it('ignores a recovered publication after switching accounts', async () => {
@@ -385,7 +391,8 @@ describe('NativeSessionPublishScreen', () => {
         await screen.update(<NativeSessionPublishScreen />);
         expect(screen.findByTestId('native-publish-link')?.props.value).toBe(publication.inviteUrl);
         await act(async () => { screen.pressByTestId('native-publish-copy'); });
-        expect(screen.findByTestId('native-publish-copied')).not.toBeNull();
+        expect(boundary.alert).toHaveBeenLastCalledWith('sharedEntry.copied', 'sharedEntry.copiedDetail');
+        expect(screen.findByTestId('native-publish-copied')).toBeNull();
         expect(calls(publishMethod)).toHaveLength(1);
     });
 
@@ -426,7 +433,8 @@ describe('NativeSessionPublishScreen', () => {
             const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
             await screen.update(<NativeSessionPublishScreen />);
         }
-        await act(async () => { pending.resolve(ready); });
+        await act(async () => { pending.resolve({ ok: false, errorCode: 'machine_offline', error: 'late failure' }); });
+        expect(boundary.alert).not.toHaveBeenCalled();
         expect(screen.findByTestId('native-publish-preview-message-0')).toBeNull();
         expect(screen.findByTestId('native-publish-generate')).toBeNull();
     });
@@ -460,7 +468,8 @@ describe('NativeSessionPublishScreen', () => {
         expect(screen.findByTestId('native-publish-generate')).toBeNull();
         expect(screen.findByTestId('native-publish-preview-retry')).toBeNull();
         expect(screen.findByTestId('native-publish-choose-another')).not.toBeNull();
-        expect(screen.findByTestId('native-publish-error')?.props.title).not.toContain('private diagnostic');
+        expect(boundary.alert.mock.calls.at(-1)?.[1]).not.toContain('private diagnostic');
+        expect(boundary.alert).toHaveBeenCalledTimes(1);
     });
 
     it('retains the reviewed name and purpose while reloading a changed snapshot', async () => {
@@ -484,7 +493,8 @@ describe('NativeSessionPublishScreen', () => {
         await act(async () => { screen.pressByTestId('native-publish-generate'); });
         await act(async () => { screen.pressByTestId('native-publish-copy'); });
         await act(async () => { screen.pressByTestId('native-publish-copy'); });
-        expect(screen.findByTestId('native-publish-copied')).not.toBeNull();
+        expect(boundary.alert).toHaveBeenLastCalledWith('sharedEntry.copied', 'sharedEntry.copiedDetail');
+        expect(screen.findByTestId('native-publish-copied')).toBeNull();
         expect(calls(publishMethod)).toHaveLength(1);
         expect(screen.findByTestId('native-publish-error')).toBeNull();
     });
@@ -495,7 +505,7 @@ describe('NativeSessionPublishScreen', () => {
             return { ok: true, candidates: [candidate], nextCursor: null };
         });
         const screen = await openPreview();
-        expect(screen.findByTestId('native-publish-error')?.props.title).toBe('nativeSessionSharing.hostUpdateRequired');
+        expect(boundary.alert).toHaveBeenLastCalledWith('common.error', 'nativeSessionSharing.hostUpdateRequired');
         expect(screen.findByTestId('native-publish-preview-retry')).not.toBeNull();
     });
 });
