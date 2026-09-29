@@ -66,7 +66,7 @@ describe('RootLayout', () => {
             expect(names).not.toContain('session/[id]/git');
             expect(names).not.toContain('direct/browse');
             expect(names).not.toContain('desktop/pet-overlay');
-            expect(tree.findAllByType('MobileBottomChromeHost' as never)).toHaveLength(1);
+            expect(tree.findAllByType('MobileBottomChromeHost' as never)).toHaveLength(0);
         } finally {
             await tree.unmount();
         }

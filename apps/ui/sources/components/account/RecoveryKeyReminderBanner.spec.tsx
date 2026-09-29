@@ -265,6 +265,18 @@ describe('RecoveryKeyReminderBanner', () => {
         expect(screen.findByTestId('navigation-account-backup-indicator')).toBeNull();
     });
 
+    it('offers a home route when settings is opened directly on a phone', async () => {
+        vi.resetModules();
+        push.mockClear();
+        const { AccountMenu } = await import('../navigation/shell/AccountMenu');
+        const { DropdownMenu } = await import('../ui/forms/dropdown/DropdownMenu');
+        const screen = await renderScreen(<AccountMenu />);
+        const menu = screen.root.findByType(DropdownMenu);
+        expect(menu.props.items.some((item: { id: string }) => item.id === 'home')).toBe(true);
+        await act(async () => menu.props.onSelect('home'));
+        expect(push).toHaveBeenCalledWith('/');
+    });
+
     it('keeps the account reminder visible when dismiss persistence returns false', async () => {
         vi.resetModules();
         alert.mockClear();

@@ -45,6 +45,7 @@ export const AccountMenu = React.memo(function AccountMenu({ compact = false }: 
         <DropdownMenu open={open} onOpenChange={setOpen} placement="top"
             matchTriggerWidth={false} maxWidthCap={280}
             items={[
+                { id: 'home', testID: 'account-menu-home', title: t('common.home'), icon: <Icon name="house" size={20} color={theme.colors.text.primary} /> },
                 ...(recoveryReminder.visible ? [
                     { id: 'backup', testID: 'account-menu-backup', title: t('settingsAccount.secretKey'), subtitle: t('settingsAccount.backupDescription'), icon: <Icon name="key" size={20} color={theme.colors.text.secondary} /> },
                     { id: 'dismiss-backup', testID: 'account-menu-dismiss-backup', title: t('settingsAccount.dismissRecoveryReminder'), icon: <Icon name="x" size={20} color={theme.colors.text.secondary} /> },
@@ -54,7 +55,8 @@ export const AccountMenu = React.memo(function AccountMenu({ compact = false }: 
                 { id: 'logout', testID: 'account-menu-logout', title: t('common.logout'), disabled: busy, icon: <Icon name="sign-out" size={20} color={theme.colors.state.danger.foreground} /> },
             ]}
             onSelect={(id) => {
-                if (id === 'backup') recoveryReminder.openBackup();
+                if (id === 'home') navigate('/');
+                else if (id === 'backup') recoveryReminder.openBackup();
                 else if (id === 'dismiss-backup') void recoveryReminder.dismiss();
                 else if (id === 'logout') void logout();
                 else navigate(id === 'account' ? '/settings/account' : '/settings');

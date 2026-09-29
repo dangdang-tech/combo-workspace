@@ -9,7 +9,6 @@ import { useAuth } from '@/auth/context/AuthContext';
 import { Text } from '@/components/ui/text/Text';
 import { Typography } from '@/constants/Typography';
 import { createAppStackScreenOptions } from '@/components/navigation/createAppStackScreenOptions';
-import { MobileBottomChromeHost } from '@/components/navigation/mobile/chrome/MobileBottomChromeHost';
 import { AppHeaderCloseButton } from '@/components/navigation/AppHeaderCloseButton';
 import { SessionCockpitChromeRegistryProvider } from '@/components/workspaceCockpit/session/SessionCockpitChromeRegistry';
 import { safeRouterBack } from '@/utils/navigation/safeRouterBack';
@@ -317,7 +316,6 @@ const RootLayoutShell = React.memo(function RootLayoutShell(): React.ReactElemen
                 }}
             />
             </Stack>
-            <MobileBottomChromeHost newSessionRendersFloatingComposer={newSessionRendersFloatingComposer} />
         </SessionCockpitChromeRegistryProvider>
     );
 });
