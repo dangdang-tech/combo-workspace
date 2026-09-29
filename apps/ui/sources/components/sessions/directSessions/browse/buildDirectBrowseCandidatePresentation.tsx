@@ -126,7 +126,9 @@ export function buildDirectBrowseCandidateRightElement(
     candidate: DirectBrowseCandidate,
     theme: AppTheme,
     density: ResolvedItemDensity,
+    activityBadgeMode: 'all' | 'running-only' = 'all',
 ): React.ReactNode {
+    if (activityBadgeMode === 'running-only' && candidate.activity !== 'running') return null;
     const badge = (() => {
         switch (candidate.activity) {
             case 'running':

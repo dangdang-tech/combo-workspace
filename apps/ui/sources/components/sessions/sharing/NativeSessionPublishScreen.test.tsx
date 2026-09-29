@@ -60,6 +60,23 @@ describe('NativeSessionPublishScreen', () => {
         });
     });
 
+    it('only shows running activity in the share picker while idle conversations remain selectable', async () => {
+        boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod ? ready : {
+            ok: true, candidates: ['idle', 'active_recently', 'unknown', 'running'].map(activity => ({
+                ...candidate, remoteSessionId: activity, activity,
+            })), nextCursor: null,
+        });
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        await act(async () => { screen.pressByTestId('direct-session-view:recent'); });
+        for (const activity of ['idle', 'active_recently', 'unknown']) {
+            expect(screen.findByTestId(`direct-session-candidate:${activity}`)?.props.rightElement).toBeNull();
+        }
+        expect(React.isValidElement(screen.findByTestId('direct-session-candidate:running')?.props.rightElement)).toBe(true);
+        await act(async () => { screen.pressByTestId('direct-session-candidate:idle'); });
+        expect(screen.findByTestId('native-publish-step-2')?.props['aria-current']).toBe('step');
+    });
+
     it('groups native conversations by full directory and preserves recent order, missing paths and page selection', async () => {
         const items = [
             { ...candidate, remoteSessionId: 'b-new', updatedAtMs: 30, details: { cwd: '/work/two/shared' } },

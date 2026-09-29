@@ -68,6 +68,7 @@ const stylesheet = StyleSheet.create((theme: AppTheme) => ({
 export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandidatesList(props: Readonly<{
     candidates: readonly DirectBrowseCandidate[];
     groupByDirectory?: boolean;
+    activityBadgeMode?: 'all' | 'running-only';
     loading: boolean;
     error: string | null;
     nextCursor: string | null;
@@ -106,7 +107,7 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
             testID={`direct-session-candidate:${candidate.remoteSessionId}`}
             title={buildDirectBrowseCandidateDisplayTitle(candidate)}
             subtitle={buildDirectBrowseCandidateSubtitle(candidate, theme, itemDensity)}
-            rightElement={buildDirectBrowseCandidateRightElement(candidate, theme, itemDensity)}
+            rightElement={buildDirectBrowseCandidateRightElement(candidate, theme, itemDensity, props.activityBadgeMode)}
             onPress={() => props.onSelectCandidate(candidate)}
             loading={props.linkingSessionId === candidate.remoteSessionId}
         />

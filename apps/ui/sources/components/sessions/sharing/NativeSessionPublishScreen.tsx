@@ -202,7 +202,7 @@ function NativeConversationPicker({ machineId, serverId, onSelect }: { machineId
     const browse = useDirectBrowseCandidates({ machineId, serverId, providerId: 'codex', source: CODEX_SOURCE, searchTerm });
     const select = useCallback((candidate: DirectBrowseCandidate) => { void onSelect(candidate); }, [onSelect]);
     return <>
-        <DirectBrowseCandidatesList {...browse} groupByDirectory error={browse.error ? errorMessage(browse.errorCode, 'load') : null}
+        <DirectBrowseCandidatesList {...browse} groupByDirectory activityBadgeMode="running-only" error={browse.error ? errorMessage(browse.errorCode, 'load') : null}
             linkingSessionId={null} searchQuery={query} onSearchQueryChange={setQuery} onSelectCandidate={select} onLoadMore={browse.loadMore} />
         {browse.error ? <ItemGroup><Item testID="native-publish-list-retry" title={t('common.retry')} onPress={() => void browse.refresh()} /></ItemGroup> : null}
     </>;
