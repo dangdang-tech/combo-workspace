@@ -4,11 +4,13 @@ import { Image } from 'expo-image';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 
 import { DropdownMenu, type DropdownMenuItem } from '@/components/ui/forms/dropdown/DropdownMenu';
+import { DeferredAnchoredTooltip } from '@/components/ui/overlays/DeferredAnchoredTooltip';
 import { Text } from '@/components/ui/text/Text';
 import { Typography } from '@/constants/Typography';
 import type { SessionListViewItem } from '@/sync/domains/state/storage';
 import { t } from '@/text';
 import { useWorkspaceFavicon } from './useWorkspaceFavicon';
+import { SESSION_LIST_DIRECTORY_ROW_HEIGHT } from './sessionListRowHeights';
 import { Icon } from '@/components/ui/icons/Icon';
 
 const WORKSPACE_FAVICON_SIZE = 16;
@@ -22,16 +24,13 @@ const workspaceFaviconImageStyle = {
 const stylesheet = StyleSheet.create((theme) => ({
     section: {
         paddingHorizontal: 16,
-        paddingTop: 8,
-        paddingBottom: 5,
     },
     row: {
+        height: SESSION_LIST_DIRECTORY_ROW_HEIGHT,
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
         justifyContent: 'space-between' as const,
         borderRadius: 8,
-        borderWidth: 1,
-        borderColor: 'transparent',
     },
     titleRow: {
         flexDirection: 'row' as const,
@@ -55,13 +54,6 @@ const stylesheet = StyleSheet.create((theme) => ({
         writingDirection: 'ltr' as const,
         unicodeBidi: 'isolate' as const,
     },
-    subtitle: {
-        fontSize: 11,
-        color: theme.colors.text.secondary,
-        marginTop: 3,
-        marginLeft: 22,
-        ...Typography.default(),
-    },
     faviconFrame: {
         width: WORKSPACE_FAVICON_SIZE,
         minWidth: WORKSPACE_FAVICON_SIZE,
@@ -75,11 +67,10 @@ const stylesheet = StyleSheet.create((theme) => ({
         overflow: 'hidden' as const,
     },
     content: {
-        minHeight: 44,
+        height: SESSION_LIST_DIRECTORY_ROW_HEIGHT,
         justifyContent: 'center',
         flex: 1,
         minWidth: 0,
-        paddingVertical: 6,
     },
     inlineActions: {
         flexDirection: 'row' as const,
@@ -107,6 +98,7 @@ const stylesheet = StyleSheet.create((theme) => ({
         justifyContent: 'center' as const,
         color: theme.colors.text.secondary,
     },
+    hiddenAction: { opacity: 0 },
     dragHandle: {
         opacity: 0.72,
     },
@@ -147,6 +139,9 @@ export const ProjectGroupHeader = React.memo(function ProjectGroupHeader(props: 
     } = props;
     const [isRowHovered, setIsRowHovered] = React.useState(false);
     const [isActionsHovered, setIsActionsHovered] = React.useState(false);
+    const headerRef = React.useRef<View>(null);
+    const [isHeaderHovered, setIsHeaderHovered] = React.useState(false);
+    const [isHeaderFocused, setIsHeaderFocused] = React.useState(false);
     const [menuOpen, setMenuOpen] = React.useState(false);
     const isWeb = Platform.OS === 'web';
     const showHoverActions = !isWeb || isRowHovered || isActionsHovered || menuOpen;
@@ -209,14 +204,18 @@ export const ProjectGroupHeader = React.memo(function ProjectGroupHeader(props: 
                 onPointerLeave={isWeb ? () => setIsRowHovered(false) : undefined}
             >
                 <Pressable
+                    ref={headerRef}
                     style={styles.content}
+                    onFocus={() => setIsHeaderFocused(true)}
+                    onBlur={() => setIsHeaderFocused(false)}
                     onPress={onToggleCollapse}
                     testID={headerTestId}
                     accessibilityRole="button"
                     accessibilityLabel={displayTitle}
+                    accessibilityHint={workspaceMachineSubtitlesEnabled && hasMultipleMachines ? item.subtitle : undefined}
                     aria-expanded={!collapsed}
-                    onHoverIn={isWeb ? () => setIsRowHovered(true) : undefined}
-                    onHoverOut={isWeb ? () => setIsRowHovered(false) : undefined}
+                    onHoverIn={isWeb ? () => { setIsRowHovered(true); setIsHeaderHovered(true); } : undefined}
+                    onHoverOut={isWeb ? () => { setIsRowHovered(false); setIsHeaderHovered(false); } : undefined}
                 >
                     <View style={styles.titleRow}>
                         {favicon ? (
@@ -256,14 +255,21 @@ export const ProjectGroupHeader = React.memo(function ProjectGroupHeader(props: 
                             </View>
                         </View>
                     </View>
-                    {workspaceMachineSubtitlesEnabled && hasMultipleMachines && item.subtitle ? (
-                        <Text style={styles.subtitle}>{item.subtitle}</Text>
-                    ) : null}
                 </Pressable>
+                {isWeb && workspaceMachineSubtitlesEnabled && hasMultipleMachines && item.subtitle && (isHeaderHovered || isHeaderFocused) && (
+                    <DeferredAnchoredTooltip
+                        anchorRef={headerRef}
+                        label={item.subtitle}
+                        activationKey={`${isHeaderHovered}:${isHeaderFocused}`}
+                        testID={`${headerTestId}:machine-tooltip`}
+                    />
+                )}
                 <View style={styles.trailingActions}>
-                    {showHoverActions && reorderHandleKey ? (
+                    {reorderHandleKey ? (
                         <Pressable
-                            style={styles.actionButton}
+                            style={[styles.actionButton, !showHoverActions && styles.hiddenAction]}
+                            pointerEvents={showHoverActions ? 'auto' : 'none'}
+                            tabIndex={-1}
                             testID={`session-workspace-reorder-handle:${reorderHandleKey}`}
                             onPress={(event) => {
                                 (event as any)?.stopPropagation?.();
@@ -281,7 +287,7 @@ export const ProjectGroupHeader = React.memo(function ProjectGroupHeader(props: 
                             />
                         </Pressable>
                     ) : null}
-                    {showHoverActions && workspaceKey ? (
+                    {workspaceKey ? (
                         <DropdownMenu
                             open={menuOpen}
                             onOpenChange={setMenuOpen}

@@ -6747,9 +6747,9 @@ localTailscale: {
     locationLabel: "場所",
     checkoutLabel: "チェックアウト",
     happySessionIdCopied:
-      "Happier セッション ID をクリップボードにコピーしました",
-    failedToCopySessionId: "Happier セッション ID のコピーに失敗しました",
-    happySessionId: "Happier セッション ID",
+      "COMBO セッション ID をクリップボードにコピーしました",
+    failedToCopySessionId: "COMBO セッション ID のコピーに失敗しました",
+    happySessionId: "COMBO セッション ID",
     claudeCodeSessionId: "Claude Code セッション ID",
     claudeCodeSessionIdCopied:
       "Claude Code セッション ID をクリップボードにコピーしました",

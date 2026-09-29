@@ -6483,9 +6483,9 @@ export const es: TranslationStructure = {
     createWorktreeSubtitle: "Inicia una nueva sesión que creará un worktree de Git en este espacio de trabajo vinculado.",
     locationLabel: "Ubicación",
     checkoutLabel: "Copia de trabajo",
-    happySessionIdCopied: "ID de sesión de Happier copiado al portapapeles",
-    failedToCopySessionId: "Falló al copiar ID de sesión de Happier",
-    happySessionId: "ID de sesión de Happier",
+    happySessionIdCopied: "ID de sesión de COMBO copiado al portapapeles",
+    failedToCopySessionId: "Falló al copiar ID de sesión de COMBO",
+    happySessionId: "ID de sesión de COMBO",
     claudeCodeSessionId: "ID de sesión de Claude Code",
     claudeCodeSessionIdCopied:
       "ID de sesión de Claude Code copiado al portapapeles",

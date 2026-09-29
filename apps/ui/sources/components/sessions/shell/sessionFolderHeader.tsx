@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text/Text';
 import { Typography } from '@/constants/Typography';
 import { t } from '@/text';
 import type { SessionFolderHeaderItem } from './sessionFolderShellTypes';
+import { SESSION_LIST_DIRECTORY_ROW_HEIGHT } from './sessionListRowHeights';
 import { Icon } from '@/components/ui/icons/Icon';
 
 const FOLDER_ROOT_INDENT = 20;
@@ -21,7 +22,7 @@ const stylesheet = StyleSheet.create((theme) => ({
         paddingBottom: 0,
     },
     row: {
-        minHeight: 22,
+        height: SESSION_LIST_DIRECTORY_ROW_HEIGHT,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -29,6 +30,7 @@ const stylesheet = StyleSheet.create((theme) => ({
         alignSelf: 'stretch',
     },
     content: {
+        height: SESSION_LIST_DIRECTORY_ROW_HEIGHT,
         flex: 1,
         minWidth: 0,
         flexDirection: 'row',

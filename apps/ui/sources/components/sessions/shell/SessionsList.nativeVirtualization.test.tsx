@@ -3164,7 +3164,7 @@ describe('SessionsList (native virtualization)', () => {
         expect(readMachineTargetForSessionMock).toHaveBeenCalledWith('sess_b');
     });
 
-    it('keeps project disclosure visible without hover and preserves hover actions', async () => {
+    it('keeps project actions mounted across hover without adding a second text line', async () => {
         platformOs = 'web';
         const { ProjectGroupHeader } = await import('./SessionsList');
 
@@ -3173,6 +3173,7 @@ describe('SessionsList (native virtualization)', () => {
                 item={{
                     type: 'header',
                     title: '/repo',
+                    subtitle: 'A very long workstation name',
                     headerKind: 'project',
                     groupKey: 'server:server_a:active:project:abc',
                     workspaceKey: 'wl_abc',
@@ -3184,7 +3185,7 @@ describe('SessionsList (native virtualization)', () => {
                     serverId: 'server_a',
                     serverName: 'Server A',
                 } as any}
-                hasMultipleMachines={false}
+                hasMultipleMachines={true}
                 workspaceLabelsV1={{}}
                 onRenameWorkspace={vi.fn()}
                 onResetWorkspaceName={vi.fn()}
@@ -3199,14 +3200,19 @@ describe('SessionsList (native virtualization)', () => {
         const header = screen.root.findAllByType('Pressable')[0];
         expect(findPressableByAccessibilityLabel(screen as any, 'machine.launchNewSessionInDirectory')).toBeTruthy();
         expect(findChevronOpacityForHeaderPressable(header)).toBe(1);
-        expect(screen.root.findAllByType('DropdownMenu')).toHaveLength(0);
+        expect(screen.root.findAllByType('DropdownMenu')).toHaveLength(1);
+        const initialMenu = screen.root.findAllByType('DropdownMenu')[0];
+        const { DeferredAnchoredTooltip } = await import('@/components/ui/overlays/DeferredAnchoredTooltip');
+        expect(header.props.accessibilityHint).toBe('A very long workstation name');
+        expect(header.findAllByType('Text').some((node: any) => node.props.children === 'A very long workstation name')).toBe(false);
 
         await act(async () => {
             header.props.onHoverIn?.();
         });
 
         expect(findChevronOpacityForHeaderPressable(screen.root.findAllByType('Pressable')[0])).toBe(1);
-        expect(screen.root.findAllByType('DropdownMenu')).toHaveLength(1);
+        expect(screen.root.findAllByType('DropdownMenu')[0]).toBe(initialMenu);
+        expect(screen.root.findByType(DeferredAnchoredTooltip).props.label).toBe('A very long workstation name');
         const menuTrigger = expectPresent(
             findPressableByAccessibilityLabel(screen as any, 'common.moreActions'),
             'expected project menu trigger while hovered',
@@ -3226,6 +3232,11 @@ describe('SessionsList (native virtualization)', () => {
         });
 
         expect(findChevronOpacityForHeaderPressable(screen.root.findAllByType('Pressable')[0])).toBe(1);
+        expect(screen.root.findAllByType(DeferredAnchoredTooltip)).toHaveLength(0);
+        await act(async () => { header.props.onFocus(); });
+        expect(screen.root.findByType(DeferredAnchoredTooltip).props.label).toBe('A very long workstation name');
+        await act(async () => { header.props.onBlur(); });
+        expect(screen.root.findAllByType(DeferredAnchoredTooltip)).toHaveLength(0);
 
         const collapsedScreen = await renderScreen(
             <ProjectGroupHeader

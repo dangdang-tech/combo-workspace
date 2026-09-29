@@ -5461,9 +5461,9 @@ export const ru: TranslationStructure = {
     createWorktreeSubtitle: "Запустите новую сессию, которая создаст Git worktree в этом связанном рабочем пространстве.",
     locationLabel: "Расположение",
     checkoutLabel: "Проверить",
-    happySessionIdCopied: "ID сессии Happier скопирован в буфер обмена",
-    failedToCopySessionId: "Не удалось скопировать ID сессии Happier",
-    happySessionId: "ID сессии Happier",
+    happySessionIdCopied: "ID сессии COMBO скопирован в буфер обмена",
+    failedToCopySessionId: "Не удалось скопировать ID сессии COMBO",
+    happySessionId: "ID сессии COMBO",
     claudeCodeSessionId: "ID сессии Claude Code",
     claudeCodeSessionIdCopied:
       "ID сессии Claude Code скопирован в буфер обмена",
