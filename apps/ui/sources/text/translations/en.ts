@@ -426,6 +426,7 @@ export const en = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        shareAction: 'Share session',
         generatingDetail: "Copying the conversation and preparing your link. Longer conversations may take a minute or two. Keep this page and your computer online.",
         currentStep: "Current step",
         connectedComputer: "Connected computer",
@@ -9102,6 +9103,7 @@ settingsSession: {
     },
 
     settingsAccount: {
+        dismissRecoveryReminder: "Dismiss backup reminder",
         // Account settings screen
         accountInformation: 'Account Information',
         status: 'Status',

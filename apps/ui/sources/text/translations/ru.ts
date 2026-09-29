@@ -618,6 +618,7 @@ export const ru: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        shareAction: 'Поделиться сессией',
         generatingDetail: "Копируем переписку и готовим ссылку. Длинная переписка может занять одну-две минуты. Не закрывайте страницу и оставьте компьютер в сети.",
         currentStep: "Текущий шаг",
         connectedComputer: "Подключённый компьютер",
@@ -9607,6 +9608,7 @@ settingsSession: {
   },
 
   settingsAccount: {
+        dismissRecoveryReminder: "Скрыть напоминание о резервной копии",
     // Account settings screen
     accountInformation: "Информация об аккаунте",
     status: "Статус",

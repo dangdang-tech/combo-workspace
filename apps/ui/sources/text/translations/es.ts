@@ -603,6 +603,7 @@ export const es: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        shareAction: 'Compartir sesión',
         generatingDetail: "Copiando la conversación y preparando el enlace. Las conversaciones largas pueden tardar uno o dos minutos. Mantén esta página abierta y el ordenador conectado.",
         currentStep: "Paso actual",
         connectedComputer: "Ordenador conectado",
@@ -9642,6 +9643,7 @@ settingsSession: {
   },
 
   settingsAccount: {
+        dismissRecoveryReminder: "Ocultar recordatorio de copia de seguridad",
     // Account settings screen
     accountInformation: "Información de la cuenta",
     status: "Estado",

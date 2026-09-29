@@ -428,6 +428,7 @@ export const de: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        shareAction: 'Sitzung teilen',
         generatingDetail: "Der Chat wird kopiert und der Link vorbereitet. Längere Chats können ein bis zwei Minuten dauern. Lass diese Seite geöffnet und deinen Computer online.",
         currentStep: "Aktueller Schritt",
         connectedComputer: "Verbundener Computer",
@@ -9081,6 +9082,7 @@ settingsSession: {
     },
 
     settingsAccount: {
+        dismissRecoveryReminder: "Backup-Erinnerung ausblenden",
         // Account settings screen
         accountInformation: 'Kontoinformationen',
         status: 'Status',

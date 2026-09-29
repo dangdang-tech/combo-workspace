@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { act } from 'react-test-renderer';
 import { renderScreen } from '@/dev/testkit';
+import { installPartialStorageModuleMock } from '@/dev/testkit/mocks/storage';
 import { installAccountCommonModuleMocks } from './accountTestHelpers';
 
 
@@ -11,7 +12,10 @@ import { installAccountCommonModuleMocks } from './accountTestHelpers';
     }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
+installPartialStorageModuleMock({ useProfile: () => ({ id: '' }) });
+vi.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 const show = vi.fn();
+const alert = vi.fn();
 
 const push = vi.fn();
 
@@ -26,7 +30,7 @@ installAccountCommonModuleMocks({
         return createModalModuleMock({
             spies: {
                 show: show,
-                alert: vi.fn(),
+                alert,
                 prompt: vi.fn(),
                 confirm: vi.fn(),
             },
@@ -238,6 +242,44 @@ describe('RecoveryKeyReminderBanner', () => {
 
         expect(itemNodes).toHaveLength(0);
         expect(show).not.toHaveBeenCalled();
+    });
+
+    it.each([false, true])('keeps the pending backup reminder in the account menu (compact=%s)', async (compact) => {
+        vi.resetModules();
+        setRecoveryKeyReminderDismissed.mockClear();
+        getCachedServerFeatures.mockReturnValue({ features: { auth: { ui: { recoveryKeyReminder: { enabled: true } } } } });
+        getCachedRecoveryKeyReminderDismissed.mockReturnValue(false);
+        getServerFeatures.mockImplementation(() => new Promise(() => {}));
+        getRecoveryKeyReminderDismissed.mockImplementation(() => new Promise(() => {}));
+        const { AccountMenu } = await import('../navigation/shell/AccountMenu');
+        const screen = await renderScreen(<AccountMenu compact={compact} />);
+        expect(screen.findByTestId('navigation-account-backup-indicator')).toBeTruthy();
+        const { DropdownMenu } = await import('../ui/forms/dropdown/DropdownMenu');
+        const menu = screen.root.findByType(DropdownMenu);
+        show.mockClear();
+        await act(async () => menu.props.onSelect('backup'));
+        expect(show).toHaveBeenCalledWith(expect.objectContaining({ props: { secret: 's' } }));
+        expect(setRecoveryKeyReminderDismissed).not.toHaveBeenCalled();
+        await act(async () => menu.props.onSelect('dismiss-backup'));
+        expect(setRecoveryKeyReminderDismissed).toHaveBeenCalledWith(true);
+        expect(screen.findByTestId('navigation-account-backup-indicator')).toBeNull();
+    });
+
+    it('keeps the account reminder visible when dismiss persistence returns false', async () => {
+        vi.resetModules();
+        alert.mockClear();
+        setRecoveryKeyReminderDismissed.mockResolvedValueOnce(false);
+        getCachedServerFeatures.mockReturnValue({ features: { auth: { ui: { recoveryKeyReminder: { enabled: true } } } } });
+        getCachedRecoveryKeyReminderDismissed.mockReturnValue(false);
+        getServerFeatures.mockImplementation(() => new Promise(() => {}));
+        getRecoveryKeyReminderDismissed.mockImplementation(() => new Promise(() => {}));
+        const { AccountMenu } = await import('../navigation/shell/AccountMenu');
+        const { DropdownMenu } = await import('../ui/forms/dropdown/DropdownMenu');
+        const screen = await renderScreen(<AccountMenu compact />);
+        const menu = screen.root.findByType(DropdownMenu);
+        await act(async () => menu.props.onSelect('dismiss-backup'));
+        expect(screen.findByTestId('navigation-account-backup-indicator')).toBeTruthy();
+        expect(alert).toHaveBeenCalled();
     });
 
     it('renders immediately when cached banner visibility state is already available', async () => {

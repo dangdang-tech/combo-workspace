@@ -44,7 +44,7 @@ vi.mock('@/hooks/server/useFriendsEnabled', () => ({
 }));
 
 describe('useSidebarHeaderActions', () => {
-    it('exposes only settings and new session even when social and inbox are available', async () => {
+    it('keeps new session in the header and settings in the account menu', async () => {
         shellFeatureState.friendsEnabled = true;
         shellFeatureState.inboxAvailable = true;
         const { useSidebarHeaderActions } = await import('./useSidebarHeaderActions');
@@ -52,7 +52,6 @@ describe('useSidebarHeaderActions', () => {
         const hook = await renderHook(() => useSidebarHeaderActions());
 
         expect(hook.getCurrent().headerActions.map((action) => action.id)).toEqual([
-            'settings',
             'newSession',
         ]);
     });

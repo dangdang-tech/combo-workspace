@@ -301,27 +301,14 @@ describe('MainView sidebar actions', () => {
         const screen = await renderScreen(<MainView variant={variant} />);
         const entry = screen.findByTestId('main-share-codex-session');
         expect(entry).not.toBeNull();
-        expect(entry?.props.title).toBeTruthy();
+        expect(entry?.props.accessibilityLabel).toBeTruthy();
         screen.pressByTestId('main-share-codex-session');
         expect(routerPushSpy).toHaveBeenCalledWith('/share/codex');
     });
 
-    it('renders the wide start-new-session CTA in the sidebar instead of header action buttons', async () => {
-        let tree: renderer.ReactTestRenderer | null = null;
-        tree = (await renderScreen(<MainView variant="sidebar" />)).tree;
-
-        const fab = tree!.findByType('FABWide');
-        fab.props.onPress({ nativeEvent: { ctrlKey: true } });
-
-        expect(routerPushSpy).toHaveBeenCalledWith({
-            pathname: '/new',
-            params: {
-                draftId: expect.any(String),
-                draftOrigin: 'ordinary',
-            },
-        });
-        expect(() => findPressableByLabel(tree!, 'New session')).toThrow();
-        expect(() => findPressableByLabel(tree!, 'Open automations')).toThrow();
+    it('keeps the list free of a duplicate floating new-session action', async () => {
+        const screen = await renderScreen(<MainView variant="sidebar" />);
+        expect(screen.tree.findAllByType('FABWide')).toHaveLength(0);
     });
 
     it('keeps the phone sessions header new-session action', async () => {

@@ -177,19 +177,19 @@ describe('SessionsList (inline reorder)', () => {
         expect(items[0].props.isBeingDragged).toBe(false);
     });
 
-    it('keeps the recovery banner mounted across SessionsList rerenders', async () => {
+    it('keeps account recovery reminders out of the session list across rerenders', async () => {
         recoveryBannerMountSpy.mockClear();
         recoveryBannerUnmountSpy.mockClear();
 
         const { SessionsList } = await import('./SessionsList');
         const screen = await renderScreen(<SessionsList />);
 
-        expect(recoveryBannerMountSpy).toHaveBeenCalledTimes(1);
+        expect(recoveryBannerMountSpy).not.toHaveBeenCalled();
         expect(recoveryBannerUnmountSpy).not.toHaveBeenCalled();
 
         await screen.update(<SessionsList />);
 
-        expect(recoveryBannerMountSpy).toHaveBeenCalledTimes(1);
+        expect(recoveryBannerMountSpy).not.toHaveBeenCalled();
         expect(recoveryBannerUnmountSpy).not.toHaveBeenCalled();
     });
 });

@@ -622,6 +622,7 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         runBody: "在倉庫目錄下、已設定相同服務和主機資料目錄的終端執行，或在網頁中建立工作階段。",
     },
     nativeSessionSharing: {
+        shareAction: '分享對話',
         generatingDetail: "正在複製聊天記錄並準備連結。較長的對話可能需要一兩分鐘，請保持此頁面和電腦在線。",
         currentStep: "目前步驟",
         connectedComputer: "已連接的電腦",
@@ -7696,6 +7697,7 @@ settingsSession: {
     },
 
     settingsAccount: {
+        dismissRecoveryReminder: "關閉備份提醒",
         // Account settings screen
         accountInformation: '帳戶資訊',
         status: '狀態',

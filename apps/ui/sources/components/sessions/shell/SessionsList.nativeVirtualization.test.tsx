@@ -739,7 +739,7 @@ function findChevronOpacityForHeaderPressable(headerPressable: any): unknown {
         String(node.type) === 'Icon'
         && (node.props?.name === 'caret-down' || node.props?.name === 'caret-right')
     )[0];
-    return flattenStyle(chevronIcon?.parent?.props?.style).opacity;
+    return chevronIcon ? (flattenStyle(chevronIcon.parent?.props?.style).opacity ?? 1) : undefined;
 }
 
 function findPressableByAccessibilityLabel(
@@ -3164,7 +3164,7 @@ describe('SessionsList (native virtualization)', () => {
         expect(readMachineTargetForSessionMock).toHaveBeenCalledWith('sess_b');
     });
 
-    it('shows project chevrons only on hover unless the group is collapsed, while keeping the add action visible', async () => {
+    it('keeps project disclosure visible without hover and preserves hover actions', async () => {
         platformOs = 'web';
         const { ProjectGroupHeader } = await import('./SessionsList');
 
@@ -3198,7 +3198,7 @@ describe('SessionsList (native virtualization)', () => {
 
         const header = screen.root.findAllByType('Pressable')[0];
         expect(findPressableByAccessibilityLabel(screen as any, 'machine.launchNewSessionInDirectory')).toBeTruthy();
-        expect(findChevronOpacityForHeaderPressable(header)).toBe(0);
+        expect(findChevronOpacityForHeaderPressable(header)).toBe(1);
         expect(screen.root.findAllByType('DropdownMenu')).toHaveLength(0);
 
         await act(async () => {
@@ -3225,7 +3225,7 @@ describe('SessionsList (native virtualization)', () => {
             screen.root.findAllByType('Pressable')[0].props.onHoverOut?.();
         });
 
-        expect(findChevronOpacityForHeaderPressable(screen.root.findAllByType('Pressable')[0])).toBe(0);
+        expect(findChevronOpacityForHeaderPressable(screen.root.findAllByType('Pressable')[0])).toBe(1);
 
         const collapsedScreen = await renderScreen(
             <ProjectGroupHeader
@@ -3360,7 +3360,18 @@ describe('SessionsList (native virtualization)', () => {
         expect(images[0].props.contentFit).toBe('cover');
     });
 
-    it('hides expanded section chevrons until hover on web and keeps date headers on the subheader typography tier', async () => {
+    it('keeps search controls outside the section disclosure button', async () => {
+        const { CollapsibleSectionHeader } = await import('./SessionsList');
+        const screen = await renderScreen(<CollapsibleSectionHeader title="Active" collapsed={false}
+            onPress={vi.fn()} headerTestId="active-disclosure"
+            rightElement={React.createElement('Pressable' as any, { testID: 'search-control', accessibilityRole: 'button' })} />);
+        const disclosure = screen.findByTestId('active-disclosure');
+        expect(disclosure).toBeTruthy();
+        expect(disclosure!.findAll((node: any) => node.props.testID === 'search-control')).toHaveLength(0);
+        expect(screen.findByTestId('search-control')).toBeTruthy();
+    });
+
+    it('keeps section disclosure visible and gives project titles stronger hierarchy', async () => {
         platformOs = 'web';
         const { CollapsibleSectionHeader, ProjectGroupHeader } = await import('./SessionsList');
 
@@ -3411,8 +3422,8 @@ describe('SessionsList (native virtualization)', () => {
         const activeHeader = activeScreen.root.findAllByType('Pressable')[0];
         const projectHeader = projectScreen.root.findAllByType('Pressable')[0];
         const yesterdayHeader = yesterdayScreen.root.findAllByType('Pressable')[0];
-        expect(findChevronOpacityForHeaderPressable(activeHeader)).toBe(0);
-        expect(findChevronOpacityForHeaderPressable(yesterdayHeader)).toBe(0);
+        expect(findChevronOpacityForHeaderPressable(activeHeader)).toBe(1);
+        expect(findChevronOpacityForHeaderPressable(yesterdayHeader)).toBe(1);
 
         await act(async () => {
             yesterdayHeader.props.onHoverIn?.();
@@ -3424,8 +3435,10 @@ describe('SessionsList (native virtualization)', () => {
         const yesterdayTextStyle = flattenStyle(yesterdayHeader.findAllByType('Text')[0]?.props?.style);
         const projectTextStyle = flattenStyle(projectHeader.findAllByType('Text')[0]?.props?.style);
 
-        expect(yesterdayTextStyle.fontSize).toBe(projectTextStyle.fontSize);
-        expect(Number(activeTextStyle.fontSize)).toBeGreaterThan(Number(yesterdayTextStyle.fontSize));
+        expect(Number(projectTextStyle.fontSize)).toBeGreaterThan(Number(yesterdayTextStyle.fontSize));
+        expect(activeTextStyle.fontSize).toBe(yesterdayTextStyle.fontSize);
+        expect(activeHeader.props['aria-expanded']).toBe(true);
+        expect(projectHeader.props['aria-expanded']).toBe(true);
     });
 
     it('wires pin toggling through server-backed organization ops', async () => {

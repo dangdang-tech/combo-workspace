@@ -593,6 +593,7 @@ export const ca: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        shareAction: 'Comparteix sessió',
         generatingDetail: "S’està copiant la conversa i preparant l’enllaç. Les converses llargues poden trigar un o dos minuts. Mantén aquesta pàgina oberta i l’ordinador connectat.",
         currentStep: "Pas actual",
         connectedComputer: "Ordinador connectat",
@@ -9017,6 +9018,7 @@ settingsSession: {
     },
 
     settingsAccount: {
+        dismissRecoveryReminder: "Amaga el recordatori de còpia de seguretat",
         // Account settings screen
         accountInformation: 'Informació del compte',
         status: 'Estat',

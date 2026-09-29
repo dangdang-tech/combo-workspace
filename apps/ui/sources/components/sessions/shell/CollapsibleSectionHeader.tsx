@@ -1,25 +1,25 @@
 import React from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 
-import { Eyebrow } from '@/components/ui/text/Eyebrow';
+import { Text } from '@/components/ui/text/Text';
 import type { SessionListViewItem } from '@/sync/domains/state/storage';
 import { isSessionListPrimaryHeaderKind } from './sessionListPrimaryHeader';
 import { Icon } from '@/components/ui/icons/Icon';
 
 const stylesheet = StyleSheet.create((theme) => ({
     headerSection: {
-        paddingHorizontal: 24,
-        paddingTop: 14,
+        paddingHorizontal: 16,
+        paddingTop: 4,
     },
     headerText: {
-        fontSize: 13,
+        fontSize: 12,
+        fontWeight: '500',
         color: theme.colors.text.secondary,
     },
     groupHeaderSection: {
-        paddingHorizontal: 24,
-        paddingTop: 10,
-        paddingBottom: 5,
+        paddingHorizontal: 16,
+        paddingTop: 4,
     },
     groupHeaderTitle: {
         fontSize: 12,
@@ -35,6 +35,7 @@ const stylesheet = StyleSheet.create((theme) => ({
         gap: 8,
     },
     headerLabelRow: {
+        minHeight: 44,
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
         minWidth: 0,
@@ -45,12 +46,6 @@ const stylesheet = StyleSheet.create((theme) => ({
         width: 14,
         alignItems: 'center' as const,
         justifyContent: 'center' as const,
-    },
-    webHoverHiddenChevron: {
-        opacity: 0,
-    },
-    webHoverVisibleChevron: {
-        opacity: 1,
     },
     groupHeaderTrailingActions: {
         flexDirection: 'row' as const,
@@ -70,41 +65,32 @@ export const CollapsibleSectionHeader = React.memo(function CollapsibleSectionHe
 }>) {
     const styles = stylesheet;
     const { theme } = useUnistyles();
-    const isWeb = Platform.OS === 'web';
-    const [isHovered, setIsHovered] = React.useState(false);
     const headerChevronColor = theme.colors.text.secondary;
     const isPrimaryHeader = isSessionListPrimaryHeaderKind(props.headerKind);
-    const showChevron = !isWeb || props.collapsed || isHovered;
     return (
-        <Pressable
-            style={isPrimaryHeader ? styles.headerSection : styles.groupHeaderSection}
-            onPress={props.onPress}
-            testID={props.headerTestId}
-            onHoverIn={isWeb ? () => setIsHovered(true) : undefined}
-            onHoverOut={isWeb ? () => setIsHovered(false) : undefined}
-        >
+        <View style={isPrimaryHeader ? styles.headerSection : styles.groupHeaderSection}>
             <View style={styles.headerRow}>
-                <View style={styles.headerLabelRow}>
-                    <Eyebrow style={isPrimaryHeader ? styles.headerText : styles.groupHeaderTitle}>{props.title}</Eyebrow>
-                    <View
-                        style={[
-                            styles.headerChevron,
-                            isWeb && !showChevron ? styles.webHoverHiddenChevron : styles.webHoverVisibleChevron,
-                        ]}
-                    >
+                <Pressable style={styles.headerLabelRow}
+                    onPress={props.onPress}
+                    testID={props.headerTestId}
+                    accessibilityRole="button"
+                    accessibilityLabel={props.title}
+                    aria-expanded={!props.collapsed}>
+                    <Text style={isPrimaryHeader ? styles.headerText : styles.groupHeaderTitle}>{props.title}</Text>
+                    <View style={styles.headerChevron}>
                         <Icon
                             name={props.collapsed ? 'caret-right' : 'caret-down'}
                             size={14}
                             color={headerChevronColor}
                         />
                     </View>
-                </View>
+                </Pressable>
                 {props.rightElement ? (
                     <View style={styles.groupHeaderTrailingActions}>
                         {props.rightElement}
                     </View>
                 ) : null}
             </View>
-        </Pressable>
+        </View>
     );
 });

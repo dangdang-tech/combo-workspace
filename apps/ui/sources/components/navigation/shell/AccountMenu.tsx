@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/text/Text';
 import { useChromeSafeAreaInsets } from '@/components/ui/layout/useChromeSafeAreaInsets';
 import { useProfile } from '@/sync/domains/state/storage';
 import { getAvatarUrl, getDisplayName } from '@/sync/domains/profiles/profile';
+import { useRecoveryKeyReminder } from '@/hooks/auth/useRecoveryKeyReminder';
 import { useAccountLogout } from '@/hooks/auth/useAccountLogout';
 import { runGuardedNavigation } from '@/utils/navigation/runGuardedNavigation';
 import { fireAndForget } from '@/utils/system/fireAndForget';
@@ -31,6 +32,7 @@ export const AccountMenu = React.memo(function AccountMenu({ compact = false }: 
     const router = useRouter();
     const pathname = usePathname();
     const safeArea = useChromeSafeAreaInsets();
+    const recoveryReminder = useRecoveryKeyReminder();
     const { logout, busy } = useAccountLogout();
     const [open, setOpen] = React.useState(false);
     React.useEffect(() => setOpen(false), [pathname, compact]);
@@ -43,20 +45,27 @@ export const AccountMenu = React.memo(function AccountMenu({ compact = false }: 
         <DropdownMenu open={open} onOpenChange={setOpen} placement="top"
             matchTriggerWidth={false} maxWidthCap={280}
             items={[
+                ...(recoveryReminder.visible ? [
+                    { id: 'backup', testID: 'account-menu-backup', title: t('settingsAccount.secretKey'), subtitle: t('settingsAccount.backupDescription'), icon: <Icon name="key" size={20} color={theme.colors.text.secondary} /> },
+                    { id: 'dismiss-backup', testID: 'account-menu-dismiss-backup', title: t('settingsAccount.dismissRecoveryReminder'), icon: <Icon name="x" size={20} color={theme.colors.text.secondary} /> },
+                ] : []),
                 { id: 'account', testID: 'account-menu-settings', title: t('settings.account'), icon: <Icon name="user-circle" size={20} color={theme.colors.text.primary} /> },
                 { id: 'settings', testID: 'account-menu-preferences', title: t('settings.title'), icon: <Icon name="sliders-horizontal" size={20} color={theme.colors.text.primary} /> },
                 { id: 'logout', testID: 'account-menu-logout', title: t('common.logout'), disabled: busy, icon: <Icon name="sign-out" size={20} color={theme.colors.state.danger.foreground} /> },
             ]}
             onSelect={(id) => {
-                if (id === 'logout') void logout();
+                if (id === 'backup') recoveryReminder.openBackup();
+                else if (id === 'dismiss-backup') void recoveryReminder.dismiss();
+                else if (id === 'logout') void logout();
                 else navigate(id === 'account' ? '/settings/account' : '/settings');
             }}
             trigger={({ toggle }) => <Pressable testID="navigation-account-menu" onPress={toggle}
-                accessibilityRole="button" accessibilityLabel={t('settings.account')}
+                accessibilityRole="button" accessibilityLabel={recoveryReminder.visible ? `${t('settings.account')}. ${t('settingsAccount.secretKey')}` : t('settings.account')}
                 accessibilityState={{ expanded: open, disabled: busy }} disabled={busy}
                 style={({ pressed }) => [styles.trigger, compact && styles.compact, (pressed || open) && styles.active]}>
                 {profile.id ? <Avatar id={profile.id} size={28} imageUrl={getAvatarUrl(profile)} thumbhash={profile.avatar?.thumbhash} />
                     : <Icon name="user-circle" size={24} color={theme.colors.text.primary} />}
+                {recoveryReminder.visible && <View testID="navigation-account-backup-indicator" accessible={false}><Icon name="key" size={14} color={theme.colors.text.secondary} /></View>}
                 {!compact && <><Text numberOfLines={1} style={styles.label}>{displayName}</Text><Icon name="caret-up" size={16} color={theme.colors.text.secondary} /></>}
             </Pressable>} />
     </View>;

@@ -16,8 +16,6 @@ import {
     resolveSidebarSessionListSurfaceInteractive,
     SESSION_LIST_SURFACE_OWNER_SIDEBAR,
 } from '@/components/sessions/shell/surface/sessionListSurfaceOwnership';
-import { RoundButton } from '@/components/ui/buttons/RoundButton';
-import { FABWide } from '@/components/ui/buttons/FABWide';
 import { SessionsListWrapper } from '@/components/sessions/shell/SessionsListWrapper';
 import { Header } from '@/components/navigation/Header';
 import { HeaderLogo } from '@/components/ui/navigation/HeaderLogo';
@@ -44,7 +42,13 @@ type MainViewLoadedProps = MainViewProps & Readonly<{
 }>;
 
 const styles = StyleSheet.create((theme) => ({
-    shareAction: { paddingHorizontal: theme.margins.lg, paddingVertical: theme.margins.md },
+    shareAction: { paddingHorizontal: 12, paddingVertical: 8 },
+    shareButton: {
+        minHeight: 44, paddingHorizontal: 12, borderRadius: 10,
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+    },
+    shareButtonSelected: { backgroundColor: theme.colors.surface.pressed },
+    shareLabel: { fontSize: 14, color: theme.colors.text.primary, ...Typography.default('semiBold') },
     container: {
         flex: 1,
     },
@@ -166,10 +170,18 @@ const HeaderTitle = React.memo(() => (
 
 const ShareCodexSessionAction = React.memo(function ShareCodexSessionAction() {
     const router = useRouter();
+    const pathname = usePathname();
+    const { theme } = useUnistyles();
+    const selected = pathname === '/share/codex';
     return <View style={styles.shareAction}>
-        <RoundButton testID="main-share-codex-session" title={t('nativeSessionSharing.title')}
-            accessibilityLabel={t('nativeSessionSharing.title')} size="normal"
-            onPress={() => router.push('/share/codex')} />
+        <Pressable testID="main-share-codex-session"
+            accessibilityRole="button" accessibilityLabel={t('nativeSessionSharing.title')}
+            accessibilityState={{ selected }}
+            style={({ pressed }) => [styles.shareButton, (selected || pressed) && styles.shareButtonSelected]}
+            onPress={() => router.push('/share/codex')}>
+            <Icon name="share" size={20} color={theme.colors.text.primary} />
+            <Text style={styles.shareLabel}>{t('nativeSessionSharing.shareAction')}</Text>
+        </Pressable>
     </View>;
 });
 
@@ -207,8 +219,6 @@ const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
 }>) {
     const { theme } = useUnistyles();
     const storageKind = 'persisted' as const;
-    const router = useRouter();
-    const resolveNewSessionOrdinaryEntryRoute = useResolveNewSessionOrdinaryEntryRoute();
     const activeSessionId = React.useMemo(() => readSessionIdFromPathname(pathname), [pathname]);
     const surfaceOwnership = React.useMemo(
         () => resolveSessionListSurfaceOwnership({
@@ -227,13 +237,6 @@ const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
         activeSessionId,
         sessionListSurfaceDataActive: surfaceOwnership.dataActive,
     });
-
-    const handleNewSession = React.useCallback((event?: unknown) => {
-        const { draftId, draftOrigin } = resolveNewSessionOrdinaryEntryRoute({
-            forceFresh: shouldForceFreshNewSessionEntryFromPressEvent(event),
-        });
-        router.push({ pathname: '/new', params: { draftId, draftOrigin } });
-    }, [resolveNewSessionOrdinaryEntryRoute, router]);
 
     let content: React.ReactNode;
     if (sessionListViewData === null) {
@@ -285,7 +288,6 @@ const SidebarMainViewContent = React.memo(function SidebarMainViewContent({
         <>
             <ShareCodexSessionAction />
             {content}
-            <FABWide onPress={handleNewSession} />
         </>
     );
 });

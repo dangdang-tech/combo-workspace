@@ -375,21 +375,17 @@ describe('SidebarView header automations button', () => {
 
         expect(screen.findAllByTestId('sidebar-header-actions-overflow')).toHaveLength(0);
         expect(screen.findAllByTestId('sidebar-inbox-button')).toHaveLength(0);
-        expect(screen.findAllByTestId('nav-settings').length).toBeGreaterThan(0);
+        expect(screen.findAllByTestId('nav-settings')).toHaveLength(0);
         expect(screen.findAllByTestId('nav-new-session').length).toBeGreaterThan(0);
     });
 
-    it('keeps settings and new session directly available on narrow sidebars without extra navigation', async () => {
+    it('keeps new session available on narrow sidebars without duplicate settings', async () => {
         const { SidebarView } = await import('./SidebarView');
         const screen = await renderScreen(<SidebarView sidebarWidthPx={250} />);
 
         expect(screen.findAllByTestId('sidebar-header-actions-overflow')).toHaveLength(0);
         expect(screen.findAllByTestId('sidebar-inbox-button')).toHaveLength(0);
-        expect(screen.findAllByTestId('nav-settings').length).toBeGreaterThan(0);
+        expect(screen.findAllByTestId('nav-settings')).toHaveLength(0);
         expect(screen.findAllByTestId('nav-new-session').length).toBeGreaterThan(0);
-        await act(async () => {
-            await pressTestInstanceAsync(screen.findByTestId('nav-settings')!);
-        });
-        expect(routerPushSpy).toHaveBeenCalledWith('/settings');
     });
 });

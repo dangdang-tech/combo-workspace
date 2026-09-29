@@ -601,6 +601,7 @@ export const it: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        shareAction: 'Condividi sessione',
         generatingDetail: "Copia della conversazione e preparazione del link. Le conversazioni lunghe possono richiedere uno o due minuti. Tieni aperta questa pagina e il computer online.",
         currentStep: "Passaggio attuale",
         connectedComputer: "Computer collegato",
@@ -9957,6 +9958,7 @@ settingsSession: {
   },
 
   settingsAccount: {
+        dismissRecoveryReminder: "Nascondi promemoria di backup",
     // Account settings screen
     accountInformation: "Informazioni account",
     status: "Stato",

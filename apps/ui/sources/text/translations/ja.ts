@@ -586,6 +586,7 @@ export const ja: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        shareAction: 'セッションを共有',
         generatingDetail: "会話をコピーしてリンクを準備しています。長い会話は1〜2分かかる場合があります。このページとパソコンをオンラインにしてください。",
         currentStep: "現在のステップ",
         connectedComputer: "接続済みのコンピューター",
@@ -9861,6 +9862,7 @@ settingsSession: {
   },
 
   settingsAccount: {
+        dismissRecoveryReminder: "バックアップの通知を非表示",
     // Account settings screen
     accountInformation: "アカウント情報",
     status: "ステータス",

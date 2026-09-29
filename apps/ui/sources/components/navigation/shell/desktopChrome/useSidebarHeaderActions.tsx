@@ -25,12 +25,6 @@ export function useSidebarHeaderActions(): SidebarHeaderActionsResult {
     const router = useRouter();
     const resolveNewSessionOrdinaryEntryRoute = useResolveNewSessionOrdinaryEntryRoute();
 
-    const navigate = React.useCallback((pathname: string, tag: string) => {
-        const result = runGuardedNavigation(() => router.push(pathname));
-        if (result !== true) {
-            fireAndForget(result, { tag });
-        }
-    }, [router]);
     const navigateToNewSession = React.useCallback((event?: unknown) => {
         const { draftId, draftOrigin } = resolveNewSessionOrdinaryEntryRoute({
             forceFresh: shouldForceFreshNewSessionEntryFromPressEvent(event),
@@ -48,18 +42,6 @@ export function useSidebarHeaderActions(): SidebarHeaderActionsResult {
         const out: ItemAction[] = [];
 
         out.push({
-            id: 'settings',
-            title: t('settings.title'),
-            inlineTestID: 'nav-settings',
-            icon: (
-                <View style={styles.iconButton}>
-                    <Icon name="sliders-horizontal" size={ICON_SIZE.md} color={theme.colors.chrome.header.foreground} />
-                </View>
-            ),
-            onPress: () => navigate('/settings', 'SidebarView.nav.settings'),
-        });
-
-        out.push({
             id: 'newSession',
             title: t('newSession.title'),
             inlineTestID: 'nav-new-session',
@@ -73,26 +55,13 @@ export function useSidebarHeaderActions(): SidebarHeaderActionsResult {
 
         return out;
     }, [
-        navigate,
         navigateToNewSession,
         styles.iconButton,
         styles.trailingIconButton,
         theme.colors.chrome.header.foreground,
     ]);
 
-    const topUtilityActions = React.useMemo((): ItemAction[] => {
-        const out: ItemAction[] = [];
-
-        out.push({
-            id: 'settings',
-            title: t('settings.title'),
-            inlineTestID: 'nav-settings',
-            icon: 'sliders-horizontal' as const,
-            onPress: () => navigate('/settings', 'SidebarView.nav.settings'),
-        });
-
-        return out;
-    }, [navigate]);
+    const topUtilityActions = React.useMemo((): ItemAction[] => [], []);
 
     const renderHeaderOverflowVisual = React.useCallback(() => {
         return (

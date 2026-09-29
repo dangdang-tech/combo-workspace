@@ -21,8 +21,8 @@ const workspaceFaviconImageStyle = {
 
 const stylesheet = StyleSheet.create((theme) => ({
     section: {
-        paddingHorizontal: 24,
-        paddingTop: 10,
+        paddingHorizontal: 16,
+        paddingTop: 8,
         paddingBottom: 5,
     },
     row: {
@@ -41,9 +41,9 @@ const stylesheet = StyleSheet.create((theme) => ({
         minWidth: 0,
     },
     title: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '600',
-        color: theme.colors.text.secondary,
+        color: theme.colors.text.primary,
         flexShrink: 1,
         ...Typography.default('semiBold'),
     },
@@ -58,7 +58,8 @@ const stylesheet = StyleSheet.create((theme) => ({
     subtitle: {
         fontSize: 11,
         color: theme.colors.text.secondary,
-        marginTop: 2,
+        marginTop: 3,
+        marginLeft: 22,
         ...Typography.default(),
     },
     faviconFrame: {
@@ -74,8 +75,11 @@ const stylesheet = StyleSheet.create((theme) => ({
         overflow: 'hidden' as const,
     },
     content: {
+        minHeight: 44,
+        justifyContent: 'center',
         flex: 1,
         minWidth: 0,
+        paddingVertical: 6,
     },
     inlineActions: {
         flexDirection: 'row' as const,
@@ -102,12 +106,6 @@ const stylesheet = StyleSheet.create((theme) => ({
         alignItems: 'center' as const,
         justifyContent: 'center' as const,
         color: theme.colors.text.secondary,
-    },
-    hoverHiddenChevron: {
-        opacity: 0,
-    },
-    hoverVisibleChevron: {
-        opacity: 1,
     },
     dragHandle: {
         opacity: 0.72,
@@ -152,7 +150,6 @@ export const ProjectGroupHeader = React.memo(function ProjectGroupHeader(props: 
     const [menuOpen, setMenuOpen] = React.useState(false);
     const isWeb = Platform.OS === 'web';
     const showHoverActions = !isWeb || isRowHovered || isActionsHovered || menuOpen;
-    const showChevron = !isWeb || collapsed || showHoverActions;
     const workspaceKey = item.workspaceKey ?? '';
     const reorderHandleKey = item.groupKey ?? workspaceKey;
     const customLabel = workspaceKey ? workspaceLabelsV1[workspaceKey] : undefined;
@@ -217,6 +214,7 @@ export const ProjectGroupHeader = React.memo(function ProjectGroupHeader(props: 
                     testID={headerTestId}
                     accessibilityRole="button"
                     accessibilityLabel={displayTitle}
+                    aria-expanded={!collapsed}
                     onHoverIn={isWeb ? () => setIsRowHovered(true) : undefined}
                     onHoverOut={isWeb ? () => setIsRowHovered(false) : undefined}
                 >
@@ -230,7 +228,7 @@ export const ProjectGroupHeader = React.memo(function ProjectGroupHeader(props: 
                                     accessibilityIgnoresInvertColors
                                 />
                             </View>
-                        ) : null}
+                        ) : <Icon name="folder" size={16} color={theme.colors.text.secondary} />}
                         <Text
                             style={shouldUseStartEllipsis
                                 ? [styles.title, styles.pathTitleWeb]
@@ -249,12 +247,7 @@ export const ProjectGroupHeader = React.memo(function ProjectGroupHeader(props: 
                             onPointerEnter={isWeb ? () => setIsActionsHovered(true) : undefined}
                             onPointerLeave={isWeb ? () => setIsActionsHovered(false) : undefined}
                         >
-                            <View
-                                style={[
-                                    styles.chevron,
-                                    isWeb && !showChevron ? styles.hoverHiddenChevron : styles.hoverVisibleChevron,
-                                ]}
-                            >
+                            <View style={styles.chevron}>
                                 <Icon
                                     name={collapsed ? 'caret-right' : 'caret-down'}
                                     size={14}

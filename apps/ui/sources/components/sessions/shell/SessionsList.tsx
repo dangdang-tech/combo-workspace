@@ -18,7 +18,6 @@ import { useVisibleSessionListViewData } from '@/hooks/session/useVisibleSession
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { UpdateBanner } from '@/components/ui/feedback/UpdateBanner';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
-import { RecoveryKeyReminderBanner } from '@/components/account/RecoveryKeyReminderBanner';
 import { layout } from '@/components/ui/layout/layout';
 import {
     createSessionFolder,
@@ -569,7 +568,6 @@ const SessionsListHeader = React.memo(function SessionsListHeader(props: Readonl
 }>) {
     return (
         <View>
-            <RecoveryKeyReminderBanner />
             <UpdateBanner />
             {props.children}
         </View>

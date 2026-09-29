@@ -614,6 +614,7 @@ export const pl: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        shareAction: 'Udostępnij sesję',
         generatingDetail: "Kopiowanie rozmowy i przygotowywanie linku. Dłuższe rozmowy mogą wymagać minuty lub dwóch. Pozostaw tę stronę otwartą i komputer online.",
         currentStep: "Bieżący krok",
         connectedComputer: "Połączony komputer",
@@ -9634,6 +9635,7 @@ settingsSession: {
   },
 
   settingsAccount: {
+        dismissRecoveryReminder: "Ukryj przypomnienie o kopii zapasowej",
     // Account settings screen
     accountInformation: "Informacje o koncie",
     status: "Stan",

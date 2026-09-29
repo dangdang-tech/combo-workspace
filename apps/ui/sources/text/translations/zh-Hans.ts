@@ -601,6 +601,7 @@ export const zhHans: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        shareAction: '分享会话',
         generatingDetail: "正在复制聊天记录并准备链接。较长的会话可能需要一两分钟，请保持此页面和电脑在线。",
         currentStep: "当前步骤",
         connectedComputer: "已连接的电脑",
@@ -9277,6 +9278,7 @@ settingsSession: {
   },
 
   settingsAccount: {
+        dismissRecoveryReminder: "关闭备份提醒",
     // Account settings screen
     accountInformation: "账户信息",
     status: "状态",
