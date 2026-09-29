@@ -632,7 +632,7 @@ export const zhHans: TranslationStructure = {
         loadFailed: "无法加载会话。请检查电脑连接后重试。",
         previewFailed: "无法预览此会话。请在电脑可用时重试。",
         publishFailed: "无法生成链接。已保留你的选择，请重试。",
-        emptyPreview: "暂时无法完整读取会话文字。请等 Codex 完成当前回复后，再重新预览。",
+        emptyPreview: "未能从你的电脑读取这条会话的完整记录。请重新读取；如果仍然失败，请检查 COMBO 连接器。",
         user: "你",
         assistant: "Codex",
         shareOutcome: "对方带着发布时的文字上下文，开启独立会话继续聊。你的原聊天不变。",

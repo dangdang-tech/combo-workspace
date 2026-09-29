@@ -459,7 +459,7 @@ export const fr: TranslationStructure = {
         loadFailed: "Impossible de charger les conversations. Vérifiez la connexion et réessayez.",
         previewFailed: "Aperçu indisponible. Réessayez lorsque l’ordinateur sera disponible.",
         publishFailed: "Impossible de créer le lien. Votre sélection est conservée ; réessayez.",
-        emptyPreview: "Le texte complet n’a pas encore pu être lu. Attendez que Codex termine sa réponse en cours, puis vérifiez à nouveau.",
+        emptyPreview: "Impossible de lire la conversation complète sur votre ordinateur. Réessayez. Si le problème persiste, vérifiez le connecteur COMBO.",
         user: "Vous",
         assistant: "Codex",
         shareOutcome: "Votre invité ouvre une conversation indépendante avec le texte enregistré lors de la publication. Votre conversation reste inchangée.",

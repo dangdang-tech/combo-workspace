@@ -683,7 +683,7 @@ export const pt: TranslationStructure = {
         loadFailed: "Não foi possível carregar as conversas. Verifique a conexão e tente novamente.",
         previewFailed: "Prévia indisponível. Tente novamente quando o computador estiver disponível.",
         publishFailed: "Não foi possível gerar o link. Sua seleção foi mantida; tente novamente.",
-        emptyPreview: "Ainda não foi possível ler o texto completo. Aguarde que o Codex termine a resposta atual e reveja novamente.",
+        emptyPreview: "Não foi possível ler a conversa completa no computador. Tente novamente. Se o problema persistir, verifique o conector COMBO.",
         user: "Você",
         assistant: "Codex",
         shareOutcome: "Seu convidado inicia uma conversa independente com o texto salvo na publicação. Sua conversa original permanece intacta.",

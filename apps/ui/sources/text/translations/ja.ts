@@ -617,7 +617,7 @@ export const ja: TranslationStructure = {
         loadFailed: "会話を読み込めません。接続を確認して再試行してください。",
         previewFailed: "この会話を確認できません。コンピューターが利用可能になったら再試行してください。",
         publishFailed: "リンクを作成できません。選択は保持されています。再試行してください。",
-        emptyPreview: "まだ会話の全文を読み取れません。Codex が現在の返信を終えてから、もう一度確認してください。",
+        emptyPreview: "パソコンから会話の完全な記録を読み取れませんでした。再度読み込んでください。解決しない場合は COMBO コネクターを確認してください。",
         user: "あなた",
         assistant: "Codex",
         shareOutcome: "相手は公開時点のテキストを引き継いだ独立した会話を開始します。元の会話は変わりません。",

@@ -77,6 +77,25 @@ describe('NativeSessionPublishScreen', () => {
         expect(screen.findByTestId('native-publish-step-2')?.props['aria-current']).toBe('step');
     });
 
+    it('refreshes native conversations while keeping the expanded project visible', async () => {
+        boundary.rpc.mockResolvedValue({ ok: true, candidates: [candidate], nextCursor: 'old-page' });
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        const screen = await renderScreen(<NativeSessionPublishScreen />);
+        await act(async () => { screen.pressByTestId('direct-session-directory-toggle:/home/owner/project'); });
+        const pending = createDeferred<unknown>();
+        boundary.rpc.mockImplementation(async () => pending.promise);
+        await act(async () => { screen.pressByTestId('direct-session-candidates-refresh'); });
+        expect(screen.findByTestId('direct-session-candidate:native-thread')).not.toBeNull();
+        expect(screen.findByTestId('direct-session-candidates-refresh')?.props.disabled).toBe(true);
+        const requestsBeforeLoadMore = boundary.rpc.mock.calls.length;
+        await act(async () => { screen.pressByTestId('direct-session-candidates-load-more'); });
+        expect(boundary.rpc.mock.calls).toHaveLength(requestsBeforeLoadMore);
+        expect(screen.findByTestId('direct-session-candidates-load-more')?.props.disabled).toBe(true);
+        await act(async () => { pending.resolve({ ok: true, candidates: [candidate, { ...candidate, remoteSessionId: 'new-native-thread' }], nextCursor: null }); });
+        expect(screen.findByTestId('direct-session-candidate:new-native-thread')).not.toBeNull();
+        expect(screen.findByTestId('direct-session-candidates-refresh')?.props.disabled).toBe(false);
+    });
+
     it('groups native conversations by full directory and preserves recent order, missing paths and page selection', async () => {
         const items = [
             { ...candidate, remoteSessionId: 'b-new', updatedAtMs: 30, details: { cwd: '/work/two/shared' } },

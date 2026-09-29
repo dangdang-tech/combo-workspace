@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
@@ -79,6 +79,7 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
     onSearchQueryChange: (value: string) => void;
     onSelectCandidate: (candidate: DirectBrowseCandidate) => void;
     onLoadMore: () => void;
+    onRefresh?: () => void;
 }>) {
     const { theme } = useUnistyles() as { theme: AppTheme };
     const styles = stylesheet;
@@ -100,7 +101,7 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
         }
         return Array.from(groups, ([key, group]) => ({ key, ...group }));
     }, [props.candidates, props.groupByDirectory]);
-    const showDirectories = props.groupByDirectory && view === 'projects' && !props.loading && !props.error && props.candidates.length > 0;
+    const showDirectories = props.groupByDirectory && view === 'projects' && !props.error && props.candidates.length > 0;
     const renderCandidate = (candidate: DirectBrowseCandidate) => (
         <Item
             key={candidate.remoteSessionId}
@@ -118,6 +119,7 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
             title={t('directSessions.browseLoadMore')}
             onPress={props.onLoadMore}
             loading={props.loadingMore}
+            disabled={props.loading || props.loadingMore}
         />
     ) : null;
 
@@ -141,13 +143,22 @@ export const DirectBrowseCandidatesList = React.memo(function DirectBrowseCandid
                 </View>
 
                 <View style={styles.toolbar}>
-                    <Text style={styles.heading}>{t('directSessions.browseCandidates')}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={styles.heading}>{t('directSessions.browseCandidates')}</Text>
+                        {props.onRefresh ? <Pressable testID="direct-session-candidates-refresh" accessibilityRole="button"
+                            accessibilityLabel={t('common.refresh')} disabled={props.loading || props.loadingMore}
+                            accessibilityState={{ disabled: props.loading || props.loadingMore, busy: props.loading }}
+                            onPress={props.onRefresh} style={{ padding: theme.margins.sm }}>
+                            {props.loading ? <ActivitySpinner size="small" color={theme.colors.text.secondary} />
+                                : <Ionicons name="refresh-outline" size={20} color={theme.colors.text.secondary} />}
+                        </Pressable> : null}
+                    </View>
                     {props.groupByDirectory ? <SegmentedTabBar
                         tabs={[{ id: 'projects', label: t('directSessions.browseProjects') }, { id: 'recent', label: t('directSessions.browseRecent') }]}
                         activeTabId={view} onSelectTab={setView} testIDPrefix="direct-session-view" /> : null}
                 </View>
 
-                {props.loading ? (
+                {props.loading && props.candidates.length === 0 ? (
                     <View style={styles.loadingRow}>
                         <ActivitySpinner size="small" color={theme.colors.text.secondary} />
                     </View>

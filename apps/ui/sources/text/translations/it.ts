@@ -632,7 +632,7 @@ export const it: TranslationStructure = {
         loadFailed: "Impossibile caricare le conversazioni. Controlla la connessione e riprova.",
         previewFailed: "Anteprima non disponibile. Riprova quando il computer sarà disponibile.",
         publishFailed: "Impossibile generare il link. La selezione è conservata; riprova.",
-        emptyPreview: "Non è ancora stato possibile leggere il testo completo. Attendi che Codex termini la risposta attuale, poi controlla di nuovo.",
+        emptyPreview: "Impossibile leggere la conversazione completa dal computer. Riprova. Se il problema persiste, controlla il connettore COMBO.",
         user: "Tu",
         assistant: "Codex",
         shareOutcome: "Il tuo ospite avvia una conversazione indipendente con il testo salvato alla pubblicazione. La tua chat originale resta invariata.",

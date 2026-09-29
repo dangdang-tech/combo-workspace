@@ -39,6 +39,35 @@ describe('listCodexSessionCandidates', () => {
     vi.unmock('node:fs/promises');
   });
 
+  it('uses the verified metadata identity for desktop rollout filenames with a recording suffix', async () => {
+    const codexHome = await mkdtemp(join(tmpdir(), 'combo-desktop-rollout-'));
+    const sessionsDir = join(codexHome, 'sessions');
+    await mkdir(sessionsDir);
+    const threadId = '11111111-1111-1111-1111-111111111111';
+    const recordingId = '22222222-2222-2222-2222-222222222222';
+    await writeFile(join(sessionsDir, `rollout-2026-01-01T00-00-00-${threadId}_${recordingId}.jsonl`),
+      sessionMetaLine({ id: threadId, cwd: '/selected/project' })
+      + responseItemLine({ type: 'message', role: 'user', content: [{ type: 'text', text: 'Share this conversation' }] }));
+    const result = await listCodexSessionCandidates({ source: { kind: 'codexHome', home: 'user' }, limit: 20,
+      activeServerDir: join(codexHome, 'servers', 'test'), env: createDirectSessionsEnv(codexHome) });
+    expect(result.candidates.map(candidate => candidate.remoteSessionId)).toEqual([threadId]);
+    const { readCodexSessionForPublishing } = await import('./readCodexSessionForPublishing');
+    const preview = await readCodexSessionForPublishing({ threadId: result.candidates[0].remoteSessionId, codexHome });
+    expect(preview.items).toHaveLength(1);
+    const secondRecording = '33333333-3333-3333-3333-333333333333';
+    await writeFile(join(sessionsDir, `rollout-2026-01-02T00-00-00-${threadId}_${secondRecording}.jsonl`),
+      sessionMetaLine({ id: threadId, cwd: '/selected/project' }));
+    const mismatchedName = `${recordingId}_${secondRecording}`;
+    await writeFile(join(sessionsDir, `rollout-2026-01-03T00-00-00-${mismatchedName}.jsonl`),
+      sessionMetaLine({ id: 'unrelated-thread', cwd: '/other/project' }));
+    const refreshed = await listCodexSessionCandidates({ source: { kind: 'codexHome', home: 'user' }, limit: 20,
+      activeServerDir: join(codexHome, 'servers', 'test'), env: createDirectSessionsEnv(codexHome) });
+    expect(new Set(refreshed.candidates.map(candidate => candidate.remoteSessionId))).toEqual(new Set([threadId, mismatchedName]));
+    expect(refreshed.candidates).toHaveLength(2);
+    await expect(readCodexSessionForPublishing({ threadId: mismatchedName, codexHome })).rejects.toThrow(/identity/);
+
+  });
+
   it('lists sessions from CODEX_HOME with archived flags and paging', async () => {
     const root = await mkdtemp(join(tmpdir(), 'happier-codex-direct-list-'));
     const codexHome = join(root, 'codex-home');

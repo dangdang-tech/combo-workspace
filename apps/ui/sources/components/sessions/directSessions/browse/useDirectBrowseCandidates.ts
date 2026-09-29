@@ -199,9 +199,9 @@ export function useDirectBrowseCandidates(params: Readonly<{
     }, [loadCandidates]);
 
     const loadMore = React.useCallback(async () => {
-        if (!nextCursor || loadingMore) return;
+        if (!nextCursor || loading || loadingMore) return;
         await loadCandidates({ cursor: nextCursor, append: true });
-    }, [loadCandidates, loadingMore, nextCursor]);
+    }, [loadCandidates, loading, loadingMore, nextCursor]);
 
     return {
         candidates,

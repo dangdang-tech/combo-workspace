@@ -459,7 +459,7 @@ export const de: TranslationStructure = {
         loadFailed: "Unterhaltungen konnten nicht geladen werden. Prüfe die Verbindung und versuche es erneut.",
         previewFailed: "Vorschau nicht verfügbar. Versuche es erneut, wenn der Computer erreichbar ist.",
         publishFailed: "Link konnte nicht erstellt werden. Deine Auswahl bleibt erhalten; versuche es erneut.",
-        emptyPreview: "Der vollständige Text konnte noch nicht gelesen werden. Warte, bis Codex die aktuelle Antwort beendet hat, und prüfe erneut.",
+        emptyPreview: "Der vollständige Chat konnte nicht vom Computer gelesen werden. Versuche es erneut. Prüfe den COMBO-Connector, falls das Problem bestehen bleibt.",
         user: "Du",
         assistant: "Codex",
         shareOutcome: "Dein Gast beginnt einen eigenen Chat mit dem bei der Veröffentlichung gespeicherten Text. Dein ursprünglicher Chat bleibt unverändert.",

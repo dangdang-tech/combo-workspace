@@ -457,7 +457,7 @@ export const en = {
         loadFailed: "Could not load conversations. Check the computer connection and try again.",
         previewFailed: "Could not preview this conversation. Try again when the computer is available.",
         publishFailed: "Could not generate the link. Your selection is kept; try again.",
-        emptyPreview: "No complete text could be read yet. Wait for Codex to finish its current reply, then review again.",
+        emptyPreview: "Could not read a complete copy of this conversation from your computer. Try reading it again. If the problem persists, check the COMBO connector.",
         user: "You",
         assistant: "Codex",
         shareOutcome: "Your guest starts an independent conversation with the text saved at publication. Your original chat stays unchanged.",

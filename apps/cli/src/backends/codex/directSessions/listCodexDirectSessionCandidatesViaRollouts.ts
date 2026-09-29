@@ -65,10 +65,19 @@ async function collectRolloutFiles(params: Readonly<{
   return out;
 }
 
-function parseResumeIdFromRolloutFilename(filePath: string): string | null {
+async function parseResumeIdFromRolloutFilename(filePath: string): Promise<string | null> {
   const name = basename(filePath);
   const match = /^rollout-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-(.+)\.jsonl$/i.exec(name);
-  return match ? match[1] : null;
+  const filenameId = match?.[1];
+  if (!filenameId) return null;
+  // Desktop recordings may append a recording UUID to the canonical thread UUID.
+  // Only accept that identity when the transcript header verifies it.
+  const desktopRecording = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.exec(filenameId);
+  if (desktopRecording) {
+    const metadata = await readCodexSessionMetaFromRollout(filePath);
+    if (metadata?.id === desktopRecording[1]) return metadata.id;
+  }
+  return filenameId;
 }
 
 function parseRolloutTimestampMs(filePath: string): number {
@@ -187,7 +196,7 @@ export async function listCodexDirectSessionCandidatesViaRollouts(params: Readon
         ...(await collectRolloutFiles({ rootDir: join(homeEntry.codexHome, 'archived_sessions'), maxDepth: 10, archived: true, filenameIncludes })),
       ];
       for (const entry of files) {
-        const resumeId = parseResumeIdFromRolloutFilename(entry.filePath);
+        const resumeId = await parseResumeIdFromRolloutFilename(entry.filePath);
         if (!resumeId) continue;
         const existing = grouped.get(resumeId);
         const entrySortMs = parseRolloutTimestampMs(entry.filePath);

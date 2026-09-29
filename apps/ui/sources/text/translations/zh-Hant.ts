@@ -653,7 +653,7 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         loadFailed: "無法載入對話。請檢查電腦連線後重試。",
         previewFailed: "無法預覽此對話。請在電腦可用時重試。",
         publishFailed: "無法產生連結。已保留你的選擇，請重試。",
-        emptyPreview: "暫時無法完整讀取會話文字。請等 Codex 完成目前回覆後，再重新預覽。",
+        emptyPreview: "未能從你的電腦讀取這條對話的完整記錄。請重新讀取；如果仍然失敗，請檢查 COMBO 連接器。",
         user: "你",
         assistant: "Codex",
         shareOutcome: "對方帶著發布時的文字上下文，開啟獨立對話繼續聊。你的原聊天不變。",

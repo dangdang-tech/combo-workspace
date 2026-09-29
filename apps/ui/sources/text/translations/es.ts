@@ -634,7 +634,7 @@ export const es: TranslationStructure = {
         loadFailed: "No se pudieron cargar las conversaciones. Comprueba la conexión e inténtalo de nuevo.",
         previewFailed: "No se puede mostrar la vista previa. Reintenta cuando el ordenador esté disponible.",
         publishFailed: "No se pudo generar el enlace. Conservamos tu selección; inténtalo de nuevo.",
-        emptyPreview: "Aún no se ha podido leer el texto completo. Espera a que Codex termine su respuesta actual y vuelve a revisar.",
+        emptyPreview: "No se pudo leer la conversación completa desde tu ordenador. Inténtalo de nuevo. Si el problema persiste, revisa el conector COMBO.",
         user: "Tú",
         assistant: "Codex",
         shareOutcome: "Tu invitado inicia una conversación independiente con el texto guardado al publicar. Tu conversación original no cambia.",

@@ -645,7 +645,7 @@ export const pl: TranslationStructure = {
         loadFailed: "Nie udało się wczytać rozmów. Sprawdź połączenie i spróbuj ponownie.",
         previewFailed: "Podgląd jest niedostępny. Spróbuj, gdy komputer będzie dostępny.",
         publishFailed: "Nie udało się utworzyć linku. Wybór został zachowany; spróbuj ponownie.",
-        emptyPreview: "Nie udało się jeszcze odczytać pełnego tekstu. Poczekaj, aż Codex zakończy bieżącą odpowiedź, i sprawdź ponownie.",
+        emptyPreview: "Nie udało się odczytać pełnej rozmowy z komputera. Spróbuj ponownie. Jeśli problem nadal występuje, sprawdź konektor COMBO.",
         user: "Ty",
         assistant: "Codex",
         shareOutcome: "Gość rozpoczyna niezależną rozmowę z tekstem zapisanym w chwili publikacji. Twoja oryginalna rozmowa się nie zmienia.",

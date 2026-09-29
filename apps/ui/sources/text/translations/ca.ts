@@ -624,7 +624,7 @@ export const ca: TranslationStructure = {
         loadFailed: "No s’han pogut carregar les converses. Comprova la connexió i torna-ho a provar.",
         previewFailed: "La previsualització no està disponible. Torna-ho a provar quan l’ordinador estigui disponible.",
         publishFailed: "No s’ha pogut generar l’enllaç. Es conserva la selecció; torna-ho a provar.",
-        emptyPreview: "Encara no s’ha pogut llegir el text complet. Espera que Codex acabi la resposta actual i torna a revisar-lo.",
+        emptyPreview: "No s’ha pogut llegir la conversa completa de l’ordinador. Torna-ho a provar. Si el problema persisteix, comprova el connector COMBO.",
         user: "Tu",
         assistant: "Codex",
         shareOutcome: "El convidat inicia una conversa independent amb el text desat en publicar. La teva conversa original no canvia.",
