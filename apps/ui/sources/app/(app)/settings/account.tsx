@@ -1,3 +1,4 @@
+import { useAccountLogout } from '@/hooks/auth/useAccountLogout';
 import React, { useState } from 'react';
 import { View, Pressable, Platform, useWindowDimensions } from 'react-native';
 import { useAuth } from '@/auth/context/AuthContext';
@@ -166,17 +167,7 @@ export default React.memo(() => {
         Modal.alert(t('common.error'), t('settingsAccount.secretKeyCopyFailed'));
     };
 
-    const handleLogout = async () => {
-        const confirmed = await Modal.confirm(
-            t('common.logout'),
-            t('settingsAccount.logoutConfirm'),
-            { confirmText: t('common.logout'), destructive: true }
-        );
-        if (confirmed) {
-            await auth.logout();
-            router.replace('/');
-        }
-    };
+    const { logout: handleLogout, busy: logoutBusy } = useAccountLogout();
 
     const isPhoneSizedWeb = Platform.OS === 'web' && isWebMobileLikeQrScannerHost({ width, height });
     const showAddYourPhone = isRunningOnMac() || (Platform.OS === 'web' && !isPhoneSizedWeb);
@@ -600,6 +591,7 @@ export default React.memo(() => {
                         icon={<Icon name="sign-out" size={29} color={theme.colors.state.danger.foreground} />}
                         destructive
                         onPress={handleLogout}
+                        disabled={logoutBusy}
                     />
                 </ItemGroup>
             </ItemList>

@@ -2,6 +2,7 @@ import { useAuth } from '@/auth/context/AuthContext';
 import * as React from 'react';
 import { Stack, usePathname } from 'expo-router';
 import { useIsTablet } from '@/utils/platform/responsive';
+import { AccountMenu } from './AccountMenu';
 import { SidebarView } from './SidebarView';
 import { CollapsedSidebarView } from './CollapsedSidebarView';
 import { View, useWindowDimensions, Platform } from 'react-native';
@@ -218,11 +219,13 @@ export const SidebarNavigator = React.memo((props: SidebarNavigatorProps) => {
         >
             {showSidebar ? (
                 <View testID="navigation-sidebar" style={{ width: sidebarWidth, flexShrink: 0 }}>
-                    {sidebar}
+                    <View style={{ flex: 1, minHeight: 0 }}>{sidebar}</View>
+                    <AccountMenu compact={effectiveSidebarCollapsed} />
                 </View>
             ) : null}
             <View key="route-content" style={[styles.content, showSidebar && styles.contentSheet]}>
                 <Stack screenOptions={stackNavigationOptions} />
+                {auth.isAuthenticated && !showSidebar && !bypassSidebar && !isDesktopPetOverlayWindow ? <AccountMenu /> : null}
             </View>
         </DesktopMainContentDragSurface>
     );

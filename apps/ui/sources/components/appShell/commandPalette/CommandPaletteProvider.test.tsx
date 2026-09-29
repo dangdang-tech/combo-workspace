@@ -6,6 +6,7 @@ import type { Settings } from '@/sync/domains/settings/settings';
 
 const testState = vi.hoisted(() => ({
     routerPush: vi.fn(),
+    logout: vi.fn(async () => {}),
     sessions: {} as Record<string, any>,
     settings: {
         commandPaletteEnabled: true,
@@ -60,7 +61,7 @@ vi.mock('@/sync/domains/state/storage', async () => {
 });
 
 vi.mock('@/auth/context/AuthContext', () => ({
-    useAuth: () => ({ logout: vi.fn(async () => {}) }),
+    useAuth: () => ({ logout: testState.logout }),
 }));
 
 vi.mock('@/hooks/session/useNavigateToSession', () => ({
@@ -96,6 +97,18 @@ describe('CommandPaletteProvider', () => {
             keyboardShortcutDisabledCommandIdsV1: [],
         };
         installKeyboardWindowMock();
+    });
+
+    it('confirms sign out and leaves the account intact when cancelled', async () => {
+        const { renderScreen } = await import('@/dev/testkit');
+        const { Modal } = await import('@/modal');
+        const { CommandPaletteProvider } = await import('./CommandPaletteProvider');
+        await renderScreen(<CommandPaletteProvider><Child /></CommandPaletteProvider>);
+        await act(async () => { window.dispatchEvent(createKeyboardEvent({ key: 'k', code: 'KeyK', altKey: true })); });
+        const props = vi.mocked(Modal.show).mock.calls[0]?.[0]?.props as { commands: Array<{ id: string; action: () => Promise<void> }> };
+        await act(async () => { await props.commands.find(command => command.id === 'sign-out')!.action(); });
+        expect(Modal.confirm).toHaveBeenCalled();
+        expect(testState.logout).not.toHaveBeenCalled();
     });
 
     it('builds command entries lazily when the palette opens', async () => {

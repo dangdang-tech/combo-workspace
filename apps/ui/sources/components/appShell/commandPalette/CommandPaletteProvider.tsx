@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Modal } from '@/modal';
 import { CommandPalette } from './CommandPalette';
 import { Command } from './types';
-import { useAuth } from '@/auth/context/AuthContext';
+import { useAccountLogout } from '@/hooks/auth/useAccountLogout';
 import { storage } from '@/sync/domains/state/storage';
 import { useShallow } from 'zustand/react/shallow';
 import { useNavigateToSession } from '@/hooks/session/useNavigateToSession';
@@ -33,7 +33,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
 function WebCommandPaletteProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const resolveNewSessionOrdinaryEntryRoute = useResolveNewSessionOrdinaryEntryRoute();
-    const { logout } = useAuth();
+    const { logout } = useAccountLogout();
     const {
         commandPaletteEnabled,
         keyboardSingleKeyShortcutsEnabled,

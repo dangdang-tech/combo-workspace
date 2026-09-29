@@ -11,6 +11,7 @@ import { installNavigationShellCommonModuleMocks } from './navigationShellTestHe
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const hoistedState = vi.hoisted(() => ({
+    authenticated: true,
     mockPlatformOS: 'web' as 'web' | 'ios',
     mockWindowDimensions: { width: 1000, height: 800 },
     mockPathname: '/',
@@ -179,8 +180,10 @@ const mockAppPaneStore = (() => {
   };
 })();
 
+vi.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
+
 vi.mock('@/auth/context/AuthContext', () => ({
-  useAuth: () => ({ isAuthenticated: true }),
+  useAuth: () => ({ isAuthenticated: hoistedState.authenticated, logout: async () => {} }),
 }));
 
 vi.mock('@/utils/platform/tauri', () => ({
@@ -306,6 +309,7 @@ describe('SidebarNavigator (collapsed sidebar)', () => {
       mockLocalSettingsStore.setSidebarWidthBasisPx(1200);
       mockAppPaneStore.reset();
     });
+    hoistedState.authenticated = true;
     hoistedState.mockPlatformOS = 'web';
     hoistedState.mockWindowDimensions = { width: 1000, height: 800 };
     hoistedState.mockPathname = '/';
@@ -313,6 +317,30 @@ describe('SidebarNavigator (collapsed sidebar)', () => {
     hoistedState.routerReplaceMock.mockReset();
     hoistedState.setActiveTabMock.mockClear();
     hoistedState.tauriDesktop = false;
+  });
+
+  it.each([1280, 645, 390])('keeps account access available at width %s', async (width) => {
+    hoistedState.mockWindowDimensions = { width, height: 800 };
+    const { SidebarNavigator } = await import('./SidebarNavigator');
+    const screen = await renderScreen(<SidebarNavigator />);
+    expect(screen.findByTestId('navigation-account-menu')).toBeTruthy();
+  });
+
+  it.each(['/', '/share/codex', '/settings/account', '/session/s1'])('keeps account access on route %s in the collapsed rail', async (pathname) => {
+    hoistedState.mockPathname = pathname;
+    mockLocalSettingsStore.setSidebarCollapsed(true);
+    const { SidebarNavigator } = await import('./SidebarNavigator');
+    const screen = await renderScreen(<SidebarNavigator />);
+    expect(screen.findByTestId('navigation-account-menu')).toBeTruthy();
+  });
+
+  it('hides account controls after logout', async () => {
+    const { SidebarNavigator } = await import('./SidebarNavigator');
+    const screen = await renderScreen(<SidebarNavigator />);
+    expect(screen.findByTestId('navigation-account-menu')).toBeTruthy();
+    hoistedState.authenticated = false;
+    await act(async () => { screen.tree.update(<SidebarNavigator desktopUpdateIndicator={null} />); });
+    expect(screen.findByTestId('navigation-account-menu')).toBeNull();
   });
 
   it('keeps the session navigator available without mounting the removed Inbox surface', async () => {
