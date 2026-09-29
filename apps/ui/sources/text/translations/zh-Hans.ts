@@ -601,6 +601,7 @@ export const zhHans: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        generatingDetail: "正在复制聊天记录并准备链接。较长的会话可能需要一两分钟，请保持此页面和电脑在线。",
         currentStep: "当前步骤",
         connectedComputer: "已连接的电脑",
         captureConflict: "这个会话之前有一次未完成的发布，保存的内容与当前不同。重复尝试无法修复，请选择其他会话或联系主机管理员。",

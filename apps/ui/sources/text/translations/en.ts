@@ -426,6 +426,7 @@ export const en = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        generatingDetail: "Copying the conversation and preparing your link. Longer conversations may take a minute or two. Keep this page and your computer online.",
         currentStep: "Current step",
         connectedComputer: "Connected computer",
         captureConflict: "This conversation has an incomplete publication with different saved content. Repeated attempts cannot repair it. Choose another conversation or contact the host administrator.",

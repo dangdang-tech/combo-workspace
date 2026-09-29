@@ -603,6 +603,7 @@ export const es: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        generatingDetail: "Copiando la conversación y preparando el enlace. Las conversaciones largas pueden tardar uno o dos minutos. Mantén esta página abierta y el ordenador conectado.",
         currentStep: "Paso actual",
         connectedComputer: "Ordenador conectado",
         captureConflict: "Esta conversación tiene una publicación incompleta con contenido guardado diferente. Reintentarlo no la reparará. Elige otra conversación o contacta al administrador.",

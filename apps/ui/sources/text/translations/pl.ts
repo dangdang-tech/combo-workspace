@@ -614,6 +614,7 @@ export const pl: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        generatingDetail: "Kopiowanie rozmowy i przygotowywanie linku. Dłuższe rozmowy mogą wymagać minuty lub dwóch. Pozostaw tę stronę otwartą i komputer online.",
         currentStep: "Bieżący krok",
         connectedComputer: "Połączony komputer",
         captureConflict: "Ta rozmowa ma nieukończoną publikację z inną zapisaną treścią. Ponowne próby tego nie naprawią. Wybierz inną rozmowę lub skontaktuj się z administratorem.",

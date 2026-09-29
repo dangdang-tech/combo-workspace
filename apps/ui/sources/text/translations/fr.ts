@@ -428,6 +428,7 @@ export const fr: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        generatingDetail: "Copie de la conversation et préparation du lien. Une longue conversation peut prendre une à deux minutes. Gardez cette page ouverte et votre ordinateur connecté.",
         currentStep: "Étape actuelle",
         connectedComputer: "Ordinateur connecté",
         captureConflict: "Cette conversation a une publication incomplète dont le contenu enregistré diffère. Réessayer ne la réparera pas. Choisissez une autre conversation ou contactez l’administrateur.",

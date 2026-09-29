@@ -652,6 +652,7 @@ export const pt: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        generatingDetail: "Copiando a conversa e preparando o link. Conversas longas podem levar um ou dois minutos. Mantenha esta página aberta e o computador conectado.",
         currentStep: "Etapa atual",
         connectedComputer: "Computador ligado",
         captureConflict: "Esta conversa tem uma publicação incompleta com conteúdo guardado diferente. Repetir não a reparará. Escolha outra conversa ou contacte o administrador.",

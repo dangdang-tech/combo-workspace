@@ -622,6 +622,7 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         runBody: "在倉庫目錄下、已設定相同服務和主機資料目錄的終端執行，或在網頁中建立工作階段。",
     },
     nativeSessionSharing: {
+        generatingDetail: "正在複製聊天記錄並準備連結。較長的對話可能需要一兩分鐘，請保持此頁面和電腦在線。",
         currentStep: "目前步驟",
         connectedComputer: "已連接的電腦",
         captureConflict: "這個會話先前有一次未完成的發佈，儲存的內容與目前不同。重複嘗試無法修復，請選擇其他會話或聯絡主機管理員。",

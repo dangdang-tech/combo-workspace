@@ -240,6 +240,53 @@ describe('NativeSessionPublishScreen', () => {
         expect(screen.findByTestId('native-publish-link')?.props.value).toBe(publication.inviteUrl);
     });
 
+    it('keeps edited fields and unlocks when publication recovery also fails', async () => {
+        const screen = await openPreview();
+        await act(async () => {
+            screen.findByTestId('native-publish-title')?.props.onChangeText('Keep my title');
+            screen.findByTestId('native-publish-description')?.props.onChangeText('Keep my purpose');
+        });
+        boundary.rpc.mockRejectedValue(new Error('Connection lost'));
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        expect(screen.findByTestId('native-publish-title')?.props.value).toBe('Keep my title');
+        expect(screen.findByTestId('native-publish-description')?.props.value).toBe('Keep my purpose');
+        expect(screen.findByTestId('native-publish-generate')?.props.disabled).toBe(false);
+        expect(screen.findByTestId('native-publish-error')).not.toBeNull();
+        expect(screen.findByTestId('native-publish-wait-detail')).toBeNull();
+    });
+
+    it('ignores a recovered publication after switching accounts', async () => {
+        const screen = await openPreview();
+        const pending = createDeferred<unknown>();
+        boundary.rpc.mockImplementation(async ({ method }) => {
+            if (method === publishMethod) throw new Error('Response lost');
+            if (method === previewMethod) return pending.promise;
+            return { ok: true, candidates: [candidate], nextCursor: null };
+        });
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        expect(screen.findByTestId('native-publish-wait-detail')).not.toBeNull();
+        expect(calls(publishMethod)[0][0].timeoutMs).toBe(120_000);
+        boundary.token = 'account-b';
+        const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
+        await screen.update(<NativeSessionPublishScreen />);
+        await act(async () => { pending.resolve({ ok: true, status: 'already_published', publication }); });
+        expect(screen.findByTestId('native-publish-link')).toBeNull();
+        expect(screen.findByTestId('native-publish-error')).toBeNull();
+    });
+
+    it('recovers a completed publication after the publish response times out without sending another publish', async () => {
+        const screen = await openPreview();
+        boundary.rpc.mockImplementation(async ({ method }) => {
+            if (method === publishMethod) throw Object.assign(new Error('Response timed out'), { code: 'machine_rpc_timeout' });
+            if (method === previewMethod) return { ok: true, status: 'already_published', publication };
+            throw new Error('Unexpected RPC');
+        });
+        await act(async () => { screen.pressByTestId('native-publish-generate'); });
+        expect(screen.findByTestId('native-publish-link')?.props.value).toBe(publication.inviteUrl);
+        expect(screen.findByTestId('native-publish-error')).toBeNull();
+        expect(calls(publishMethod)).toHaveLength(1);
+    });
+
     it('reuses an existing publication without previewing new history as its snapshot or publishing again', async () => {
         boundary.rpc.mockImplementation(async ({ method }) => method === previewMethod
             ? { ok: true, status: 'already_published', publication }

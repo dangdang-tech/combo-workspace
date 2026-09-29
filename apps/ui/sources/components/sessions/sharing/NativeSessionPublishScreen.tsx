@@ -159,7 +159,22 @@ function NativeSessionPublishFlow({ machineId, serverId, online }: { machineId: 
                 setError({ code: result.errorCode, phase: 'publish' });
                 if (['snapshot_changed', 'publication_capture_conflict', 'context_snapshot_too_large', 'context_snapshot_unavailable'].includes(result.errorCode)) setPreview(null);
             } else setPublication(result.publication);
-        } catch (failure) { if (isCurrent()) setError({ code: readRpcErrorCode(failure) ?? null, phase: 'publish' }); }
+        } catch (failure) {
+            if (!isCurrent()) return;
+            // A lost response does not mean the host failed to commit the publication.
+            // Reconcile through the read-only preview owner; never auto-submit it twice.
+            try {
+                const recovered = await machineDirectSessionPublishPreview({ machineId, providerId: 'codex', source: CODEX_SOURCE,
+                    remoteSessionId: candidate.remoteSessionId }, { serverId });
+                if (!isCurrent()) return;
+                if (recovered.ok && recovered.status === 'already_published') {
+                    setPublication(recovered.publication);
+                    setReused(true);
+                    return;
+                }
+            } catch { /* Keep the original failure if the host is still unreachable. */ }
+            if (isCurrent()) setError({ code: readRpcErrorCode(failure) ?? null, phase: 'publish' });
+        }
         finally { if (isCurrent()) { inFlight.current = false; setBusy(null); } }
     };
     const copy = async () => {
@@ -228,6 +243,7 @@ function NativePublishReview({ candidate, preview, busy, online, onPublish }: { 
                     onFocus={() => setFocusedField('description')} onBlur={() => setFocusedField(null)}
                     style={[stylesheet.input, focusedField === 'description' ? stylesheet.inputFocused : null]} />
             </View>
+            {busy ? <Text testID="native-publish-wait-detail" accessibilityLiveRegion="polite" style={stylesheet.detail}>{t('nativeSessionSharing.generatingDetail')}</Text> : null}
             {preview ? <RoundButton testID="native-publish-generate" title={t(busy ? 'nativeSessionSharing.generating' : 'sharedEntry.create')} size="normal"
                 disabled={!online || busy || !title.trim()} onPress={() => void onPublish(title, description)} /> : null}
         </View></ItemGroup> : null}

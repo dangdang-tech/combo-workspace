@@ -428,6 +428,7 @@ export const de: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        generatingDetail: "Der Chat wird kopiert und der Link vorbereitet. Längere Chats können ein bis zwei Minuten dauern. Lass diese Seite geöffnet und deinen Computer online.",
         currentStep: "Aktueller Schritt",
         connectedComputer: "Verbundener Computer",
         captureConflict: "Für dieses Gespräch gibt es eine unvollständige Veröffentlichung mit anderem Inhalt. Erneute Versuche beheben das nicht. Wähle ein anderes Gespräch oder kontaktiere die Host-Administration.",

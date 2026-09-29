@@ -586,6 +586,7 @@ export const ja: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        generatingDetail: "会話をコピーしてリンクを準備しています。長い会話は1〜2分かかる場合があります。このページとパソコンをオンラインにしてください。",
         currentStep: "現在のステップ",
         connectedComputer: "接続済みのコンピューター",
         captureConflict: "この会話には、保存内容が異なる未完了の公開があります。繰り返し試しても修復できません。別の会話を選ぶか、ホスト管理者に連絡してください。",

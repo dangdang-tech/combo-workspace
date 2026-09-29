@@ -200,6 +200,7 @@ export async function machineDirectSessionPublish(
         input,
         requestSchema: DirectSessionPublishRequestSchema,
         responseSchema: DirectSessionPublishResponseSchema,
-        opts,
+        // Native publication uploads the complete captured history before creating its link.
+        opts: { ...opts, timeoutMs: opts?.timeoutMs ?? 120_000 },
     });
 }

@@ -593,6 +593,7 @@ export const ca: TranslationStructure = {
     },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
+        generatingDetail: "S’està copiant la conversa i preparant l’enllaç. Les converses llargues poden trigar un o dos minuts. Mantén aquesta pàgina oberta i l’ordinador connectat.",
         currentStep: "Pas actual",
         connectedComputer: "Ordinador connectat",
         captureConflict: "Aquesta conversa té una publicació incompleta amb contingut desat diferent. Tornar-ho a provar no ho repararà. Tria una altra conversa o contacta amb l’administrador.",
