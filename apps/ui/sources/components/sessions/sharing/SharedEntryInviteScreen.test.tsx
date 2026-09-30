@@ -2,7 +2,7 @@ import React from 'react';
 import { act } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDeferred, renderScreen } from '@/dev/testkit';
-const boundary = vi.hoisted(() => ({ openUrl: vi.fn(), features: vi.fn(), externalUrl: vi.fn(), pendingAuth: vi.fn(), previewFetch: vi.fn(), fetch: vi.fn(), push: vi.fn(), replace: vi.fn(), authenticated: true, authToken: 'account-a', switchServer: vi.fn(), copy: vi.fn(), prompt: vi.fn() }));
+const boundary = vi.hoisted(() => ({ openUrl: vi.fn(), features: vi.fn(), externalUrl: vi.fn(), pendingAuth: vi.fn(), previewFetch: vi.fn(), fetch: vi.fn(), push: vi.fn(), replace: vi.fn(), authenticated: true, authToken: 'account-a', switchServer: vi.fn(), copy: vi.fn(), prompt: vi.fn(), alert: vi.fn() }));
 vi.mock('@/sync/api/capabilities/serverFeaturesClient', () => ({ getServerFeaturesSnapshot: boundary.features }));
 vi.mock('@/auth/providers/registry', () => ({ getAuthProvider: () => ({ displayName: 'Google', getExternalAuthUrl: boundary.externalUrl }) }));
 vi.mock('@/auth/storage/tokenStorage', () => ({ TokenStorage: { getPendingExternalAuth: async () => null, setPendingExternalAuth: boundary.pendingAuth, clearPendingExternalAuth: vi.fn() } }));
@@ -31,14 +31,48 @@ describe('SharedEntryInviteScreen', () => {
         boundary.externalUrl.mockReset().mockResolvedValue('https://accounts.google.com/o/oauth2/v2/auth');
         boundary.pendingAuth.mockReset().mockResolvedValue(true);
     });
+    it('expands the original invitation title and collapses it again without accepting', async () => {
+        const title = 'Original &#x20; title: ' + 'Conversation context '.repeat(8);
+        boundary.previewFetch.mockResolvedValueOnce(response({ preview: { title, description: 'Purpose', publisherDisplayName: null }, access: null }));
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="public-token" />);
+        expect(screen.findByTestId('shared-entry-title')?.props.children).toBe(title);
+        expect(screen.findByTestId('shared-entry-title')?.props.numberOfLines).toBe(3);
+        expect(screen.findByTestId('shared-entry-title-toggle')?.props.accessibilityState?.expanded).toBe(false);
+        await act(async () => { screen.pressByTestId('shared-entry-title-toggle'); });
+        expect(screen.findByTestId('shared-entry-title')?.props.children).toBe(title);
+        expect(screen.findByTestId('shared-entry-title')?.props.numberOfLines).toBeUndefined();
+        expect(screen.findByTestId('shared-entry-title-toggle')?.props.accessibilityState?.expanded).toBe(true);
+        await act(async () => { screen.pressByTestId('shared-entry-title-toggle'); });
+        expect(screen.findByTestId('shared-entry-title')?.props.numberOfLines).toBe(3);
+        expect(boundary.fetch).not.toHaveBeenCalled();
+    });
+    it('reports an explicit action failure once and keeps the invitation recoverable until a real retry', async () => {
+        boundary.fetch.mockResolvedValueOnce(response({ error: 'host_offline' }, 409));
+        const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
+        const screen = await renderScreen(<SharedEntryInviteScreen token="public-token" />);
+        expect(boundary.alert).not.toHaveBeenCalled();
+        await act(async () => { screen.pressByTestId('shared-entry-accept'); });
+        expect(boundary.alert).toHaveBeenCalledWith('common.error', 'sharedEntry.inviteHostOffline');
+        expect(boundary.alert).toHaveBeenCalledTimes(1);
+        expect(screen.findByTestId('shared-entry-title')?.props.children).toBe('Interview coach');
+        expect(screen.findByTestId('shared-entry-accept')?.props.disabled).toBe(false);
+        expect(boundary.fetch).toHaveBeenCalledTimes(1);
+        boundary.fetch.mockResolvedValueOnce(response({ access: { ...access, status: 'ready', sessionId: 'retried-child' } }));
+        await act(async () => { screen.pressByTestId('shared-entry-accept'); });
+        expect(boundary.replace).toHaveBeenCalledWith('/session/retried-child?serverId=relay');
+        expect(boundary.fetch).toHaveBeenCalledTimes(2);
+    });
     it('shows the public publication before sign-in without redeeming it', async () => {
         boundary.authenticated = false;
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token="public-token" />);
         expect(boundary.previewFetch).toHaveBeenCalledWith('/v1/shared-session-entries/preview', expect.objectContaining({ body: JSON.stringify({ inviteToken: 'public-token' }) }));
-        expect(screen.findByTestId('shared-entry-publication')?.props.title).toBe('Interview coach');
-        expect(screen.findByTestId('shared-entry-publication')?.props.subtitle).toBe('Practice one question at a time');
-        expect(screen.findByTestId('shared-entry-publisher')?.props.subtitle).toBe('Publisher');
+        expect(screen.findByTestId('shared-entry-title')?.props.children).toBe('Interview coach');
+        expect(screen.findByTestId('shared-entry-title')?.props.numberOfLines).toBeUndefined();
+        expect(screen.findByTestId('shared-entry-title-toggle')).toBeNull();
+        expect(screen.findByTestId('shared-entry-description')?.props.children).toBe('Practice one question at a time');
+        expect(screen.findByTestId('shared-entry-publisher')?.props.children).toContain('Publisher');
         expect(boundary.fetch).not.toHaveBeenCalled();
     });
     it('reopens a ready copy from read-only preview after reload without accepting again', async () => {
@@ -97,7 +131,7 @@ describe('SharedEntryInviteScreen', () => {
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
         await act(async () => { screen.pressByTestId('shared-entry-accept'); });
-        expect(screen.findByTestId('shared-entry-error')?.props.title).toBe('sharedEntry.googleAuthUnavailable');
+        expect(screen.findByTestId('shared-entry-error')?.props.children).toBe('sharedEntry.googleAuthUnavailable');
         expect(boundary.externalUrl).not.toHaveBeenCalled();
         expect(boundary.pendingAuth).not.toHaveBeenCalled();
         expect(boundary.fetch).not.toHaveBeenCalled();
@@ -126,11 +160,16 @@ describe('SharedEntryInviteScreen', () => {
         expect(screen.findByTestId('shared-entry-preparing')).not.toBeNull();
     });
     it('does not treat an invalid invite token as an unsupported preview endpoint', async () => {
+        boundary.authenticated = false;
         boundary.previewFetch.mockResolvedValueOnce(response({ error: 'invite_not_found' }, 404));
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
         expect(screen.findByTestId('shared-entry-accept')).toBeNull();
-        expect(screen.findByTestId('shared-entry-error')?.props.title).toBe('sharedEntry.inviteInvalid');
+        expect(screen.findByTestId('shared-entry-error')?.props.children).toBe('sharedEntry.inviteInvalid');
+        expect(screen.findByTestId('shared-entry-home')).not.toBeNull();
+        await act(async () => { screen.pressByTestId('shared-entry-home'); });
+        expect(boundary.replace).toHaveBeenCalledWith('/');
+        expect(boundary.alert).not.toHaveBeenCalled();
         expect(boundary.fetch).not.toHaveBeenCalled();
     });
     it('retries a failed read-only preview before enabling allocation', async () => {
@@ -159,7 +198,7 @@ describe('SharedEntryInviteScreen', () => {
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
         await act(async () => { screen.pressByTestId('shared-entry-accept'); });
-        expect(screen.findByTestId('shared-entry-error')?.props.title).toBe('sharedEntry.inviteHostOffline');
+        expect(screen.findByTestId('shared-entry-error')?.props.children).toBe('sharedEntry.inviteHostOffline');
         expect(boundary.fetch).toHaveBeenCalledTimes(1);
         expect(boundary.replace).not.toHaveBeenCalled();
     });
@@ -180,7 +219,7 @@ describe('SharedEntryInviteScreen', () => {
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token="token" />);
         await act(async () => { screen.pressByTestId('shared-entry-accept'); });
-        expect(screen.findByTestId('shared-entry-preparation-failed')?.props.title).toBe('sharedEntry.inviteSnapshotUnavailable');
+        expect(screen.findByTestId('shared-entry-preparation-failed')?.props.children).toBe('sharedEntry.inviteSnapshotUnavailable');
         expect(screen.findByTestId('shared-entry-accept')).toBeNull();
         expect(boundary.fetch).toHaveBeenCalledTimes(1);
         expect(boundary.replace).not.toHaveBeenCalled();
@@ -190,16 +229,15 @@ describe('SharedEntryInviteScreen', () => {
         boundary.authenticated = false;
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token={'a'.repeat(43)} />);
-        expect(screen.findByTestId('shared-entry-progress')?.props.title).toBe('sharedEntry.inviteStepSignIn');
-        expect(screen.findByTestId('shared-entry-progress')?.props.subtitle).toBe('sharedEntry.inviteSteps');
+        expect(screen.findByTestId('shared-entry-progress')?.props.accessibilityLabel).toBe('sharedEntry.inviteStepSignIn');
         expect(boundary.fetch).not.toHaveBeenCalled();
         boundary.authenticated = true;
         await screen.update(<SharedEntryInviteScreen token={'a'.repeat(43)} />);
-        expect(screen.findByTestId('shared-entry-progress')?.props.title).toBe('sharedEntry.inviteStepPrepare');
-        expect(screen.findByTestId('shared-entry-accept')?.props.title).toBe('sharedEntry.prepareCopy');
+        expect(screen.findByTestId('shared-entry-progress')?.props.accessibilityLabel).toBe('sharedEntry.inviteStepPrepare');
+        expect(screen.findByTestId('shared-entry-accept')?.props.accessibilityLabel).toBe('sharedEntry.startConversation');
         boundary.fetch.mockResolvedValueOnce(response({ access: { ...access, status: 'ready', sessionId: 'my-child', hostOnline: false } }));
         await act(async () => { screen.pressByTestId('shared-entry-accept'); });
-        expect(screen.findByTestId('shared-entry-progress')?.props.title).toBe('sharedEntry.inviteStepOpen');
+        expect(screen.findByTestId('shared-entry-progress')?.props.accessibilityLabel).toBe('sharedEntry.inviteStepOpen');
         expect(boundary.replace).toHaveBeenCalledWith('/session/my-child?serverId=relay');
     });
     it.each([
@@ -213,7 +251,7 @@ describe('SharedEntryInviteScreen', () => {
         const screen = await renderScreen(<SharedEntryInviteScreen token={token} serverUrl="https://relay.example" />);
         await act(async () => { screen.pressByTestId('shared-entry-accept'); });
         expect(screen.findByTestId('shared-entry-accept')).toBeNull();
-        expect(screen.findByTestId('shared-entry-recover')?.props.title).toBe(label);
+        expect(screen.findByTestId('shared-entry-recover')?.props.accessibilityLabel).toBe(label);
         await act(async () => { screen.pressByTestId('shared-entry-recover'); });
         expect(boundary.push).toHaveBeenCalledWith(`${destination}?returnTo=${encodeURIComponent(returnTo)}`);
         expect(boundary.fetch).toHaveBeenCalledTimes(1);
@@ -232,7 +270,7 @@ describe('SharedEntryInviteScreen', () => {
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token={'a'.repeat(43)} />);
         await act(async () => { screen.pressByTestId('shared-entry-accept'); });
-        expect(screen.findByTestId('shared-entry-preparing')?.props.subtitle).toBe('sharedEntry.inviteHostOfflineWaiting');
+        expect(screen.findByTestId('shared-entry-state-detail')?.props.children).toBe('sharedEntry.inviteHostOfflineWaiting');
         expect(screen.findByTestId('shared-entry-accept')).toBeNull();
         boundary.fetch.mockResolvedValueOnce(response({ access: { ...access, status: 'ready', sessionId: 'my-child' } }));
         await act(async () => { screen.pressByTestId('shared-entry-refresh'); });
@@ -242,7 +280,7 @@ describe('SharedEntryInviteScreen', () => {
 });
 
 vi.mock('expo-clipboard', () => ({ setStringAsync: boundary.copy }));
-vi.mock('@/modal', async () => { const { createModalModuleMock } = await import('@/dev/testkit/mocks/modal'); return createModalModuleMock({ spies: { prompt: boundary.prompt } }).module; });
+vi.mock('@/modal', async () => { const { createModalModuleMock } = await import('@/dev/testkit/mocks/modal'); return createModalModuleMock({ spies: { prompt: boundary.prompt, alert: boundary.alert } }).module; });
 describe('SharedEntryManagement', () => {
     beforeEach(async () => {
         vi.clearAllMocks();

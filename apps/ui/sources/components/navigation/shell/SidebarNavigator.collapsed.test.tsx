@@ -334,6 +334,26 @@ describe('SidebarNavigator (collapsed sidebar)', () => {
     expect(screen.findByTestId('navigation-account-menu')).toBeTruthy();
   });
 
+  it('keeps invitations focused without losing account access or the mounted navigator', async () => {
+    hoistedState.mockWindowDimensions = { width: 1280, height: 800 };
+    const { SidebarNavigator } = await import('./SidebarNavigator');
+    const { Stack } = await import('expo-router');
+    const screen = await renderScreen(<SidebarNavigator />);
+    const navigator = screen.tree.findByType(Stack);
+    for (const pathname of ['/invite/token', '/invite/token/?server=https%3A%2F%2Frelay.example']) {
+      hoistedState.mockPathname = pathname;
+      await screen.update(<SidebarNavigator desktopUpdateIndicator={null} />);
+      expect(screen.findAllHostsByTestId('navigation-sidebar')).toHaveLength(0);
+      expect(screen.findByTestId('navigation-account-menu')).toBeTruthy();
+      expect(screen.tree.findByType(Stack)).toBe(navigator);
+      expect(mockLocalSettingsStore.sidebarCollapsed).toBe(false);
+    }
+    hoistedState.mockPathname = '/session/child';
+    await screen.update(<SidebarNavigator />);
+    expect(screen.findAllHostsByTestId('navigation-sidebar')).toHaveLength(1);
+    expect(screen.tree.findByType(Stack)).toBe(navigator);
+  });
+
   it('hides account controls after logout', async () => {
     const { SidebarNavigator } = await import('./SidebarNavigator');
     const screen = await renderScreen(<SidebarNavigator />);

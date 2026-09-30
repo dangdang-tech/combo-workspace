@@ -59,7 +59,9 @@ export const SidebarNavigator = React.memo((props: SidebarNavigatorProps) => {
     const pathname = usePathname();
     const isDesktopPetOverlayWindow = isDesktopPetOverlayWindowContext();
     const bypassSidebar = Platform.OS === 'web' && isTerminalConnectWebPathname(pathname);
-    const showSidebar = auth.isAuthenticated && isTablet && !isDesktopPetOverlayWindow && !bypassSidebar;
+    // Invites are an entry experience; restore the workspace chrome when the guest enters a session.
+    const isInviteRoute = /^\/invite\/[^/?]+\/?$/.test(String(pathname ?? '').split('?')[0]);
+    const showSidebar = auth.isAuthenticated && isTablet && !isDesktopPetOverlayWindow && !bypassSidebar && !isInviteRoute;
     const routeScopeId = React.useMemo(() => resolvePaneFocusModeRouteScopeId(pathname), [pathname]);
     const { state: paneState, dispatch: dispatchPaneAction } = useAppPaneContext();
     const focusedScopeId = paneState.focusMode.scopeId;
