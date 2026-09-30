@@ -22,6 +22,7 @@ vi.mock('@/text', async () => { const { createTextModuleMock } = await import('@
 vi.mock('@/components/ui/lists/Item', () => ({ Item: (props: any) => React.createElement('Item', props) }));
 vi.mock('@/components/ui/lists/ItemGroup', () => ({ ItemGroup: (props: any) => React.createElement('ItemGroup', props, props.children) }));
 vi.mock('@/components/ui/lists/ItemList', () => ({ ItemList: (props: any) => React.createElement('ItemList', props, props.children) }));
+vi.mock('react-native-typography', () => ({ iOSUIKit: { title3Object: {}, bodyObject: {} } }));
 const access = { entryId: 'e', title: 'Website', memberId: 'm', status: 'pending', sessionId: null, hostOnline: true, errorCode: null };
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 
@@ -32,15 +33,15 @@ describe('SharedEntryInviteScreen', () => {
         boundary.pendingAuth.mockReset().mockResolvedValue(true);
     });
     it('expands the original invitation title and collapses it again without accepting', async () => {
-        const title = 'Original &#x20; title: ' + 'Conversation context '.repeat(8);
+        const title = 'Original &#x20; &#32; &nbsp; &lt;b&gt; title: ' + 'Conversation context '.repeat(8);
         boundary.previewFetch.mockResolvedValueOnce(response({ preview: { title, description: 'Purpose', publisherDisplayName: null }, access: null }));
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token="public-token" />);
-        expect(screen.findByTestId('shared-entry-title')?.props.children).toBe(title);
+        expect(screen.findByTestId('shared-entry-title')?.props.children).toBe(title.replace('&#x20; &#32; &nbsp;', '     '));
         expect(screen.findByTestId('shared-entry-title')?.props.numberOfLines).toBe(3);
         expect(screen.findByTestId('shared-entry-title-toggle')?.props.accessibilityState?.expanded).toBe(false);
         await act(async () => { screen.pressByTestId('shared-entry-title-toggle'); });
-        expect(screen.findByTestId('shared-entry-title')?.props.children).toBe(title);
+        expect(screen.findByTestId('shared-entry-title')?.props.children).toBe(title.replace('&#x20; &#32; &nbsp;', '     '));
         expect(screen.findByTestId('shared-entry-title')?.props.numberOfLines).toBeUndefined();
         expect(screen.findByTestId('shared-entry-title-toggle')?.props.accessibilityState?.expanded).toBe(true);
         await act(async () => { screen.pressByTestId('shared-entry-title-toggle'); });

@@ -61,10 +61,12 @@ const stylesheet = StyleSheet.create((theme) => ({
 
 function InvitePublication({ title, description, publisher }: { title: string; description?: string | null; publisher?: string | null }) {
     const [expanded, setExpanded] = useState(false);
+    // Imported chat titles can contain encoded spaces; keep all content as plain text.
+    const displayTitle = title.replace(/&#(?:0*32|x0*20);|&nbsp;/gi, ' ');
     const collapsible = title.length > 80 || title.split(/\r?\n/).length > 3;
     return <View testID="shared-entry-publication" style={stylesheet.publication}>
         <View>
-            <Text testID="shared-entry-title" accessibilityRole="header" selectable numberOfLines={collapsible && !expanded ? 3 : undefined} style={stylesheet.title}>{title}</Text>
+            <Text testID="shared-entry-title" accessibilityRole="header" selectable numberOfLines={collapsible && !expanded ? 3 : undefined} style={stylesheet.title}>{displayTitle}</Text>
             {collapsible ? <PressableSurface testID="shared-entry-title-toggle" style={stylesheet.disclosure}
                 accessibilityLabel={t(expanded ? 'sharedEntry.inviteCollapseTitle' : 'sharedEntry.inviteExpandTitle')}
                 accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
