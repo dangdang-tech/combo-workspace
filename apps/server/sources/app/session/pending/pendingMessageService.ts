@@ -690,7 +690,7 @@ export async function updatePendingMessage(params: {
 
             await tx.sessionPendingMessage.update({
                 where: { sessionId_localId: { sessionId, localId } },
-                data: { content, messageRole },
+                data: { content, messageRole, authorAccountId: actorUserId },
             });
 
             const { pendingVersion, pendingCount, pendingBlockedCount, participantCursors, badgeAttentionChanged } = await applyPendingSessionStateChange({

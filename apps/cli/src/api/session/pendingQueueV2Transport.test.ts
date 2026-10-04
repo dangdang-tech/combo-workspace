@@ -404,6 +404,19 @@ describe('pendingQueueV2Transport', () => {
         expect(mockPost.mock.calls[0]?.[1]).toEqual({ deliveryState: 'provider' });
     });
 
+    it.each(['owner', 'private', 'consumer', 'unknown'])('preserves server risk scope %s through HTTP materialization', async (consumerMessageSource) => {
+        mockPost.mockResolvedValueOnce({ data: {
+            ok: true, didMaterialize: true, didWriteMessage: false,
+            message: { id: null, seq: null, localId: 'scope', messageRole: 'user', consumerMessageSource,
+                content: { t: 'plain', v: { role: 'user', content: { type: 'text', text: 'synthetic' }, meta: { consumerMessageSource: 'owner' } } },
+                requestedAction: { v: 1, kind: 'enqueue' }, providerAction: 'send',
+                deliveryState: { mode: 'provider', unresolved: true }, createdAt: 0, updatedAt: 0 },
+            deliveryState: { mode: 'provider', unresolved: true },
+        } });
+        expect(await materializeNextPendingQueueV2Message({ token: 'synthetic', sessionId: 'session-1', deliveryStateOptIn: true }))
+            .toMatchObject({ message: { consumerMessageSource } });
+    });
+
     it('returns a fail-closed contract result for HTTP materialization without a provider action', async () => {
         mockPost.mockResolvedValueOnce({
             data: {

@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import axios from 'axios';
+import type { ConsumerMessageRiskConfig } from './consumerMessageRiskGate';
 
 import { createDeferred } from '@/testkit/async/deferred';
 import { createPlainSessionFixture } from '@/testkit/backends/sessionFixtures';
@@ -178,6 +179,7 @@ async function createClient(
   options: Readonly<{
     sessionSocketEmitWithAck?: NonNullable<Parameters<typeof createApiSessionSocketStub>[0]>['emitWithAck'];
     serverContractMode?: 'current' | 'released';
+    consumerMessageRisk?: ConsumerMessageRiskConfig;
   }> = {},
 ) {
   const customEmitWithAck = options.sessionSocketEmitWithAck;
@@ -206,7 +208,7 @@ async function createClient(
         ? sessionOverrides.metadata
         : {}),
     },
-  } as any);
+  } as any, undefined, undefined, options.consumerMessageRisk ?? { providerId: 'synthetic', threshold: 0.6, timeoutMs: 100, evaluate: async () => ({ riskProbability: 0 }) });
   (client as unknown as { accountIdPromise: Promise<string> }).accountIdPromise = Promise.resolve('account-1');
   await supervisorConnectedPromise;
   return client;
@@ -408,6 +410,131 @@ describe('ApiSessionClient pending-queue turn-end drain', () => {
     vi.restoreAllMocks();
   });
 
+  it.each(['termination', 'closed', 'epoch', 'disconnect'])('does not deliver an evaluator result after %s', async (change) => {
+    const checked = createDeferred<{ riskProbability: number }>();
+    const evaluate = vi.fn(() => checked.promise);
+    const client = await createClient({}, { consumerMessageRisk: { providerId: 'synthetic', threshold: 0.6, timeoutMs: 1000, evaluate } });
+    const callback = vi.fn();
+    client.onUserMessage(callback);
+    const delivery = (client as any).deliverPendingQueueMessage({ localId: 'lifecycle-risk', seq: null, messageRole: 'user', consumerMessageSource: 'consumer', content: { t: 'plain', v: { role: 'user', content: { type: 'text', text: 'synthetic lifecycle' } } } }, { providerAcceptancePending: true });
+    await waitUntil(() => evaluate.mock.calls.length === 1);
+    if (change === 'termination') client.beginRuntimeTermination();
+    if (change === 'closed') await client.close();
+    if (change === 'epoch') (client as any).sessionConnectionEpoch += 1;
+    if (change === 'disconnect') sessionSocketStub!.connected = false;
+    checked.resolve({ riskProbability: 0 });
+    await expect(delivery).rejects.toMatchObject({ result: { reason: 'runtime_authority_lost' } });
+    expect(callback).not.toHaveBeenCalled();
+    expect((client as any).hasAgentQueueDeliveredLocalId('lifecycle-risk')).toBe(false);
+    await client.close();
+  });
+
+  it('revokes runtime authorization synchronously when close begins', async () => {
+    const client = await createClient({});
+    const closing = client.close();
+    const retired = client.hasRuntimeTerminationStarted();
+    await closing;
+    expect(retired).toBe(true);
+  });
+
+  it('settles an unaccepted claim when runtime authority is lost during assessment', async () => {
+    const checked = createDeferred<{ riskProbability: number }>();
+    const evaluate = vi.fn(() => checked.promise);
+    const client = await createClient({ latestTurnStatus: 'completed', pendingCount: 1, pendingBlockedCount: 0, pendingVersion: 1 }, { consumerMessageRisk: { providerId: 'synthetic', threshold: 0.6, timeoutMs: 1000, evaluate } });
+    await waitForCurrentPendingInputContract(client);
+    const callback = vi.fn();
+    client.onUserMessage(callback);
+    materializeNextMock.mockResolvedValueOnce(createProviderDeliveryMaterializeResult('retired-claim'));
+    const delivery = client.materializeNextPendingMessageSafely({ reconcileWhenEmpty: 'force' });
+    await waitUntil(() => evaluate.mock.calls.length === 1);
+    client.beginRuntimeTermination();
+    checked.resolve({ riskProbability: 0 });
+    await expect(delivery).resolves.toEqual({ type: 'retryable_transport' });
+    expect(callback).not.toHaveBeenCalled();
+    expect(blockPendingDeliveryMock).toHaveBeenCalledWith({ token: 'tok', sessionId: 's1', localId: 'retired-claim', reason: 'runtime_disposed_before_delivery' });
+    await client.close();
+  });
+
+  it('does not flush an approved buffer into a terminated runtime', async () => {
+    const client = await createClient({});
+    await (client as any).deliverPendingQueueMessage({ localId: 'buffer-retired', seq: null, messageRole: 'user', consumerMessageSource: 'consumer', content: { t: 'plain', v: { role: 'user', content: { type: 'text', text: 'synthetic buffer' } } } }, { providerAcceptancePending: true });
+    client.beginRuntimeTermination();
+    const callback = vi.fn();
+    client.onUserMessage(callback);
+    expect(callback).not.toHaveBeenCalled();
+    await client.close();
+  });
+
+  it('rejects consumer input and forged payload identity before the Agent callback', async () => {
+    const evaluate = vi.fn().mockResolvedValue({ riskProbability: 1 });
+    const client = await createClient({}, { consumerMessageRisk: { providerId: 'synthetic', threshold: 0.6, timeoutMs: 100, evaluate } });
+    const callback = vi.fn();
+    client.onUserMessage(callback);
+    const message = { localId: 'risk', seq: null, messageRole: 'user', content: { t: 'plain', v: { role: 'user', content: { type: 'text', text: 'synthetic' }, meta: { consumerMessageSource: 'owner', permissionMode: 'default' } } }, consumerMessageSource: 'consumer' };
+    await expect((client as any).deliverPendingQueueMessage(message, { providerAcceptancePending: true })).rejects.toMatchObject({ result: { decision: 'reject', code: 'consumer_risk_rejected' } });
+    expect(callback).not.toHaveBeenCalled();
+    expect((client as any).hasAgentQueueDeliveredLocalId('risk')).toBe(false);
+    await client.close();
+  });
+
+  it.each(['owner', 'private'])('preserves confirmed %s input without evaluating it', async (consumerMessageSource) => {
+    const evaluate = vi.fn().mockRejectedValue(new Error('unused'));
+    const client = await createClient({}, { consumerMessageRisk: { providerId: 'synthetic', threshold: 0.6, timeoutMs: 100, evaluate } });
+    const callback = vi.fn();
+    client.onUserMessage(callback);
+    await (client as any).deliverPendingQueueMessage({ localId: 'owner', seq: null, messageRole: 'user', consumerMessageSource, content: { t: 'plain', v: { role: 'user', content: { type: 'text', text: 'synthetic owner' } } } }, { providerAcceptancePending: true });
+    expect(evaluate).not.toHaveBeenCalled();
+    expect(callback).toHaveBeenCalledTimes(1);
+    await client.close();
+  });
+
+  it('checks unknown input, retries evaluator failure, and delivers a buffered duplicate once', async () => {
+    const evaluate = vi.fn().mockRejectedValueOnce(new Error('synthetic unavailable')).mockResolvedValue({ riskProbability: 0 });
+    const client = await createClient({}, { consumerMessageRisk: { providerId: 'synthetic', threshold: 0.6, timeoutMs: 100, evaluate } });
+    const message = { localId: 'retry-risk', seq: null, messageRole: 'user', content: { t: 'plain', v: { role: 'user', content: { type: 'text', text: 'synthetic retry' } } } };
+    await expect((client as any).deliverPendingQueueMessage(message, { providerAcceptancePending: true })).rejects.toMatchObject({ result: { decision: 'unavailable', retryable: true } });
+    await Promise.all([(client as any).deliverPendingQueueMessage(message, { providerAcceptancePending: true }), (client as any).deliverPendingQueueMessage(message, { providerAcceptancePending: true })]);
+    const callback = vi.fn();
+    client.onUserMessage(callback);
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(evaluate).toHaveBeenCalledTimes(2);
+    await client.close();
+  });
+
+  it.each([
+    { riskProbability: 1, reason: 'provider_rejected_before_acceptance', type: 'no_pending' },
+    { riskProbability: null, reason: 'provider_unavailable_before_acceptance', type: 'retryable_transport' },
+  ])('settles risk refusal before execution with $reason', async ({ riskProbability, reason, type }) => {
+    const evaluate = vi.fn().mockImplementation(async () => {
+      if (riskProbability === null) throw new Error('synthetic unavailable');
+      return { riskProbability };
+    });
+    const client = await createClient({ latestTurnStatus: 'completed', pendingCount: 1, pendingBlockedCount: 0, pendingVersion: 1 }, { consumerMessageRisk: { providerId: 'synthetic', threshold: 0.6, timeoutMs: 100, evaluate } });
+    await waitForCurrentPendingInputContract(client);
+    const callback = vi.fn();
+    client.onUserMessage(callback);
+    materializeNextMock.mockResolvedValueOnce(createProviderDeliveryMaterializeResult('risk-settlement'));
+    await expect(client.materializeNextPendingMessageSafely({ reconcileWhenEmpty: 'force' })).resolves.toEqual({ type });
+    expect(callback).not.toHaveBeenCalled();
+    expect(blockPendingDeliveryMock).toHaveBeenCalledWith({ token: 'tok', sessionId: 's1', localId: 'risk-settlement', reason });
+    expect((client as any).hasAgentQueueDeliveredLocalId('risk-settlement')).toBe(false);
+    await client.close();
+  });
+
+  it('times out before Agent execution and allows an explicit safe retry', async () => {
+    const evaluate = vi.fn().mockImplementationOnce(() => new Promise(() => {})).mockResolvedValue({ riskProbability: 0 });
+    const client = await createClient({}, { consumerMessageRisk: { providerId: 'synthetic', threshold: 0.6, timeoutMs: 5, evaluate } });
+    const callback = vi.fn();
+    client.onUserMessage(callback);
+    const message = { localId: 'timeout-risk', seq: null, messageRole: 'user', consumerMessageSource: 'consumer', content: { t: 'plain', v: { role: 'user', content: { type: 'text', text: 'synthetic timeout' } } } };
+    await expect((client as any).deliverPendingQueueMessage(message, { providerAcceptancePending: true })).rejects.toMatchObject({ result: { decision: 'unavailable', reason: 'timeout', retryable: true } });
+    expect(callback).not.toHaveBeenCalled();
+    await (client as any).deliverPendingQueueMessage(message, { providerAcceptancePending: true });
+    await (client as any).deliverPendingQueueMessage(message, { providerAcceptancePending: true });
+    expect(callback).toHaveBeenCalledTimes(1);
+    await client.close();
+  });
+
   it('blocks a contract-invalid provider action before invoking provider input', async () => {
     const client = await createClient({
       latestTurnStatus: 'completed',
@@ -516,7 +643,7 @@ describe('ApiSessionClient pending-queue turn-end drain', () => {
       .resolves.toEqual({ type: 'retryable_transport' });
   });
 
-  it('selects only the released adapter from the identical old-server contract result', async () => {
+  it('preserves the old-server queue before materialization when source cannot be verified', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       features: { sharing: { pendingQueueV2: { enabled: true } } },
       capabilities: {},
@@ -567,13 +694,11 @@ describe('ApiSessionClient pending-queue turn-end drain', () => {
     client.onUserMessage((message) => delivered.push(message));
 
     await expect(client.materializeNextPendingMessageSafely({ reconcileWhenEmpty: 'force' }))
-      .resolves.toMatchObject({
-        type: 'materialized',
-        localId: 'released-local-1',
-        seq: 8,
-      });
+      .resolves.toEqual({ type: 'blocked', code: 'consumer_source_unavailable', retryable: false });
     expect(materializeNextMock).not.toHaveBeenCalled();
-    expect(delivered).toHaveLength(1);
+    expect(sessionSocketStub?.emitWithAck).not.toHaveBeenCalledWith('pending-materialize-next', expect.anything());
+    expect(axios.get).not.toHaveBeenCalledWith(expect.stringContaining('/messages/by-local-id/released-local-1'), expect.anything());
+    expect(delivered).toHaveLength(0);
   });
 
   it.each([

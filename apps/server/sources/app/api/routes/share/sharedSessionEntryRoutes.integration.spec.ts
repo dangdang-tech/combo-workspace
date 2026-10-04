@@ -79,7 +79,7 @@ describe("private session entry lifecycle", () => {
     }
     async function entry(sourceId = sourceSessionId) {
         const result = await post(ownerId, "/v1/shared-session-entries", { title: "Shared project", sourceSessionId: sourceId, machineId });
-        expect(result.statusCode).toBe(200);
+        expect(result.statusCode, result.body).toBe(200);
         return result.json();
     }
     async function guest(verified = true) {
@@ -488,6 +488,13 @@ describe("private session entry lifecycle", () => {
         expect((await complete(otherId, childB.id)).statusCode).toBe(200);
         expect(await checkSessionAccess(guestId, childB.id)).toBeNull();
         expect(await checkSessionAccess(secondGuest.id, childA.id)).toBeNull();
+        const forbiddenRead = await app.inject({ method: "GET", url: `/v1/sessions/${childA.id}/messages`, headers: { "x-test-user-id": secondGuest.id } });
+        expect(forbiddenRead.statusCode).toBe(404);
+        expect(forbiddenRead.json()).toEqual({ error: "Session not found" });
+        const forbiddenWrite = await post(secondGuest.id, `/v2/sessions/${childA.id}/messages`, {
+            localId: "wrong-recipient", messageRole: "user", content: { t: "plain", v: { role: "user", content: { type: "text", text: "Synthetic isolation check" } } },
+        });
+        expect(forbiddenWrite.statusCode).toBe(403);
         expect(await db.userRelationship.count()).toBe(0);
         expect(await db.sessionMessage.count({ where: { sessionId: childA.id } })).toBe(0);
         expect((await redeem(created.inviteToken)).json().access.sessionId).toBe(childA.id);
@@ -519,6 +526,28 @@ describe("private session entry lifecycle", () => {
             expect((await post(ownerId, `/v1/machines/${machineId}/shared-session-entries/claim`)).statusCode).toBe(409);
             expect(await db.sharedSessionEntryMember.count()).toBe(before);
         } finally { hostSocket.connected = true; }
+        const resumed = await redeem(created.inviteToken);
+        expect(resumed.statusCode, resumed.body).toBe(200);
+        const memberId = resumed.json().access.memberId;
+        expect((await redeem(created.inviteToken)).json().access.memberId).toBe(memberId);
+        expect(await db.sharedSessionEntryMember.count()).toBe(before + 1);
+        await claim(memberId);
+        const childSession = await child();
+        expect((await complete(memberId, childSession.id)).statusCode).toBe(200);
+        const send = () => post(guestId, `/v2/sessions/${childSession.id}/messages`, {
+            localId: "explicit-reconnect-send", messageRole: "user", content: { t: "plain", v: { role: "user", content: { type: "text", text: "Synthetic reconnect check" } } },
+        });
+        hostSocket.connected = false;
+        try {
+            const offlineSend = await send();
+            expect(offlineSend.statusCode, offlineSend.body).toBe(409);
+            expect(offlineSend.json().error).toBe("host_offline");
+            expect(await db.sessionMessage.count({ where: { sessionId: childSession.id } })).toBe(0);
+        } finally { hostSocket.connected = true; }
+        expect(await db.sessionMessage.count({ where: { sessionId: childSession.id } })).toBe(0);
+        const explicitSend = await send();
+        expect(explicitSend.statusCode, explicitSend.body).toBe(200);
+        expect(await db.sessionMessage.count({ where: { sessionId: childSession.id } })).toBe(1);
     });
 
     it("revokes read/send and in-flight provisioning atomically, then reuses the same child when re-enabled", async () => {

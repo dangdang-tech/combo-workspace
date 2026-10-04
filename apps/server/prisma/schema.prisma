@@ -695,7 +695,8 @@ model SessionPendingMessage {
     sessionId        String
     session          Session                    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-    /// Informational only (attribution); pending queue is session-global.
+    /// Authenticated writer of the current content; server-owned risk scope, never payload identity.
+    /// Pending queue ordering remains session-global.
     authorAccountId  String?
     authorAccount    Account?                   @relation(fields: [authorAccountId], references: [id], onDelete: SetNull)
 
