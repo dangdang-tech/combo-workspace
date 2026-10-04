@@ -583,6 +583,7 @@ export class ApiSessionClient extends EventEmitter {
     private userSocket: Socket<ServerToClientEvents, ClientToServerEvents>;
     private pendingMessages: UserMessage[] = [];
     private readonly bufferedPendingMessageDeliveryInfoByLocalId = new Map<string, { info: SessionUserMessageDeliveryInfo; isCurrent: () => boolean }>();
+    private consumerSourceUpgradeNoticeSent = false;
     private readonly consumerMessageRiskGate: ReturnType<typeof createConsumerMessageRiskGate>;
     private pendingMessageCallback: ((message: UserMessage, info?: SessionUserMessageDeliveryInfo) => unknown | Promise<unknown>) | null = null;
     readonly rpcHandlerManager: RpcHandlerManager;
@@ -6199,7 +6200,12 @@ export class ApiSessionClient extends EventEmitter {
             logger.warn('[pendingQueue] older server cannot attest consumer input source', {
                 sessionId: this.sessionId, code: 'consumer_source_unavailable', retryable: false,
             });
-            return { didMaterialize: false, result: { type: 'blocked', code: 'consumer_source_unavailable', retryable: false } };
+            const message = 'This server uses the unsupported server-v0.2.1 pending protocol. Upgrade the server to a COMBO build with authenticated message-source classification and provider-claim delivery, then reconnect this session. Your queued messages are retained. Automatic retry is disabled.';
+            if (!this.consumerSourceUpgradeNoticeSent) {
+                this.consumerSourceUpgradeNoticeSent = true;
+                this.sendSessionEvent({ type: 'message', message }, `consumer-source-upgrade-required:${this.sessionId}`);
+            }
+            return { didMaterialize: false, result: { type: 'blocked', code: 'consumer_source_unavailable', retryable: false, message } };
         } else {
             try {
                 materializeResult = await runSupervisedRequest({

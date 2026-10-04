@@ -677,14 +677,14 @@ describe('ApiSessionClient pending-queue turn-end drain', () => {
       pendingVersion: 1,
     }, {
       serverContractMode: 'released',
-      sessionSocketEmitWithAck: (event) => event === 'pending-materialize-next'
+      sessionSocketEmitWithAck: (event, payload) => event === 'pending-materialize-next'
         ? {
           ok: true,
           didMaterialize: true,
           didWrite: true,
           message: { id: 'released-message-1', seq: 8, localId: 'released-local-1' },
         }
-        : { ok: false },
+        : event === 'message' ? { ok: true, id: 'synthetic-notice', seq: 90, localId: (payload as any).localId } : { ok: false },
     });
     await waitUntil(() => (client as any).sessionSyncPendingInputServerContract !== null);
     const contract = (client as any).sessionSyncPendingInputServerContract;
@@ -694,11 +694,23 @@ describe('ApiSessionClient pending-queue turn-end drain', () => {
     client.onUserMessage((message) => delivered.push(message));
 
     await expect(client.materializeNextPendingMessageSafely({ reconcileWhenEmpty: 'force' }))
-      .resolves.toEqual({ type: 'blocked', code: 'consumer_source_unavailable', retryable: false });
+      .resolves.toMatchObject({ type: 'blocked', code: 'consumer_source_unavailable', retryable: false, message: expect.stringContaining('server-v0.2.1') });
     expect(materializeNextMock).not.toHaveBeenCalled();
     expect(sessionSocketStub?.emitWithAck).not.toHaveBeenCalledWith('pending-materialize-next', expect.anything());
     expect(axios.get).not.toHaveBeenCalledWith(expect.stringContaining('/messages/by-local-id/released-local-1'), expect.anything());
     expect(delivered).toHaveLength(0);
+    await waitUntil(() => (sessionSocketStub?.emitWithAck.mock.calls ?? []).some(([event]) => event === 'message'));
+    const notices = () => (sessionSocketStub?.emitWithAck.mock.calls ?? []).filter(([event, payload]) => event === 'message' && String(payload.localId).startsWith('consumer-source-upgrade-required:'));
+    expect(notices()).toHaveLength(1);
+    const notice = JSON.stringify(notices()[0][1]);
+    expect(notice).toContain('server-v0.2.1');
+    expect(notice).toContain('Upgrade');
+    expect(notice).toContain('queued messages are retained');
+    expect(notice).toContain('Automatic retry is disabled');
+    await client.materializeNextPendingMessageSafely({ reconcileWhenEmpty: 'force' });
+    await client.flush();
+    expect(notices()).toHaveLength(1);
+    expect(sessionSocketStub?.emitWithAck).not.toHaveBeenCalledWith('pending-materialize-next', expect.anything());
   });
 
   it.each([

@@ -45,7 +45,7 @@ export type MaterializeNextPendingResult =
     deliveryState?: PendingMaterializationDeliveryState;
   }
   | { type: 'no_pending' }
-  | { type: 'blocked'; code: 'consumer_source_unavailable'; retryable: false }
+  | { type: 'blocked'; code: 'consumer_source_unavailable'; retryable: false; message: string }
   | { type: 'retryable_transport'; retryAfterMs?: number }
   | { type: 'auth_failure'; statusCode: 401 | 403 }
   | {
