@@ -690,3 +690,15 @@ Before live TypeSafe/Jev use, approve the outbound message/context disclosure an
 - Session message format: `apps/cli/src/api/types.ts`
 - Server message ingestion: `apps/server/sources/app/api/socket/sessionUpdateHandler.ts`
 - Artifact/KV routes: `apps/server/sources/app/api/routes/artifactsRoutes.ts`, `apps/server/sources/app/kv/kvMutate.ts`
+
+### Paired local sharing smoke test
+
+From `apps/cli`, run:
+
+```sh
+HAPPIER_CLI_TEST_SKIP_BUILD=1 yarn vitest run --config vitest.integration.config.ts src/daemon/sharing/comboSharingFlow.integration.test.ts
+```
+
+This source-level integration lane starts the current production API and SQLite schema on a disposable loopback port. It creates three synthetic identities and a temporary project, publishes an invitation, redeems it, runs the canonical CLI sharing provisioner, sends recipient input through the actual pending queue and session socket, and reads the committed reply as the recipient. It checks frozen context, denied outsider access, one evaluation and one provider delivery. The process-launch boundary, risk evaluator and model reply are explicitly mocked; this does not validate real Codex execution, browser rendering or filesystem isolation. The fixture deletes its own temporary data and shuts down only its own server.
+
+`HAPPIER_CLI_TEST_SKIP_BUILD=1` uses the existing source-debug lane; it does not prove a distribution build. Normal dependency build validation remains a separate check.
