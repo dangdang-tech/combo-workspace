@@ -12,6 +12,7 @@ import { getAgentBehavior } from '@/agents/catalog/catalog';
 import { extractShellCommand } from '@happier-dev/protocol';
 import { parseParenIdentifier } from '@/components/tools/normalization/parse/parseParenIdentifier';
 import { formatPermissionRequestSummary } from '@happier-dev/protocol';
+import { Typography } from '@/constants/Typography';
 import { Text } from '@/components/ui/text/Text';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 import { createPermissionActionDispatchGuard } from './permissionActionDispatchGuard';
@@ -243,13 +244,13 @@ export const PermissionFooter: React.FC<PermissionFooterProps> = ({
                     padding: 12,
                     gap: 6,
                 }}>
-                    <Text style={{ color: theme.colors.text.primary, fontWeight: '600' }}>
+                    <Text style={{ ...Typography.rowTitle(), color: theme.colors.text.primary }}>
                         {t('session.sharing.permissionApprovalsDisabledTitle')}
                     </Text>
-                    <Text style={{ color: theme.colors.text.secondary }}>
+                    <Text style={{ ...Typography.rowMeta(), color: theme.colors.text.secondary }}>
                         {disabledMessage}
                     </Text>
-                    <Text style={{ color: theme.colors.text.secondary, fontSize: 12 }}>
+                    <Text style={{ ...Typography.rowMeta(), color: theme.colors.text.secondary }}>
                         {summary}
                     </Text>
                 </View>

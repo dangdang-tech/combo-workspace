@@ -820,8 +820,7 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
         flexShrink: 1,
     },
     statusText: {
-        fontSize: 11,
-        ...Typography.default(),
+        ...Typography.rowMeta(),
     },
     statusDot: {
         marginRight: 6,

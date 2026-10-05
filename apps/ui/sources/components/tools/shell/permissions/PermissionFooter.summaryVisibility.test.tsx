@@ -64,6 +64,23 @@ describe('PermissionFooter summary visibility', () => {
         expect(screen.getTextContent()).not.toContain('Permission required: Run: pwd');
     });
 
+    it('shows a pending request to a guest without exposing approval actions', async () => {
+        const screen = await renderScreen(React.createElement(PermissionFooter, {
+            permission: { id: 'synthetic-request', status: 'pending' },
+            sessionId: 'synthetic-session',
+            toolName: 'Bash',
+            toolInput: { command: 'pwd' },
+            metadata: { flavor: 'codex' },
+            canApprovePermissions: false,
+            disabledReason: 'notGranted',
+        }));
+        expect(screen.getTextContent()).toContain('Ask the owner to review this request.');
+        expect(screen.findAllByType('TouchableOpacity')).toHaveLength(0);
+        const operations = await import('@/sync/ops');
+        expect(operations.sessionAllow).not.toHaveBeenCalled();
+        expect(operations.sessionDeny).not.toHaveBeenCalled();
+    });
+
     it('does not repeat the request summary (the tool UI already shows it)', async () => {
         const screen = await renderScreen(React.createElement(PermissionFooter, {
             permission: { id: 'p1', status: 'pending' },

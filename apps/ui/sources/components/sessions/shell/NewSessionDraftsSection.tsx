@@ -41,7 +41,7 @@ import {
     resolveSessionListRowIdentityMetrics,
     resolveSessionListRowTitleTextMetrics,
     SESSION_LIST_ROW_STATUS_TEXT_METRICS,
-    shouldUseReadableNativePhoneMinimalSessionRow,
+    shouldUseReadablePhoneMinimalSessionRow,
 } from '@/components/sessions/shell/sessionListRowDensity';
 import { useIsTablet } from '@/utils/platform/responsive';
 import { deleteNewSessionDraftAfterConfirmation } from '@/components/sessions/drafts/deleteNewSessionDraftAfterConfirmation';
@@ -98,7 +98,7 @@ const NewSessionDraftRow = React.memo(function NewSessionDraftRow(props: Readonl
             : 'compact';
     const compact = props.density !== 'default';
     const compactMinimal = props.density === 'minimal';
-    const readableNativePhoneMinimal = shouldUseReadableNativePhoneMinimalSessionRow({
+    const readablePhoneMinimal = shouldUseReadablePhoneMinimalSessionRow({
         compact,
         compactMinimal,
         isTablet,
@@ -112,11 +112,11 @@ const NewSessionDraftRow = React.memo(function NewSessionDraftRow(props: Readonl
     });
     const titleTextMetrics = resolveSessionListRowTitleTextMetrics({
         density: props.density,
-        readableNativePhoneMinimal,
+        readablePhoneMinimal,
     });
     const identityMetrics = resolveSessionListRowIdentityMetrics({
         density: props.density,
-        readableNativePhoneMinimal,
+        readablePhoneMinimal,
     });
     const agentId = resolveNewSessionDraftAgentId(props.draft);
     const subtitleTextMetrics = SESSION_LIST_ROW_STATUS_TEXT_METRICS[props.density];

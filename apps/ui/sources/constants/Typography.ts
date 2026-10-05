@@ -152,8 +152,8 @@ function eyebrowTypography(): Pick<TextStyle, 'fontFamily' | 'fontWeight' | 'fon
 function rowTitleTypography(): Pick<TextStyle, 'fontFamily' | 'fontWeight' | 'fontSize' | 'lineHeight' | 'letterSpacing'> {
     return {
         ...defaultTypography('semiBold'),
-        fontSize: Platform.select({ ios: 15, default: 14 }),
-        lineHeight: Platform.select({ ios: 20, default: 18 }),
+        fontSize: Platform.select({ ios: 15, web: 15, default: 14 }),
+        lineHeight: Platform.select({ ios: 20, web: 22, default: 18 }),
         letterSpacing: Platform.select({ ios: -0.12, default: -0.08 }),
     };
 }
@@ -161,8 +161,8 @@ function rowTitleTypography(): Pick<TextStyle, 'fontFamily' | 'fontWeight' | 'fo
 function rowMetaTypography(): Pick<TextStyle, 'fontFamily' | 'fontSize' | 'lineHeight' | 'letterSpacing'> {
     return {
         ...defaultTypography('regular'),
-        fontSize: Platform.select({ ios: 13, default: 12 }),
-        lineHeight: Platform.select({ ios: 17, default: 16 }),
+        fontSize: Platform.select({ ios: 13, web: 13, default: 12 }),
+        lineHeight: Platform.select({ ios: 17, web: 20, default: 16 }),
         letterSpacing: Platform.select({ ios: -0.08, default: 0 }),
     };
 }
@@ -222,6 +222,9 @@ export const Typography = {
     logo: () => ({
         fontFamily: getLogoFont(),
     }),
+
+    // Compact page heading for conversational surfaces; no display tracking.
+    pageTitle: () => ({ ...defaultTypography('semiBold'), fontSize: 20, lineHeight: 28 }),
 
     // Header text style
     header: () => ({

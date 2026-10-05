@@ -59,13 +59,12 @@ const styles = StyleSheet.create((theme) => ({
         gap: 6,
     },
     title: {
-        fontSize: 13,
-        ...Typography.default('semiBold'),
+        ...Typography.rowTitle(),
         color: theme.colors.text.primary,
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: 12,
+        ...Typography.rowMeta(),
         color: theme.colors.text.secondary,
         textAlign: 'center',
         marginTop: 2,
