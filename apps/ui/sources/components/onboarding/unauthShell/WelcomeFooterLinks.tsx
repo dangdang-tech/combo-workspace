@@ -59,7 +59,7 @@ export const WelcomeFooterLinks = React.memo(function WelcomeFooterLinks(props: 
     const openGithub = React.useCallback(() => { void Linking.openURL(GITHUB_URL); }, []);
 
     const labelColor = { color: theme.colors.text.secondary };
-    const actionColor = { color: theme.colors.text.primary };
+    const actionColor = { color: theme.colors.text.secondary };
     const actionPressedStyle = { opacity: 0.7 };
     const iconColor = theme.colors.text.primary;
     const isMobile = props.variant === 'mobile';
@@ -175,8 +175,8 @@ const stylesheet = StyleSheet.create(() => ({
         width: '100%',
         flexDirection: 'column',
         alignItems: 'stretch',
-        paddingTop: 20,
-        paddingBottom: 28,
+        paddingTop: 8,
+        paddingBottom: 24,
         gap: 14,
     },
     containerMobile: {
@@ -196,8 +196,8 @@ const stylesheet = StyleSheet.create(() => ({
     linksMobile: {
         width: '100%',
         flexDirection: 'column',
-        alignItems: 'center',
-        gap: 18,
+        alignItems: 'stretch',
+        gap: 12,
     },
     retentionRow: {
         width: '100%',
@@ -219,7 +219,7 @@ const stylesheet = StyleSheet.create(() => ({
     },
     groupMobile: {
         flexDirection: 'column',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 4,
     },
     actionsRowStart: {
@@ -245,10 +245,7 @@ const stylesheet = StyleSheet.create(() => ({
         textDecorationLine: 'underline',
     },
     actionBold: {
-        ...Typography.default('semiBold'),
-        fontSize: 13,
-        lineHeight: 18,
-        textDecorationLine: 'underline',
+        ...Typography.rowMeta(),
     },
     relayHostRowDesktop: {
         flexDirection: 'row',

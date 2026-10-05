@@ -147,9 +147,9 @@ export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProp
                 <Text testID="welcome-question-title" accessibilityRole="header" style={styles.questionTitle}>
                     {isReturningUser ? returningGreeting.title : t('welcome.welcomeQuestionTitle')}
                 </Text>
-                <Text testID="welcome-question-subtitle" style={styles.questionSubtitleTitle}>
-                    {isReturningUser ? returningGreeting.subtitle : t('welcome.welcomeQuestionSubtitle')}
-                </Text>
+                {isReturningUser ? <Text testID="welcome-question-subtitle" style={styles.questionSubtitleTitle}>
+                    {returningGreeting.subtitle}
+                </Text> : null}
                 {shouldRenderFirstTimeCopy ? (
                     <Text testID="welcome-private-key-copy" style={styles.questionBody}>
                         {t('welcome.welcomeQuestionBody')}

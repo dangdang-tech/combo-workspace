@@ -250,7 +250,7 @@ const stylesheet = StyleSheet.create(() => ({
         flexDirection: 'column',
     },
     contentDesktopPadding: {
-        paddingTop: 56,
+        paddingTop: 48,
         paddingHorizontal: WORKFLOW_DESKTOP_HORIZONTAL_GUTTER,
         paddingBottom: 28,
     },

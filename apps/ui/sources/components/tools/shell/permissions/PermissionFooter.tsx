@@ -235,13 +235,13 @@ export const PermissionFooter: React.FC<PermissionFooterProps> = ({
                     ? t('session.sharing.permissionApprovalsDisabledReadOnly')
                     : t('session.sharing.permissionApprovalsDisabledNotGranted');
         return (
-            <View style={{ marginTop: 8, paddingHorizontal: 12, paddingBottom: 12 }}>
+            <View style={{ marginTop: 8, paddingHorizontal: embedded ? 0 : 12, paddingBottom: embedded ? 0 : 12 }}>
                 <View style={{
                     backgroundColor: theme.colors.surface.elevated,
-                    borderRadius: 10,
-                    borderWidth: 1,
+                    borderRadius: embedded ? 0 : 10,
+                    borderWidth: embedded ? 0 : 1,
                     borderColor: theme.colors.border.default,
-                    padding: 12,
+                    padding: embedded ? 0 : 12,
                     gap: 6,
                 }}>
                     <Text style={{ ...Typography.rowTitle(), color: theme.colors.text.primary }}>

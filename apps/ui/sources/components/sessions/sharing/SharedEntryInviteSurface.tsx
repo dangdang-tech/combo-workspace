@@ -16,11 +16,11 @@ const stylesheet = StyleSheet.create((theme) => ({
     scrollContent: { flexGrow: 1, alignItems: 'center', paddingHorizontal: theme.margins.xl, paddingVertical: theme.margins.xxl * 2 },
     card: { width: '100%', gap: theme.margins.xxl },
     columns: { gap: theme.margins.xxl },
-    columnsWide: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.margins.xxl * 2 },
+    columnsWide: { gap: theme.margins.xxl },
     context: { minWidth: 0, gap: theme.margins.xl },
-    contextWide: { flex: 1 },
+    contextWide: { width: '100%' },
     decision: { gap: theme.margins.lg, borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.default, paddingTop: theme.margins.xl },
-    decisionWide: { width: 280, borderTopWidth: 0, borderLeftWidth: StyleSheet.hairlineWidth, paddingTop: 0, paddingLeft: theme.margins.xxl },
+    decisionWide: { width: '100%', paddingTop: theme.margins.xxl },
     brand: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     publication: { gap: theme.margins.md },
     title: { ...Typography.contentTitle(), color: theme.colors.text.primary },
@@ -82,7 +82,7 @@ export function SharedEntryInviteSurface(props: SharedEntryInviteSurfaceProps) {
     const wide = width >= 900 && hasContext;
     const { title, publisher, description, status, action, busy } = props;
     return <ScrollView style={stylesheet.screen} contentContainerStyle={[stylesheet.scrollContent, width < 900 ? { paddingVertical: theme.margins.xxl } : null]}>
-        <View testID="shared-entry-invite-card" style={[stylesheet.card, { maxWidth: hasContext ? maxWidth : Math.min(maxWidth, 560) }]}>
+        <View testID="shared-entry-invite-card" style={[stylesheet.card, { maxWidth: hasContext ? Math.min(maxWidth, 720) : Math.min(maxWidth, 560) }]}>
             <View style={stylesheet.brand}>
                 <BrandWordmark height={28} />
                 {action?.testID !== 'shared-entry-home' ? <PressableSurface testID="shared-entry-exit" style={stylesheet.exit}
@@ -115,7 +115,7 @@ export function SharedEntryInviteSurface(props: SharedEntryInviteSurfaceProps) {
                         </View>
                         {status.detail ? <Text testID="shared-entry-state-detail" selectable style={stylesheet.detail}>{status.detail}</Text> : null}
                     </View> : null}
-                    {action ? <RoundButton {...action} accessibilityLabel={action.title} size="normal" style={stylesheet.action}
+                    {action ? <RoundButton {...action} accessibilityLabel={action.title} size="normal" style={[stylesheet.action, wide ? { width: 320, alignSelf: 'flex-start' } : null]}
                         disabled={busy || action.disabled === true} loading={busy || action.loading === true} /> : null}
                     {props.onPreparationRetry ? <PressableSurface testID="shared-entry-preparation-retry" style={stylesheet.exit}
                         accessibilityRole="button" accessibilityLabel={t('common.retry')} disabled={busy} onPress={props.onPreparationRetry}>
