@@ -65,10 +65,7 @@ vi.mock('@/components/ui/layout/layout', () => ({
     layout: { maxWidth: 920 },
 }));
 
-vi.mock('@/constants/Typography', () => ({
-    Typography: new Proxy({}, { get: () => () => ({}) }),
-    FontWeights: { regular: '400' },
-}));
+
 
 installAgentInputCommonModuleMocks({
     reactNative: async () => {

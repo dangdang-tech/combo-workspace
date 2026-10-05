@@ -381,7 +381,7 @@ describe('MessageView (tool timeline chrome mode)', () => {
         expect(renderedToolViewProps[0]!.headerAction).toBeNull();
     });
 
-    it('renders a pin action for structured activity-feed tool rows that suppress tool chrome', async () => {
+    it('omits pin actions for structured activity-feed tool rows in the sharing product', async () => {
         toolChromeMode = 'activity_feed';
         const { MessageView } = await import('./MessageView');
         const onToggleToolPin = vi.fn();
@@ -418,14 +418,7 @@ describe('MessageView (tool timeline chrome mode)', () => {
         );
 
         expect(renderedToolTimelineRowProps).toHaveLength(0);
-        screen.pressByTestId('transcript-tool-call-pin:tool-structured-1');
-
-        expect(onToggleToolPin).toHaveBeenCalledWith(expect.objectContaining({
-            sessionId: 's1',
-            seq: 12,
-            transcriptBlockIndex: 2,
-            routeMessageId: 'tool:call_read_1',
-            role: 'tool',
-        }));
+        expect(screen.findByTestId('transcript-tool-call-pin:tool-structured-1')).toBeNull();
+        expect(onToggleToolPin).not.toHaveBeenCalled();
     });
 });

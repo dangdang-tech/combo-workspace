@@ -134,11 +134,10 @@ export function AgentTransitionDividerRow(props: Readonly<{
             // Stated even on the inert arm: the label is a run of words and
             // marks, so the sentence has to be carried by the accessible name
             // rather than reassembled from whatever fragments a reader exposes.
-            accessibilityLabel={title}
+            accessibilityLabel={sessionId ? `${title}. ${t('session.agentContinuation.handedOver.open')}` : title}
             {...(sessionId
                 ? {
                     onPress: handleOpen,
-                    accessibilityLabel: `${title}. ${t('session.agentContinuation.handedOver.open')}`,
                     rightAccessory: (
                         <View style={styles.affordance}>
                             <Icon name="caret-right" size={12} color={theme.colors.text.tertiary} />

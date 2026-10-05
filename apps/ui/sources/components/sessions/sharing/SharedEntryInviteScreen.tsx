@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { iOSUIKit } from 'react-native-typography';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Modal } from '@/modal';
 import { Typography } from '@/constants/Typography';
 import { Text } from '@/components/ui/text/Text';
+import { BrandWordmark } from '@/components/onboarding/unauthShell/BrandWordmark';
 import { RoundButton } from '@/components/ui/buttons/RoundButton';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 import { PressableSurface } from '@/components/ui/interaction/PressableSurface';
@@ -27,53 +27,47 @@ import { useSharedEntryPolling } from './useSharedEntryPolling';
 
 const stylesheet = StyleSheet.create((theme) => ({
     screen: { flex: 1, backgroundColor: theme.colors.surface.base },
-    scrollContent: { flexGrow: 1, alignItems: 'center', padding: theme.margins.lg },
+    scrollContent: { flexGrow: 1, alignItems: 'center', paddingHorizontal: theme.margins.xl, paddingVertical: theme.margins.xl },
     card: {
-        width: '100%', padding: theme.margins.xl, gap: theme.margins.xl,
-        backgroundColor: theme.colors.surface.base, borderWidth: StyleSheet.hairlineWidth,
-        borderColor: theme.colors.border.default, borderRadius: 16,
+        width: '100%', gap: theme.margins.xl,
     },
-    brand: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.margins.md },
-    brandName: { ...Typography.rowTitle(), color: theme.colors.text.primary },
-    eyebrow: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
+    brand: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    hero: { paddingTop: theme.margins.xl },
+    heroPhone: { paddingTop: theme.margins.md },
     publication: { gap: theme.margins.md },
-    title: { fontSize: iOSUIKit.title3Object.fontSize, lineHeight: iOSUIKit.title3Object.lineHeight, ...Typography.header(), color: theme.colors.text.primary },
-    body: { fontSize: iOSUIKit.bodyObject.fontSize, lineHeight: iOSUIKit.bodyObject.lineHeight, ...Typography.body(), color: theme.colors.text.primary },
+    title: { ...Typography.rowTitle(), lineHeight: 24, color: theme.colors.text.primary },
+    heading: { ...Typography.pageTitle(), color: theme.colors.text.primary },
+    body: { ...Typography.body(), fontSize: 16, lineHeight: 24, color: theme.colors.text.secondary },
+    bodyPhone: { lineHeight: 24 },
     detail: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
     disclosure: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.margins.sm, borderRadius: 8 },
     disclosureText: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
     explanation: { gap: theme.margins.md },
     resources: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.margins.sm },
     resourcesText: { flex: 1, ...Typography.rowMeta(), color: theme.colors.text.secondary },
-    progress: { flexDirection: 'row', gap: theme.margins.sm },
-    step: { flex: 1, alignItems: 'center', gap: theme.margins.sm },
-    stepNumber: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface.inset },
-    stepActive: { backgroundColor: theme.colors.button.primary.background },
-    stepNumberText: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
-    stepNumberActive: { color: theme.colors.button.primary.tint },
-    stepLabel: { ...Typography.rowMeta(), color: theme.colors.text.secondary, textAlign: 'center' },
-    stepLabelActive: { ...Typography.default('semiBold'), color: theme.colors.text.primary },
+    conversation: { paddingVertical: theme.margins.xl, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.default },
     status: { padding: theme.margins.lg, borderRadius: 12, backgroundColor: theme.colors.surface.inset, gap: theme.margins.sm },
     statusHeading: { flexDirection: 'row', gap: theme.margins.sm, alignItems: 'center' },
     statusTitle: { flex: 1, ...Typography.rowTitle(), color: theme.colors.text.primary },
-    action: { minHeight: 48, justifyContent: 'center' },
+    action: { minHeight: 52, borderRadius: 26, justifyContent: 'center' },
+    exit: { minHeight: 44, paddingHorizontal: theme.margins.md, justifyContent: 'center' },
+    exitText: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
 }));
 
-function InvitePublication({ title, description, publisher }: { title: string; description?: string | null; publisher?: string | null }) {
+function InvitePublication({ title, publisher }: { title: string; publisher?: string | null }) {
     const [expanded, setExpanded] = useState(false);
     // Imported chat titles can contain encoded spaces; keep all content as plain text.
     const displayTitle = title.replace(/&#(?:0*32|x0*20);|&nbsp;/gi, ' ');
     const collapsible = title.length > 80 || title.split(/\r?\n/).length > 3;
     return <View testID="shared-entry-publication" style={stylesheet.publication}>
         <View>
-            <Text testID="shared-entry-title" accessibilityRole="header" selectable numberOfLines={collapsible && !expanded ? 3 : undefined} style={stylesheet.title}>{displayTitle}</Text>
+            <Text testID="shared-entry-title" selectable numberOfLines={collapsible && !expanded ? 2 : undefined} style={stylesheet.title}>{displayTitle}</Text>
             {collapsible ? <PressableSurface testID="shared-entry-title-toggle" style={stylesheet.disclosure}
                 accessibilityLabel={t(expanded ? 'sharedEntry.inviteCollapseTitle' : 'sharedEntry.inviteExpandTitle')}
                 accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
                 <Text style={stylesheet.disclosureText}>{t(expanded ? 'sharedEntry.inviteCollapseTitle' : 'sharedEntry.inviteExpandTitle')}</Text>
             </PressableSurface> : null}
         </View>
-        {description?.trim() ? <Text testID="shared-entry-description" style={stylesheet.body}>{description}</Text> : null}
         {publisher ? <Text testID="shared-entry-publisher" style={stylesheet.detail}>{t('sharedEntry.publisher')}{' '}{publisher}</Text> : null}
     </View>;
 }
@@ -81,7 +75,9 @@ function InvitePublication({ title, description, publisher }: { title: string; d
 export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; serverUrl?: string }) {
     const auth = useAuth();
     const { theme } = useUnistyles();
-    const maxWidth = Math.min(useLayoutMaxWidth(), 640);
+    const { width } = useWindowDimensions();
+    const isNarrow = width < 600;
+    const maxWidth = Math.min(useLayoutMaxWidth(), 560);
     const router = useRouter();
     const [, setRevision] = useState(0);
     const snapshot = getActiveServerSnapshot();
@@ -186,11 +182,6 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
         : null;
     const recovery = sharedEntryInviteRecovery(error ?? preparationError);
     const canRetry = recovery === 'retry';
-    const stepTitle = access?.status === 'ready' ? t('sharedEntry.inviteStepOpen')
-        : auth.isAuthenticated && !needsServerSwitch ? t('sharedEntry.inviteStepPrepare')
-        : t('sharedEntry.inviteStepSignIn');
-    const phase = access?.status === 'ready' ? 2 : auth.isAuthenticated && !needsServerSwitch ? 1 : 0;
-    const steps = [t('sharedEntry.inviteProgressSignIn'), t('sharedEntry.inviteProgressPrepare'), t('sharedEntry.inviteProgressChat')];
     const title = preview?.title ?? access?.title;
     const status: { testID: string; title: string; detail?: string; loading?: boolean } | null = invalidServer || !token
         ? { testID: 'shared-entry-invalid', title: t('sharedEntry.inviteInvalid') }
@@ -226,30 +217,26 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
         action = { testID: 'shared-entry-home', title: t('common.home'), onPress: () => router.replace('/') };
     }
     return <>
-        <Stack.Screen options={{ title: t('sharedEntry.inviteTitle') }} />
+        <Stack.Screen options={{ headerShown: false }} />
         <ScrollView style={stylesheet.screen} contentContainerStyle={stylesheet.scrollContent}>
             <View testID="shared-entry-invite-card" style={[stylesheet.card, { maxWidth }]}>
                 <View style={stylesheet.brand}>
-                    <Text style={stylesheet.brandName}>{t('brand.name')}</Text>
-                    <Text style={stylesheet.eyebrow}>{t('sharedEntry.inviteTitle')}</Text>
+                    <BrandWordmark height={28} />
+                    {action?.testID !== 'shared-entry-home' ? <PressableSurface testID="shared-entry-exit" style={stylesheet.exit}
+                        accessibilityLabel={t('common.home')} onPress={() => router.replace('/')}>
+                        <Text style={stylesheet.exitText}>{t('common.home')}</Text>
+                    </PressableSurface> : null}
                 </View>
-                {title ? <InvitePublication key={title} title={title} description={preview?.description} publisher={preview?.publisherDisplayName} /> : null}
-                {!invalidServer && token && (preview || visible?.loaded) ? <View style={stylesheet.explanation}>
-                    <Text style={stylesheet.body}>{t('sharedEntry.inviteContextDetail')}</Text>
+                {!invalidServer && token && (preview || visible?.loaded) ? <View style={[stylesheet.explanation, stylesheet.hero, isNarrow ? stylesheet.heroPhone : null]}>
+                    <Text accessibilityRole="header" style={stylesheet.heading}>{t('sharedEntry.inviteTitle')}</Text>
+                    <Text testID="shared-entry-purpose" style={[stylesheet.body, isNarrow ? stylesheet.bodyPhone : null]}>{t('sharedEntry.inviteContextDetail')}</Text>
+                    {preview?.description?.trim() ? <Text testID="shared-entry-description" style={stylesheet.detail}>{preview.description}</Text> : null}
                     <View style={stylesheet.resources}>
                         <Ionicons name="folder-outline" size={18} color={theme.colors.text.secondary} />
                         <Text style={stylesheet.resourcesText}>{t('sharedEntry.inviteResourcesDetail')}</Text>
                     </View>
                 </View> : null}
-                {!invalidServer && token && !needsServerSwitch && visible?.loaded ? <View testID="shared-entry-progress" accessible accessibilityLabel={stepTitle} style={stylesheet.progress}>
-                    {steps.map((label, index) => <View key={index} style={stylesheet.step}>
-                        <View style={[stylesheet.stepNumber, phase === index ? stylesheet.stepActive : null]}>
-                            {phase > index ? <Ionicons name="checkmark" size={16} color={theme.colors.text.secondary} />
-                                : <Text style={[stylesheet.stepNumberText, phase === index ? stylesheet.stepNumberActive : null]}>{index + 1}</Text>}
-                        </View>
-                        <Text style={[stylesheet.stepLabel, phase === index ? stylesheet.stepLabelActive : null]}>{label}</Text>
-                    </View>)}
-                </View> : null}
+                {title ? <View style={stylesheet.conversation}><InvitePublication key={title} title={title} publisher={preview?.publisherDisplayName} /></View> : null}
                 {status ? <View style={stylesheet.status} accessibilityLiveRegion="polite">
                     <View style={stylesheet.statusHeading}>
                         {status.loading ? <ActivitySpinner size="small" color={theme.colors.text.secondary} /> : null}
@@ -259,6 +246,11 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
                 </View> : null}
                 {action ? <RoundButton {...action} accessibilityLabel={action.title} size="normal" style={stylesheet.action}
                     disabled={busy || action.disabled === true} loading={busy || action.loading === true} /> : null}
+                {access?.status === 'failed' && (recovery === 'restore' || recovery === 'repair-host') ? <PressableSurface
+                    testID="shared-entry-preparation-retry" style={stylesheet.exit} accessibilityRole="button"
+                    accessibilityLabel={t('common.retry')} disabled={busy} onPress={accept}>
+                    <Text style={stylesheet.exitText}>{t('common.retry')}</Text>
+                </PressableSurface> : null}
             </View>
         </ScrollView>
     </>;

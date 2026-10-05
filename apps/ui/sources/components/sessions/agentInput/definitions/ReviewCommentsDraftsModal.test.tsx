@@ -49,12 +49,7 @@ vi.mock('expo-router', () => ({
     useRouter: () => ({ push: routerPushSpy }),
 }));
 
-vi.mock('@/constants/Typography', () => ({
-    Typography: {
-        default: () => ({}),
-        mono: () => ({}),
-    },
-}));
+
 
 vi.mock('@/components/ui/text/Text', () => ({
     Text: ({ children, ...props }: any) => React.createElement('Text', props, children),

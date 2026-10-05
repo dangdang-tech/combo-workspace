@@ -37,11 +37,7 @@ vi.mock('@/components/ui/text/Text', () => ({
     Text: 'Text',
 }));
 
-vi.mock('@/constants/Typography', () => ({
-    Typography: {
-        default: () => ({}),
-    },
-}));
+
 
 function flattenStyle(style: unknown): Record<string, unknown> {
     if (!style) return {};

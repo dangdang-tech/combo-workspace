@@ -248,18 +248,7 @@ vi.mock('@/components/ui/layout/layout', () => ({
     layout: { maxWidth: 920 },
 }));
 
-vi.mock('@/constants/Typography', () => ({
-    FontWeights: { regular: '400' },
-    Typography: {
-        default: () => ({}),
-        mono: () => ({}),
-        header: () => ({}),
-        eyebrow: () => ({}),
-        keyHint: () => ({}),
-        pillLabel: () => ({}),
-        timestamp: () => ({}),
-    },
-}));
+
 
 vi.mock('./ResumeChip', () => ({
     ResumeChip: () => null,

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { COMPOSER_CONTENT_HORIZONTAL_INSET } from '@/components/sessions/agentInput/composerContentInset';
 import { View, Pressable, Platform } from 'react-native';
 import { isRecoveredHistoryTranscriptObservationProvenance } from '@happier-dev/protocol';
 import { Modal } from '@/modal';
@@ -1513,7 +1514,7 @@ const styles = StyleSheet.create((theme) => ({
     flexBasis: 0,
   },
   recoveredHistoryIndicator: {
-    marginHorizontal: 16,
+    marginHorizontal: COMPOSER_CONTENT_HORIZONTAL_INSET,
     marginBottom: 6,
     fontSize: 12,
     color: theme.colors.message.event.foreground,
@@ -1523,13 +1524,13 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'column',
     alignItems: 'flex-end',
     justifyContent: 'flex-end',
-    paddingHorizontal: 16,
+    paddingHorizontal: COMPOSER_CONTENT_HORIZONTAL_INSET,
   },
   structuredUserMessageContainer: {
     maxWidth: '100%',
     flexDirection: 'column',
     alignSelf: 'stretch',
-    paddingHorizontal: 16,
+    paddingHorizontal: COMPOSER_CONTENT_HORIZONTAL_INSET,
     paddingBottom: 22,
     position: 'relative',
   },
@@ -1552,13 +1553,13 @@ const styles = StyleSheet.create((theme) => ({
       // native (a flex-end/auto-width bubble would measure text at max-content and overflow
       // on one line, since maxWidth:'100%' only clamps the box, it does not bound the text).
       alignSelf: 'flex-end',
-      maxWidth: '100%',
+      maxWidth: Platform.OS === 'web' ? '85%' : '100%',
     },
     userMessageBubble: {
       backgroundColor: theme.colors.message.user.background,
-      paddingHorizontal: theme.margins.lg,
-      paddingVertical: theme.margins.md,
-      borderRadius: theme.borderRadius.xxl,
+      paddingHorizontal: Platform.OS === 'web' ? 20 : theme.margins.lg,
+      paddingVertical: Platform.OS === 'web' ? 14 : theme.margins.md,
+      borderRadius: Platform.OS === 'web' ? 24 : theme.borderRadius.xxl,
       maxWidth: '100%',
     },
   userStructuredMessageWrapper: {
@@ -1579,7 +1580,7 @@ const styles = StyleSheet.create((theme) => ({
     // No background, border or overflow clip on this container, so a radius here
     // renders nothing — it only made the transcript's radius census look wider than
     // the surfaces the user can actually see. Removed rather than unified.
-    marginHorizontal: 16,
+    marginHorizontal: COMPOSER_CONTENT_HORIZONTAL_INSET,
     paddingBottom: 22,
     alignSelf: 'stretch',
     position: 'relative',
@@ -1592,7 +1593,7 @@ const styles = StyleSheet.create((theme) => ({
     alignSelf: 'stretch',
   },
   toolContainer: {
-    marginHorizontal: 16,
+    marginHorizontal: COMPOSER_CONTENT_HORIZONTAL_INSET,
   },
   toolContainerEmbedded: {
     marginHorizontal: 0,

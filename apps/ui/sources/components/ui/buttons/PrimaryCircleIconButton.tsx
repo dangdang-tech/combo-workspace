@@ -65,7 +65,7 @@ export const PrimaryCircleIconButton = React.memo(
             {
               borderRadius: 16,
               backgroundColor,
-              opacity: pressed ? 0.72 : 1,
+              opacity: props.disabled && !props.loading ? 0.35 : pressed ? 0.72 : 1,
               overflow: 'hidden',
             },
           ]}
