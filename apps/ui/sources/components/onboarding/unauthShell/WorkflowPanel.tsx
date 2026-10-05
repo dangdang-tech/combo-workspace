@@ -169,18 +169,10 @@ export const WorkflowPanel = React.memo(function WorkflowPanel(props: WorkflowPa
                 keyboardShouldPersistTaps="handled"
             >
                 {props.isWelcomeStep ? (
-                    // Welcome layout depends on platform:
-                    //  - Desktop: content at the top of the pane, spacer in
-                    //    the middle, footer at the bottom — content-first
-                    //    reading order, matches the original visual rhythm.
-                    //  - Mobile:  spacer at the top, content at the bottom,
-                    //    footer below content — keeps the buttons close to
-                    //    the user's thumb and stacks the heading directly
-                    //    above the buttons against the rising planet
-                    //    backdrop. Footer sits just below.
+                    // Welcome content follows the wordmark on both platforms;
+                    // spare viewport height must not separate orientation from the task.
                     isMobile ? (
                         <>
-                            <View style={styles.footerSpacer} />
                             <StepTransitionFrame
                                 testID="unauth-shell-step-transition"
                                 transitionKey={props.transitionKey}
@@ -211,7 +203,7 @@ export const WorkflowPanel = React.memo(function WorkflowPanel(props: WorkflowPa
                                     {props.children}
                                 </View>
                             </StepTransitionFrame>
-                            <View style={styles.footerSpacer} />
+                            <View style={styles.welcomeSectionGap} />
                             <WelcomeFooterLinks
                                 variant="desktop"
                                 retentionSummary={props.retentionSummary}
@@ -268,13 +260,7 @@ const stylesheet = StyleSheet.create(() => ({
         paddingBottom: 0,
         paddingLeft: 0,
     },
-    footerSpacer: {
-        flex: 1,
-        // Allow the spacer to collapse below its natural height on short
-        // viewports so the column's intrinsic content+footer height exceeds
-        // the viewport and the ScrollView takes over.
-        minHeight: 0,
-    },
+    welcomeSectionGap: { height: 24 },
     backChevronContainer: {
         position: 'absolute',
         top: 20,

@@ -1,56 +1,18 @@
 import * as React from 'react';
-import { Platform, Pressable, View } from 'react-native';
-import Animated, {
-    Easing,
-    interpolate,
-    interpolateColor,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
-} from 'react-native-reanimated';
+import { View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 import { Text } from '@/components/ui/text/Text';
 import { Typography } from '@/constants/Typography';
-import { useReducedMotionPreference } from '@/hooks/ui/useReducedMotionPreference';
+import { RoundButton } from '@/components/ui/buttons/RoundButton';
+import { PressableSurface } from '@/components/ui/interaction/PressableSurface';
 import { useLocalSetting } from '@/sync/store/hooks';
 import { t } from '@/text';
 
 import type { RemoteAuthEntryOptions } from './useRemoteAuthEntryOptions';
 import { useReturningGreeting } from './useReturningGreeting';
 import { Icon, type IconName } from '@/components/ui/icons/Icon';
-
-// Premium-feel hover affordances on the welcome buttons. The whole button
-// lifts 1px on hover and its content shifts:
-//   - primary button → filled ink, the trailing arrow slides 4px right
-//     (anticipates the forward action) and the whole pill dims slightly
-//   - secondary button → ghost outline, the QR icon scales to 1.08 and the
-//     background fades partway from surface.base toward surface.elevated
-//     (subtle darken in light theme, subtle lighten in dark theme —
-//     surface.elevated is defined per theme to flip in both directions).
-//     We only fade halfway (SECONDARY_HOVER_BG_INTENSITY) so the hover tint
-//     lands at a midpoint between the two tokens, which on light theme
-//     reads as a softer in-between gray rather than the full elevated step.
-// All animations share the same Material standard easing + 180ms duration so
-// the two interactions read as one family. Native (iOS/Android) doesn't emit
-// hover events, so this is automatically a web/Tauri-only enhancement.
-const ICON_HOVER_TRANSLATE_PX = 4;
-const ICON_HOVER_SCALE = 1.08;
-const BUTTON_HOVER_LIFT_PX = 1;
-const PRIMARY_HOVER_OPACITY = 0.92;
-// How far the secondary button's bg fades toward surface.elevated on hover.
-// 1 = full elevated; 0.5 = halfway between surface.base and surface.elevated,
-// which lands at roughly #f8f8f8 in light theme (a softer in-between gray
-// than the full elevated #f0f0f0) and ~#1d1a1a in dark theme.
-const SECONDARY_HOVER_BG_INTENSITY = 0.5;
-const ICON_HOVER_DURATION_MS = 180;
-// Material "standard" easing curve. Avoids springs (too playful for a CTA).
-const ICON_HOVER_EASING = Easing.bezier(0.4, 0, 0.2, 1);
-const DECISION_ROW_PRESSED_STYLE = { opacity: 0.88 };
-
-// Pressable made animatable so we can drive its style from a shared value.
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export type RemoteWelcomeDecisionPanelLayout = 'portrait' | 'landscape';
 type AuthActionResult = void | Promise<void>;
@@ -102,169 +64,26 @@ function resolvePrimaryAction(
     }
 }
 
+/** Composition belongs here; feedback and keyboard focus belong to existing primitives. */
 function DecisionActionRow(props: DecisionActionRowProps): React.ReactElement {
     const { theme } = useUnistyles();
     const styles = stylesheet;
-    const reducedMotion = useReducedMotionPreference();
-    const [isHovered, setIsHovered] = React.useState(false);
-    const [isPressed, setIsPressed] = React.useState(false);
-    // Single 0→1 progress drives every hover-related animation on the button:
-    // the lift translateY, the primary's opacity dim, the secondary's bg
-    // colour fade, and the icon slide/scale. Keeping them on one timeline
-    // means they start and finish together and read as one motion.
-    const hoverProgress = useSharedValue(0);
-
-    React.useEffect(() => {
-        const target = isHovered ? 1 : 0;
-        if (reducedMotion) {
-            hoverProgress.value = target;
-            return;
-        }
-        hoverProgress.value = withTiming(target, {
-            duration: ICON_HOVER_DURATION_MS,
-            easing: ICON_HOVER_EASING,
-        });
-    }, [isHovered, reducedMotion, hoverProgress]);
-
-    const isPrimary = props.primary === true;
-    const supportsHoverAnimation = Platform.OS === 'web';
-    const primaryBg = theme.colors.button.primary.background;
-    const primaryTint = theme.colors.button.primary.tint;
-    const surfaceRest = theme.colors.surface.base;
-    const surfaceHover = theme.colors.surface.elevated;
-
-    // Outer animated style — applied to the Pressable itself.
-    //   - Both buttons: lift translateY: 0 → -1
-    //   - Primary: dim opacity: 1 → 0.92
-    //   - Secondary: background fades partway from surface.base toward surface.elevated
-    const containerAnimatedStyle = useAnimatedStyle(() => {
-        const lift = interpolate(hoverProgress.value, [0, 1], [0, -BUTTON_HOVER_LIFT_PX]);
-        if (isPrimary) {
-            return {
-                transform: [{ translateY: lift }],
-                opacity: interpolate(hoverProgress.value, [0, 1], [1, PRIMARY_HOVER_OPACITY]),
-            };
-        }
-        const bgProgress = interpolate(
-            hoverProgress.value,
-            [0, 1],
-            [0, SECONDARY_HOVER_BG_INTENSITY],
-        );
-        return {
-            transform: [{ translateY: lift }],
-            backgroundColor: interpolateColor(
-                bgProgress,
-                [0, 1],
-                [surfaceRest, surfaceHover],
-            ),
-        };
-    }, [isPrimary, primaryBg, surfaceRest, surfaceHover]);
-
-    // Inner animated style — applied to the icon's Animated.View only.
-    //   - Primary: arrow slides right (translateX)
-    //   - Secondary: icon scales up
-    const iconAnimatedStyle = useAnimatedStyle(() => {
-        if (isPrimary) {
-            const translateX = interpolate(hoverProgress.value, [0, 1], [0, ICON_HOVER_TRANSLATE_PX]);
-            return { transform: [{ translateX }] };
-        }
-        const scale = interpolate(hoverProgress.value, [0, 1], [1, ICON_HOVER_SCALE]);
-        return { transform: [{ scale }] };
-    }, [isPrimary]);
-
-    const foregroundColor = isPrimary ? primaryTint : theme.colors.text.primary;
-    const subtitleColor = isPrimary ? primaryTint : theme.colors.text.secondary;
-    const content = (
-        <>
-            <View testID={`${props.testID}-text`} style={styles.decisionActionTextBlock}>
-                <Text testID={`${props.testID}-title`} style={[styles.decisionActionTitle, { color: foregroundColor }]}>
-                    {props.title}
-                </Text>
-                {props.subtitle ? (
-                    <Text testID={`${props.testID}-subtitle`} style={[styles.decisionActionSubtitle, { color: subtitleColor }]}>
-                        {props.subtitle}
-                    </Text>
-                ) : null}
-            </View>
-            {props.iconName ? (
-                supportsHoverAnimation ? (
-                    <Animated.View style={iconAnimatedStyle}>
-                        <Icon
-                            testID={`${props.testID}-icon`}
-                            name={props.iconName}
-                            size={20}
-                            color={foregroundColor}
-                        />
-                    </Animated.View>
-                ) : (
-                    <View>
-                        <Icon
-                            testID={`${props.testID}-icon`}
-                            name={props.iconName}
-                            size={20}
-                            color={foregroundColor}
-                        />
-                    </View>
-                )
-            ) : null}
-        </>
-    );
-    const baseStyle = [
-        styles.decisionActionRow,
-        isPrimary
-            ? {
-                backgroundColor: primaryBg,
-                borderColor: primaryBg,
-            }
-            : {
-                // The rest backgroundColor is also baked in here so
-                // the button reads correctly on first paint before
-                // the animated value evaluates. The interpolation
-                // above then takes over on hover.
-                backgroundColor: surfaceRest,
-                borderColor: theme.colors.border.default,
-            },
-        isPressed ? DECISION_ROW_PRESSED_STYLE : null,
-    ];
-
-    if (!supportsHoverAnimation) {
-        return (
-            <Pressable
-                testID={props.testID}
-                accessibilityRole="button"
-                accessibilityLabel={props.title}
-                onPressIn={() => setIsPressed(true)}
-                onPressOut={() => setIsPressed(false)}
-                onPress={() => {
-                    void props.onPress();
-                }}
-                style={baseStyle}
-            >
-                {content}
-            </Pressable>
-        );
+    if (props.primary) {
+        return <View style={styles.primaryActionGroup}>
+            <RoundButton testID={props.testID} title={props.title} size="normal"
+                accessibilityLabel={props.title} onPress={() => { void props.onPress(); }}
+                style={styles.primaryActionButton} />
+            {props.subtitle ? <Text testID={`${props.testID}-subtitle`} style={styles.decisionActionSubtitle}>{props.subtitle}</Text> : null}
+        </View>;
     }
-
-    return (
-        <AnimatedPressable
-            testID={props.testID}
-            accessibilityRole="button"
-            accessibilityLabel={props.title}
-            onHoverIn={() => setIsHovered(true)}
-            onHoverOut={() => setIsHovered(false)}
-            onPressIn={() => setIsPressed(true)}
-            onPressOut={() => setIsPressed(false)}
-            onPress={() => {
-                void props.onPress();
-            }}
-            style={[
-                ...baseStyle,
-                containerAnimatedStyle,
-            ]}
-        >
-            {content}
-        </AnimatedPressable>
-    );
+    return <PressableSurface testID={props.testID} accessibilityRole="button" accessibilityLabel={props.title}
+        onPress={() => { void props.onPress(); }} style={styles.decisionActionRow} focusRingRadius={12}>
+        <View testID={`${props.testID}-text`} style={styles.decisionActionTextBlock}>
+            <Text testID={`${props.testID}-title`} style={styles.decisionActionTitle}>{props.title}</Text>
+            {props.subtitle ? <Text testID={`${props.testID}-subtitle`} style={styles.decisionActionSubtitle}>{props.subtitle}</Text> : null}
+        </View>
+        {props.iconName ? <Icon testID={`${props.testID}-icon`} name={props.iconName} size={20} color={theme.colors.text.secondary} /> : null}
+    </PressableSurface>;
 }
 
 export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProps): React.ReactElement {
@@ -324,26 +143,6 @@ export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProp
 
     return (
         <View testID="welcome-decision-panel" style={styles.decisionPanel}>
-            <Pressable
-                testID="welcome-selected-server"
-                accessibilityRole="button"
-                accessibilityLabel={`${t('welcome.frontDoorSelectedServer')}: ${options.serverUrlForCopy}`}
-                onPress={props.onChangeRelay}
-                style={styles.selectedServer}
-            >
-                <View style={styles.selectedServerText}>
-                    <Text style={styles.selectedServerLabel}>{t('welcome.frontDoorSelectedServer')}</Text>
-                    <Text style={styles.selectedServerUrl}>{options.serverUrlForCopy}</Text>
-                </View>
-                <Icon name="caret-right" size={16} color={theme.colors.text.secondary} />
-            </Pressable>
-            {/*
-              * The mobile wordmark is rendered by WorkflowPanel (absolutely
-              * pinned to the top-left of the pane) so it stays anchored at the
-              * top of the screen while the welcome content sits at the bottom
-              * — same coordinates as the brand hero's wordmark so users see
-              * the same logo position across both mobile screens.
-              */}
             <View style={styles.headingBlock}>
                 <Text testID="welcome-question-title" accessibilityRole="header" style={styles.questionTitle}>
                     {isReturningUser ? returningGreeting.title : t('welcome.welcomeQuestionTitle')}
@@ -389,8 +188,8 @@ export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProp
                         // (the expected action when arriving for the first time).
                         // Returning users see Login as the primary CTA — they
                         // almost certainly want to sign back into their existing
-                        // account, so we give the filled black slot to Login and
-                        // demote Start fresh to the bordered card below.
+                        // account, so we give the primary slot to Login and
+                        // demote Start fresh to the secondary row below.
                         // When the server disables every signup method, the
                         // primary slot stays empty and Login carries the panel.
                         const startFreshButton = options.primaryAction === null || primarySignupAction === null
@@ -482,57 +281,30 @@ export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProp
 }
 
 const stylesheet = StyleSheet.create((theme) => ({
-    selectedServer: {
-        width: '100%',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        borderWidth: 1,
-        borderColor: theme.colors.border.default,
-        borderRadius: 12,
-        backgroundColor: theme.colors.surface.base,
-    },
-    selectedServerText: { flex: 1, minWidth: 0, gap: 4 },
-    selectedServerLabel: { ...Typography.eyebrow(), color: theme.colors.text.secondary },
-    selectedServerUrl: { ...Typography.rowMeta(), color: theme.colors.text.primary },
     decisionPanel: {
         width: '100%',
         alignItems: 'center',
-        gap: 24,
+        gap: theme.margins.xxl,
     },
     headingBlock: {
         width: '100%',
         maxWidth: 520,
-        // No vertical gap between the two title lines — matches the brand
-        // tagline's `Start anywhere. / Continue everywhere.` rhythm, where
-        // line-height == font-size and the lines sit flush against each other.
     },
     questionTitle: {
-        ...Typography.default('semiBold'),
-        fontSize: 44,
-        // line-height == font-size mirrors the brand tagline (48/48). At 44px
-        // this gives the same tight, deliberate vertical spacing the planet
-        // tagline uses on the left pane.
-        lineHeight: 44,
+        ...Typography.contentTitle(),
         color: theme.colors.text.primary,
         textAlign: 'left',
     },
     questionSubtitleTitle: {
-        ...Typography.default(),
-        fontSize: 16,
-        lineHeight: 24,
+        ...Typography.bodyText(),
         marginTop: 12,
         color: theme.colors.text.secondary,
         textAlign: 'left',
     },
     questionBody: {
-        ...Typography.default(),
-        fontSize: 16,
-        lineHeight: 24,
+        ...Typography.bodyText(),
         color: theme.colors.text.secondary,
-        marginTop: 22,
+        marginTop: theme.margins.lg,
         maxWidth: 440,
     },
     intentBlock: {
@@ -608,31 +380,24 @@ const stylesheet = StyleSheet.create((theme) => ({
     actionStack: {
         width: '100%',
         maxWidth: 520,
-        gap: 12,
+        gap: theme.margins.md,
     },
+    primaryActionGroup: { gap: theme.margins.sm },
+    primaryActionButton: { minHeight: 48 },
     decisionActionRow: {
-        minHeight: 66,
-        borderRadius: 14,
-        borderWidth: 1,
-        paddingHorizontal: 18,
-        paddingVertical: 10,
+        minHeight: 60,
+        borderRadius: 12,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: theme.colors.border.default,
+        backgroundColor: theme.colors.surface.base,
+        paddingHorizontal: theme.margins.lg,
+        paddingVertical: theme.margins.md,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 16,
+        gap: theme.margins.lg,
     },
-    decisionActionTextBlock: {
-        flex: 1,
-        gap: 0,
-    },
-    decisionActionTitle: {
-        ...Typography.default('semiBold'),
-        fontSize: 16,
-        lineHeight: 22,
-    },
-    decisionActionSubtitle: {
-        ...Typography.default(),
-        fontSize: 13,
-        lineHeight: 18,
-    },
+    decisionActionTextBlock: { flex: 1, gap: theme.margins.xs },
+    decisionActionTitle: { ...Typography.rowTitle(), color: theme.colors.text.primary },
+    decisionActionSubtitle: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
 }));

@@ -1557,9 +1557,9 @@ const styles = StyleSheet.create((theme) => ({
     },
     userMessageBubble: {
       backgroundColor: theme.colors.message.user.background,
-      paddingHorizontal: Platform.OS === 'web' ? 20 : theme.margins.lg,
-      paddingVertical: Platform.OS === 'web' ? 14 : theme.margins.md,
-      borderRadius: Platform.OS === 'web' ? 24 : theme.borderRadius.xxl,
+      paddingHorizontal: theme.margins.lg,
+      paddingVertical: theme.margins.md,
+      borderRadius: theme.borderRadius.xxl,
       maxWidth: '100%',
     },
   userStructuredMessageWrapper: {
@@ -1606,7 +1606,7 @@ const styles = StyleSheet.create((theme) => ({
     paddingBottom: 0,
   },
   toolContainerFeed: {
-    paddingBottom: 22,
+    paddingBottom: theme.margins.sm,
   },
   toolContainerFeedEmbedded: {
     paddingBottom: 0,

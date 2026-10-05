@@ -4,7 +4,7 @@ import { useSessionCockpitBottomChromeHeight } from '@/components/workspaceCockp
 import * as React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUnistyles } from 'react-native-unistyles';
+import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { useKeyboardDismissOnTap } from './useKeyboardDismissOnTap';
 
 interface AgentContentViewProps {
@@ -43,7 +43,7 @@ export const AgentContentView: React.FC<AgentContentViewProps> = React.memo(({
                 safeAreaBottom={safeAreaBottom ?? safeArea.bottom}
                 headerHeight={headerHeight}
                 contentProps={keyboardDismissOnTapHandlers}
-                composer={input}
+                composer={input ? <View style={styles.composerDock}>{input}</View> : null}
             >
                 {content ? (
                     <View style={{ flex: 1, minHeight: 0 }}>
@@ -52,7 +52,7 @@ export const AgentContentView: React.FC<AgentContentViewProps> = React.memo(({
                 ) : null}
                 {placeholder ? (
                     <ScrollView
-                        style={{ position: 'absolute', top: safeArea.top + headerHeight, left: 0, right: 0, bottom: 0 }}
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
                         contentContainerStyle={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}
                         keyboardShouldPersistTaps="handled"
                         alwaysBounceVertical={false}
@@ -64,3 +64,7 @@ export const AgentContentView: React.FC<AgentContentViewProps> = React.memo(({
         </View>
     );
 });
+
+const styles = StyleSheet.create((theme) => ({
+    composerDock: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.default, paddingTop: theme.margins.xs, backgroundColor: theme.colors.surface.base },
+}));

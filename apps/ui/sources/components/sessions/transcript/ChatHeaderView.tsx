@@ -155,6 +155,7 @@ export const ChatHeaderView = React.memo(function ChatHeaderView({
                         <Text
                             numberOfLines={1}
                             ellipsizeMode="tail"
+                            accessibilityRole="header"
                             style={[
                                 styles.title,
                                 {
@@ -247,11 +248,13 @@ export const ChatHeaderView = React.memo(function ChatHeaderView({
     );
 });
 
-const styles = StyleSheet.create(() => ({
+const styles = StyleSheet.create((theme) => ({
     container: {
         position: 'relative',
         zIndex: 100,
         elevation: 10,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderColor: theme.colors.border.default,
     },
     contentWrapper: {
         width: '100%',
@@ -264,7 +267,8 @@ const styles = StyleSheet.create(() => ({
         width: '100%',
     },
     backButton: {
-        marginRight: 8,
+        width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
+        marginRight: theme.margins.xs,
     },
     avatarLeading: {
         marginRight: 10,

@@ -23,6 +23,15 @@ describe('Typography visual primitive helpers', () => {
         expect(Number(meta.lineHeight)).toBeGreaterThanOrEqual(Number(meta.fontSize));
     });
 
+    it('orders content heading, reading body, and metadata as one hierarchy', () => {
+        const title = Typography.contentTitle();
+        const body = Typography.bodyText();
+        const meta = Typography.rowMeta();
+        expect(title.fontSize).toBeGreaterThan(body.fontSize);
+        expect(body.fontSize).toBeGreaterThan(Number(meta.fontSize));
+        expect(body.lineHeight).toBeGreaterThan(body.fontSize);
+    });
+
     it('exposes compact pill and key-hint label helpers', () => {
         const pillLabel = Typography.pillLabel();
         const keyHint = Typography.keyHint();

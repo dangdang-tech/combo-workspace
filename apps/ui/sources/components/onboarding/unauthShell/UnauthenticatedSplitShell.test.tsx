@@ -3,17 +3,25 @@ import { Text } from 'react-native';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderScreen } from '@/dev/testkit';
+import { t } from '@/text';
 
 import { UnauthenticatedSplitShell } from './UnauthenticatedSplitShell';
 import { useUnauthShellLayout, type UnauthShellLayout } from './useUnauthShellLayout';
 
 const deviceState = vi.hoisted(() => ({
     safeAreaInsets: { top: 0, bottom: 0, left: 0, right: 0 },
+    returning: false,
 }));
 
 vi.mock('react-native-unistyles', async () => {
     const { createUnistylesMock } = await import('@/dev/testkit/mocks/unistyles');
     return createUnistylesMock();
+});
+
+vi.mock('@/sync/store/hooks', async () => {
+    const { createUseLocalSettingMock } = await import('@/dev/testkit/mocks/storage');
+    const { localSettingsDefaults } = await import('@/sync/domains/settings/localSettings');
+    return { useLocalSetting: createUseLocalSettingMock({ fallback: key => key === 'hasCompletedAuthOnce' ? deviceState.returning : localSettingsDefaults[key] }) };
 });
 
 vi.mock('react-native-safe-area-context', () => ({
@@ -55,6 +63,7 @@ function flattenStyle(style: unknown): Record<string, unknown> {
 describe('UnauthenticatedSplitShell', () => {
     beforeEach(() => {
         deviceState.safeAreaInsets = { top: 0, bottom: 0, left: 0, right: 0 };
+        deviceState.returning = false;
     });
 
     it('renders both brand and workflow panes in split layout', async () => {
@@ -74,6 +83,19 @@ describe('UnauthenticatedSplitShell', () => {
         expect(screen.findByTestId('unauth-shell-brand-pane')).toBeTruthy();
         expect(screen.findByTestId('unauth-shell-workflow-pane')).toBeTruthy();
         expect(screen.findByTestId('fake-step-body')).toBeTruthy();
+    });
+
+    it('keeps brand recognition but removes first-run explanation for returning users', async () => {
+        mockLayout('split');
+        deviceState.returning = true;
+        const screen = await renderScreen(
+            <UnauthenticatedSplitShell stepId="welcome" isWelcomeStep onOpenRelayCustomFlow={() => {}} onBrandHeroGetStarted={() => {}}>
+                <FakeBody label="welcome" />
+            </UnauthenticatedSplitShell>,
+        );
+        expect(screen.findByTestId('brand-wordmark')).toBeTruthy();
+        expect(screen.getTextContent()).not.toContain(t('welcome.frontDoorProject'));
+        expect(screen.getTextContent()).not.toContain(t('welcome.brandSubTagline'));
     });
 
     it('does not send native-only accessibility attributes to decorative web artwork', async () => {

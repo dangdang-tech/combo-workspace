@@ -2,6 +2,7 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderScreen, standardCleanup } from '@/dev/testkit';
+import { storage } from '@/sync/domains/state/storage';
 
 import { RemoteWelcomeDecisionPanel } from './RemoteWelcomeDecisionPanel';
 import { deriveRemoteAuthEntryOptions, type RemoteAuthEntryOptionsInput } from './useRemoteAuthEntryOptions';
@@ -21,6 +22,11 @@ vi.mock('react-native', async () => {
             fontScale: 1,
         }),
     });
+});
+
+vi.mock('react-native-unistyles', async () => {
+    const { createUnistylesMock } = await import('@/dev/testkit/mocks/unistyles');
+    return createUnistylesMock();
 });
 
 const noop = () => {};
@@ -46,7 +52,7 @@ function createInput(): RemoteAuthEntryOptionsInput {
     };
 }
 
-function renderPanel(onChangeRelay = noop) {
+function renderPanel(onChangeRelay = noop, onRestore = noop) {
     return renderScreen(
         <RemoteWelcomeDecisionPanel
             options={deriveRemoteAuthEntryOptions(createInput())}
@@ -58,7 +64,7 @@ function renderPanel(onChangeRelay = noop) {
             onMtlsLogin={noop}
             onOpenSetup={noop}
             onProviderSignup={noop}
-            onRestore={noop}
+            onRestore={onRestore}
         />,
     );
 }
@@ -66,6 +72,7 @@ function renderPanel(onChangeRelay = noop) {
 describe('RemoteWelcomeDecisionPanel mobile wordmark', () => {
     beforeEach(() => {
         standardCleanup();
+        storage.setState({ localSettings: { ...storage.getState().localSettings, hasCompletedAuthOnce: false } });
         deviceState.width = 390;
         deviceState.height = 844;
     });
@@ -84,12 +91,32 @@ describe('RemoteWelcomeDecisionPanel mobile wordmark', () => {
         expect(screen.findAllByTestId('welcome-mobile-wordmark')).toHaveLength(0);
     });
 
-    it('shows the selected relay before sign-in and opens the real server selector', async () => {
-        const onChangeRelay = vi.fn();
-        const screen = await renderPanel(onChangeRelay);
+    it('orients first visits before offering recovery as an alternative', async () => {
+        const screen = await renderPanel();
+        expect(screen.findByTestId('welcome-private-key-copy')).not.toBeNull();
+        const actions = screen.root.findAll(node => node.props.testID === 'welcome-primary-start' || node.props.testID === 'welcome-secondary-login');
+        expect(actions[0].props.testID).toBe('welcome-primary-start');
+    });
 
-        expect(screen.getTextContent()).toContain('https://relay.example.test');
-        screen.pressByTestId('welcome-selected-server');
+    it('takes returning visitors directly to account recovery without first-run copy', async () => {
+        storage.setState({ localSettings: { ...storage.getState().localSettings, hasCompletedAuthOnce: true } });
+        const onRestore = vi.fn();
+        const screen = await renderPanel(noop, onRestore);
+        expect(screen.findByTestId('welcome-private-key-copy')).toBeNull();
+        const actions = screen.root.findAll(node => node.props.testID === 'welcome-primary-start' || node.props.testID === 'welcome-secondary-login');
+        expect(actions[0].props.testID).toBe('welcome-secondary-login');
+        screen.pressByTestId('welcome-secondary-login');
+        expect(onRestore).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers the real relay selector when the server is unavailable', async () => {
+        const onChangeRelay = vi.fn();
+        const input = { ...createInput(), serverAvailability: 'unavailable' as const };
+        const screen = await renderScreen(<RemoteWelcomeDecisionPanel
+            options={deriveRemoteAuthEntryOptions(input)} isDesktopShell={false} layout="portrait"
+            onAnonymousSignup={noop} onChangeRelay={onChangeRelay} onKeylessProviderLogin={noop}
+            onMtlsLogin={noop} onOpenSetup={noop} onProviderSignup={noop} onRestore={noop} />);
+        screen.pressByTestId('welcome-change-relay');
         expect(onChangeRelay).toHaveBeenCalledTimes(1);
     });
 });

@@ -1,16 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Modal } from '@/modal';
-import { Typography } from '@/constants/Typography';
-import { Text } from '@/components/ui/text/Text';
-import { BrandWordmark } from '@/components/onboarding/unauthShell/BrandWordmark';
 import { RoundButton } from '@/components/ui/buttons/RoundButton';
-import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
-import { PressableSurface } from '@/components/ui/interaction/PressableSurface';
-import { useLayoutMaxWidth } from '@/components/ui/layout/layout';
 import { createExternalProviderAuthActions } from '@/auth/flows/createExternalProviderAuthActions';
 import { getServerFeaturesSnapshot } from '@/sync/api/capabilities/serverFeaturesClient';
 import { resolveRemoteAuthCapabilityOptions } from '@/components/account/auth/useRemoteAuthEntryOptions';
@@ -24,60 +15,10 @@ import { canonicalizeServerUrl, createServerUrlComparableKey } from '@/sync/doma
 import { createSharedEntryClient, SharedEntryError, type SharedEntryAccess, type SharedEntryPreview } from '@/sync/api/social/apiSharedEntries';
 import { sharedEntryInviteErrorMessage, sharedEntryInviteRecovery } from './sharedEntryPresentation';
 import { useSharedEntryPolling } from './useSharedEntryPolling';
-
-const stylesheet = StyleSheet.create((theme) => ({
-    screen: { flex: 1, backgroundColor: theme.colors.surface.base },
-    scrollContent: { flexGrow: 1, alignItems: 'center', paddingHorizontal: theme.margins.xl, paddingVertical: theme.margins.xl },
-    card: {
-        width: '100%', gap: theme.margins.xl,
-    },
-    brand: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    hero: { paddingTop: theme.margins.xl },
-    heroPhone: { paddingTop: theme.margins.md },
-    publication: { gap: theme.margins.md },
-    title: { ...Typography.rowTitle(), lineHeight: 24, color: theme.colors.text.primary },
-    heading: { ...Typography.pageTitle(), color: theme.colors.text.primary },
-    body: { ...Typography.body(), fontSize: 16, lineHeight: 24, color: theme.colors.text.secondary },
-    bodyPhone: { lineHeight: 24 },
-    detail: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
-    disclosure: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.margins.sm, borderRadius: 8 },
-    disclosureText: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
-    explanation: { gap: theme.margins.md },
-    resources: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.margins.sm },
-    resourcesText: { flex: 1, ...Typography.rowMeta(), color: theme.colors.text.secondary },
-    conversation: { paddingVertical: theme.margins.xl, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.default },
-    status: { padding: theme.margins.lg, borderRadius: 12, backgroundColor: theme.colors.surface.inset, gap: theme.margins.sm },
-    statusHeading: { flexDirection: 'row', gap: theme.margins.sm, alignItems: 'center' },
-    statusTitle: { flex: 1, ...Typography.rowTitle(), color: theme.colors.text.primary },
-    action: { minHeight: 52, borderRadius: 26, justifyContent: 'center' },
-    exit: { minHeight: 44, paddingHorizontal: theme.margins.md, justifyContent: 'center' },
-    exitText: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
-}));
-
-function InvitePublication({ title, publisher }: { title: string; publisher?: string | null }) {
-    const [expanded, setExpanded] = useState(false);
-    // Imported chat titles can contain encoded spaces; keep all content as plain text.
-    const displayTitle = title.replace(/&#(?:0*32|x0*20);|&nbsp;/gi, ' ');
-    const collapsible = title.length > 80 || title.split(/\r?\n/).length > 3;
-    return <View testID="shared-entry-publication" style={stylesheet.publication}>
-        <View>
-            <Text testID="shared-entry-title" selectable numberOfLines={collapsible && !expanded ? 2 : undefined} style={stylesheet.title}>{displayTitle}</Text>
-            {collapsible ? <PressableSurface testID="shared-entry-title-toggle" style={stylesheet.disclosure}
-                accessibilityLabel={t(expanded ? 'sharedEntry.inviteCollapseTitle' : 'sharedEntry.inviteExpandTitle')}
-                accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)}>
-                <Text style={stylesheet.disclosureText}>{t(expanded ? 'sharedEntry.inviteCollapseTitle' : 'sharedEntry.inviteExpandTitle')}</Text>
-            </PressableSurface> : null}
-        </View>
-        {publisher ? <Text testID="shared-entry-publisher" style={stylesheet.detail}>{t('sharedEntry.publisher')}{' '}{publisher}</Text> : null}
-    </View>;
-}
+import { SharedEntryInviteSurface } from './SharedEntryInviteSurface';
 
 export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; serverUrl?: string }) {
     const auth = useAuth();
-    const { theme } = useUnistyles();
-    const { width } = useWindowDimensions();
-    const isNarrow = width < 600;
-    const maxWidth = Math.min(useLayoutMaxWidth(), 560);
     const router = useRouter();
     const [, setRevision] = useState(0);
     const snapshot = getActiveServerSnapshot();
@@ -218,40 +159,9 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
     }
     return <>
         <Stack.Screen options={{ headerShown: false }} />
-        <ScrollView style={stylesheet.screen} contentContainerStyle={stylesheet.scrollContent}>
-            <View testID="shared-entry-invite-card" style={[stylesheet.card, { maxWidth }]}>
-                <View style={stylesheet.brand}>
-                    <BrandWordmark height={28} />
-                    {action?.testID !== 'shared-entry-home' ? <PressableSurface testID="shared-entry-exit" style={stylesheet.exit}
-                        accessibilityLabel={t('common.home')} onPress={() => router.replace('/')}>
-                        <Text style={stylesheet.exitText}>{t('common.home')}</Text>
-                    </PressableSurface> : null}
-                </View>
-                {!invalidServer && token && (preview || visible?.loaded) ? <View style={[stylesheet.explanation, stylesheet.hero, isNarrow ? stylesheet.heroPhone : null]}>
-                    <Text accessibilityRole="header" style={stylesheet.heading}>{t('sharedEntry.inviteTitle')}</Text>
-                    <Text testID="shared-entry-purpose" style={[stylesheet.body, isNarrow ? stylesheet.bodyPhone : null]}>{t('sharedEntry.inviteContextDetail')}</Text>
-                    {preview?.description?.trim() ? <Text testID="shared-entry-description" style={stylesheet.detail}>{preview.description}</Text> : null}
-                    <View style={stylesheet.resources}>
-                        <Ionicons name="folder-outline" size={18} color={theme.colors.text.secondary} />
-                        <Text style={stylesheet.resourcesText}>{t('sharedEntry.inviteResourcesDetail')}</Text>
-                    </View>
-                </View> : null}
-                {title ? <View style={stylesheet.conversation}><InvitePublication key={title} title={title} publisher={preview?.publisherDisplayName} /></View> : null}
-                {status ? <View style={stylesheet.status} accessibilityLiveRegion="polite">
-                    <View style={stylesheet.statusHeading}>
-                        {status.loading ? <ActivitySpinner size="small" color={theme.colors.text.secondary} /> : null}
-                        <Text testID={status.testID} style={stylesheet.statusTitle}>{status.title}</Text>
-                    </View>
-                    {status.detail ? <Text testID="shared-entry-state-detail" selectable style={stylesheet.detail}>{status.detail}</Text> : null}
-                </View> : null}
-                {action ? <RoundButton {...action} accessibilityLabel={action.title} size="normal" style={stylesheet.action}
-                    disabled={busy || action.disabled === true} loading={busy || action.loading === true} /> : null}
-                {access?.status === 'failed' && (recovery === 'restore' || recovery === 'repair-host') ? <PressableSurface
-                    testID="shared-entry-preparation-retry" style={stylesheet.exit} accessibilityRole="button"
-                    accessibilityLabel={t('common.retry')} disabled={busy} onPress={accept}>
-                    <Text style={stylesheet.exitText}>{t('common.retry')}</Text>
-                </PressableSurface> : null}
-            </View>
-        </ScrollView>
+        <SharedEntryInviteSurface title={title} publisher={preview?.publisherDisplayName} description={preview?.description}
+            showExplanation={!invalidServer && Boolean(token) && Boolean(preview || visible?.loaded)}
+            status={status} action={action} busy={busy} onExit={() => router.replace('/')}
+            onPreparationRetry={access?.status === 'failed' && (recovery === 'restore' || recovery === 'repair-host') ? accept : undefined} />
     </>;
 }

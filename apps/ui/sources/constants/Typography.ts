@@ -223,6 +223,15 @@ export const Typography = {
         fontFamily: getLogoFont(),
     }),
 
+    // Wide orientation surfaces; compact layouts use contentTitle.
+    displayTitle: () => ({ ...defaultTypography('semiBold'), fontSize: 32, lineHeight: 40 }),
+
+    // Content-led pages: the actual object or task is the leading heading.
+    contentTitle: () => ({ ...defaultTypography('semiBold'), fontSize: 24, lineHeight: 32 }),
+
+    // Reading text shared by account orientation, invitations and conversations.
+    bodyText: () => ({ ...defaultTypography('regular'), fontSize: 16, lineHeight: 24 }),
+
     // Compact page heading for conversational surfaces; no display tracking.
     pageTitle: () => ({ ...defaultTypography('semiBold'), fontSize: 20, lineHeight: 28 }),
 

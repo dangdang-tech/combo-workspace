@@ -19,9 +19,7 @@ export type BrandSubTaglineProps = Readonly<{
 export const BrandSubTagline = React.memo(function BrandSubTagline(props: BrandSubTaglineProps) {
     const tokens = useBrandPaneTokens();
     const style = {
-        ...Typography.default(),
-        fontSize: 16,
-        lineHeight: 24,
+        ...Typography.bodyText(),
         color: tokens.foregroundSoft,
         maxWidth: props.mobile ? undefined : 520,
     } as const;

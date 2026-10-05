@@ -1,4 +1,3 @@
-export const transcriptMarkdownTextStyle = {
-    fontSize: 16,
-    lineHeight: 24,
-} as const;
+import { Typography } from '@/constants/Typography';
+
+export const transcriptMarkdownTextStyle = Typography.bodyText();

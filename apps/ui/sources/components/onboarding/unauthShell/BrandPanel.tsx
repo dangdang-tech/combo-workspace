@@ -8,10 +8,10 @@ import { Icon } from '@/components/ui/icons/Icon';
 import { Text } from '@/components/ui/text/Text';
 import { Typography } from '@/constants/Typography';
 import { t } from '@/text';
+import { useLocalSetting } from '@/sync/store/hooks';
 
 import { BrandSubTagline } from './BrandSubTagline';
 import { BrandTagline } from './BrandTagline';
-import { BrandTrustStrip } from './BrandTrustStrip';
 import { BrandWordmark } from './BrandWordmark';
 import { useBrandPaneTokens } from './brandPaneTokens';
 
@@ -21,31 +21,22 @@ export type BrandPanelProps = Readonly<{
     testID?: string;
 }>;
 
-/** A static explanation of the sharing model, never a simulated live session. */
+/** A labelled relationship diagram, without simulated chat content or nested cards. */
 function SharedWorkspaceIllustration() {
     const tokens = useBrandPaneTokens();
-    return (
-        <View style={[styles.workspace, { borderColor: tokens.border, backgroundColor: tokens.surface }]}>
-            <View style={[styles.projectRow, { borderBottomColor: tokens.border }]}>
-                <View style={[styles.projectIcon, { backgroundColor: tokens.accentSurface }]}>
-                    <Icon name="folder" size={22} color={tokens.accent} />
-                </View>
-                <Text style={[styles.projectTitle, { color: tokens.foreground }]}>{t('welcome.frontDoorProject')}</Text>
-            </View>
-            <View style={styles.conversations}>
-                {[t('welcome.frontDoorYourConversation'), t('welcome.frontDoorOtherConversation')].map((label) => (
-                    <View key={label} style={[styles.conversation, { backgroundColor: tokens.background, borderColor: tokens.border }]}>
-                        <Icon name="chat-circle" size={22} color={tokens.accent} />
-                        <Text style={[styles.conversationLabel, { color: tokens.foreground }]}>{label}</Text>
-                        <View aria-hidden={true} style={styles.messageLines}>
-                            <View style={[styles.messageLine, { backgroundColor: tokens.border }]} />
-                            <View style={[styles.messageLineShort, { backgroundColor: tokens.accentSurface }]} />
-                        </View>
-                    </View>
-                ))}
-            </View>
+    return <View style={[styles.workspace, { borderColor: tokens.border }]}>
+        <View style={styles.projectRow}>
+            <Icon name="folder" size={20} color={tokens.accent} />
+            <Text style={[styles.projectTitle, { color: tokens.foreground }]}>{t('welcome.frontDoorProject')}</Text>
         </View>
-    );
+        <View style={styles.conversations}>
+            {[t('welcome.frontDoorYourConversation'), t('welcome.frontDoorOtherConversation')].map(label =>
+                <View key={label} style={styles.conversation}>
+                    <Icon name="chat-circle" size={18} color={tokens.foregroundSoft} />
+                    <Text style={[styles.conversationLabel, { color: tokens.foregroundSoft }]}>{label}</Text>
+                </View>)}
+        </View>
+    </View>;
 }
 
 /** Brand and product explanation live in the existing pre-auth shell. */
@@ -53,6 +44,7 @@ export const BrandPanel = React.memo(function BrandPanel(props: BrandPanelProps)
     const safeAreaInsets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const tokens = useBrandPaneTokens();
+    const returning = useLocalSetting('hasCompletedAuthOnce');
     const mobile = props.variant === 'mobile-hero';
     const compact = mobile || width < 1100;
 
@@ -76,22 +68,23 @@ export const BrandPanel = React.memo(function BrandPanel(props: BrandPanelProps)
                         } : null,
                     ]}
                 >
-                    <BrandWordmark height={mobile ? 30 : 32} />
+                    <View style={styles.wordmark}><BrandWordmark height={mobile ? 30 : 32} /></View>
                     <View style={styles.story}>
                         <View style={styles.eyebrowRow}>
                             <View style={[styles.eyebrowLine, { backgroundColor: tokens.accent }]} />
                             <Text style={[styles.eyebrow, { color: tokens.accent }]}>{t('welcome.frontDoorEyebrow')}</Text>
                         </View>
-                        <BrandTagline mobile={compact} />
-                        <BrandSubTagline mobile={mobile} />
-                        <SharedWorkspaceIllustration />
+                        <BrandTagline mobile={compact || returning} />
+                        {!returning ? <>
+                            <BrandSubTagline mobile={mobile} />
+                            <SharedWorkspaceIllustration />
+                        </> : null}
                         <View style={styles.hostNote}>
                             <Icon name="desktop" size={18} color={tokens.foregroundSoft} />
                             <Text style={[styles.hostNoteText, { color: tokens.foregroundSoft }]}>{t('welcome.frontDoorHostRequirement')}</Text>
                         </View>
                     </View>
                     <View style={styles.footer}>
-                        <BrandTrustStrip mobile={mobile} />
                         {mobile ? (
                             <RoundButton
                                 size="large"
@@ -109,27 +102,24 @@ export const BrandPanel = React.memo(function BrandPanel(props: BrandPanelProps)
     );
 });
 
-const styles = StyleSheet.create(() => ({
+const styles = StyleSheet.create((theme) => ({
     root: { flex: 1, minHeight: 0 },
     scrollContent: { flexGrow: 1 },
-    content: { flexGrow: 1, justifyContent: 'space-between', gap: 36 },
-    contentDesktop: { padding: 56 },
-    contentCompact: { padding: 32 },
-    story: { width: '100%', maxWidth: 650, gap: 22, paddingVertical: 12 },
-    eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    eyebrowLine: { height: 2, width: 28 },
+    content: { flexGrow: 1, gap: theme.margins.xxl },
+    contentDesktop: { padding: theme.margins.xxl * 2, alignItems: 'center' },
+    contentCompact: { padding: theme.margins.xxl },
+    wordmark: { width: '100%', maxWidth: 520 },
+    story: { width: '100%', maxWidth: 520, gap: theme.margins.lg },
+    eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: theme.margins.md },
+    eyebrowLine: { height: 2, width: 24 },
     eyebrow: { ...Typography.eyebrow(), flexShrink: 1 },
-    workspace: { borderWidth: 1, borderRadius: 20, overflow: 'hidden', marginTop: 6 },
-    projectRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18, borderBottomWidth: 1 },
-    projectIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    workspace: { borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: theme.margins.lg, gap: theme.margins.md },
+    projectRow: { flexDirection: 'row', alignItems: 'center', gap: theme.margins.sm },
     projectTitle: { ...Typography.rowTitle(), flex: 1 },
-    conversations: { flexDirection: 'row', gap: 12, padding: 16 },
-    conversation: { flex: 1, minWidth: 0, gap: 10, borderWidth: 1, borderRadius: 12, padding: 14 },
-    conversationLabel: { ...Typography.rowTitle() },
-    messageLines: { gap: 8, marginTop: 4 },
-    messageLine: { width: '90%', height: 5, borderRadius: 3 },
-    messageLineShort: { width: '65%', height: 5, borderRadius: 3 },
-    hostNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    conversations: { gap: theme.margins.sm, paddingLeft: theme.margins.xxl },
+    conversation: { flexDirection: 'row', alignItems: 'center', gap: theme.margins.sm },
+    conversationLabel: { ...Typography.rowMeta(), flexShrink: 1 },
+    hostNote: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.margins.sm },
     hostNoteText: { ...Typography.rowMeta(), flex: 1 },
-    footer: { gap: 22 },
+    footer: { gap: theme.margins.xxl },
 }));

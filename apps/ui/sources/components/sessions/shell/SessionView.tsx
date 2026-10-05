@@ -150,7 +150,7 @@ import { t, type TranslationKey } from '@/text';
 import { tracking, trackMessageSent } from '@/track';
 import { isRunningOnMac } from '@/utils/platform/platform';
 import { randomUUID } from '@/platform/randomUUID';
-import { useDeviceType, useHeaderHeight, useIsLandscape, useIsTablet } from '@/utils/platform/responsive';
+import { useDeviceType, useIsLandscape, useIsTablet } from '@/utils/platform/responsive';
 import { getSessionAvatarId, getSessionName, listPendingPermissionRequests, shouldReadTranscriptForPendingRequests, shouldShowAbortButtonForSessionState, useSessionStatus, type PendingPermissionRequest } from '@/utils/sessions/sessionUtils';
 import { deriveTranscriptInteractionFromSession } from '@/utils/sessions/deriveTranscriptInteraction';
 import { runAfterInteractionsWithFallback } from '@/utils/timing/runAfterInteractionsWithFallback';
@@ -1396,11 +1396,9 @@ export const SessionView = React.memo((props: SessionViewProps) => {
         });
     }, [router]);
     const safeArea = useSafeAreaInsets();
-    const safeAreaTopInset = props.safeAreaTopMode === 'external' ? 0 : safeArea.top;
     const headerSafeAreaTopMode = props.headerSafeAreaTopMode ?? props.safeAreaTopMode ?? 'internal';
     const isLandscape = useIsLandscape();
     const deviceType = useDeviceType();
-    const headerHeight = useHeaderHeight();
     const { width: windowWidth } = useWindowDimensions();
     const realtimeStatus = useRealtimeStatus();
     const isTablet = useIsTablet();
@@ -1682,15 +1680,9 @@ export const SessionView = React.memo((props: SessionViewProps) => {
                 }} />
             )}
 
-            {/* Header - always shown on desktop/Mac, hidden in landscape mode only on actual phones */}
+            {/* Navigation is in flow, leaving one measured viewport for transcript and composer. */}
             {showTopHeader && shouldRenderSessionSurface && (
-                <View style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 1000
-                }}>
+                <View>
                     <ChatHeaderView
                         {...headerProps}
                         onBackPress={handleBackPress}
@@ -1703,7 +1695,7 @@ export const SessionView = React.memo((props: SessionViewProps) => {
             )}
 
             {/* Content based on state */}
-            <View style={{ flex: 1, paddingTop: showTopHeader ? safeAreaTopInset + headerHeight : 0 }}>
+            <View style={{ flex: 1, minHeight: 0 }}>
                 {!session && authSurfaceState ? (
                     <SessionAuthRecoveryFallback message={authSurfaceState.message} />
                 ) : routeHydrationRetrying ? (

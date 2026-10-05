@@ -16,6 +16,7 @@ const bottomChromeMetricsState = vi.hoisted(() => ({
 const safeAreaMetricsState = vi.hoisted(() => ({
     bottom: 0,
     top: 0,
+    headerHeight: 0,
 }));
 
 installTranscriptCommonModuleMocks({
@@ -38,7 +39,7 @@ installTranscriptCommonModuleMocks({
 });
 
 vi.mock('@/utils/platform/responsive', () => ({
-    useHeaderHeight: () => 0,
+    useHeaderHeight: () => safeAreaMetricsState.headerHeight,
 }));
 
 vi.mock('react-native-safe-area-context', () => ({
@@ -111,4 +112,17 @@ describe('AgentContentView (iOS keyboard)', () => {
         expect(scaffoldRender?.props.safeAreaBottom).toBe(0);
         expect(scaffoldRender?.props.layoutBottomInset).toBe(80);
     });
+    it('positions placeholders within the content viewport without reserving navigation twice', async () => {
+        scaffoldHarness.clear();
+        bottomChromeMetricsState.height = 0;
+        safeAreaMetricsState.top = 32;
+        safeAreaMetricsState.headerHeight = 56;
+        const { AgentContentView } = await import('./AgentContentView.native');
+        const { tree } = await renderScreen(<AgentContentView placeholder={<React.Fragment>empty session</React.Fragment>} />);
+        const placeholderScroll = tree.root.findAll(node => node.props.alwaysBounceVertical === false)[0];
+        expect(placeholderScroll.props.style.top).toBe(0);
+        safeAreaMetricsState.top = 0;
+        safeAreaMetricsState.headerHeight = 0;
+    });
+
 });

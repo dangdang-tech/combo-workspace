@@ -60,6 +60,7 @@ describe('SharedEntryInviteScreen', () => {
         const screen = await renderScreen(<SharedEntryInviteScreen token={'a'.repeat(43)} />);
         expect(screen.findByTestId('shared-entry-purpose')?.props.children).toBe('sharedEntry.inviteContextDetail');
         expect(screen.findByTestId('shared-entry-title')?.props.children).toBe('Original session title');
+        expect(screen.findByTestId('shared-entry-title')?.props.accessibilityRole).toBe('header');
         expect(screen.findByTestId('shared-entry-progress')).toBeNull();
         expect(screen.findByTestId('shared-entry-accept')).not.toBeNull();
         expect(screen.findByTestId('shared-entry-exit')).not.toBeNull();
@@ -105,6 +106,9 @@ describe('SharedEntryInviteScreen', () => {
         expect(screen.findByTestId('shared-entry-title')?.props.numberOfLines).toBeUndefined();
         expect(screen.findByTestId('shared-entry-title-toggle')).toBeNull();
         expect(screen.findByTestId('shared-entry-description')?.props.children).toBe('Practice one question at a time');
+        const readingOrder = screen.getTextContent();
+        expect(readingOrder.indexOf('Interview coach')).toBeLessThan(readingOrder.indexOf('Practice one question at a time'));
+        expect(readingOrder.indexOf('Practice one question at a time')).toBeLessThan(readingOrder.indexOf('sharedEntry.inviteContextDetail'));
         expect(screen.findByTestId('shared-entry-publisher')?.props.children).toContain('Publisher');
         expect(boundary.fetch).not.toHaveBeenCalled();
     });
