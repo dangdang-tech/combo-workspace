@@ -88,7 +88,7 @@ describe('RemoteWelcomeDecisionPanel mobile wordmark', () => {
         const onChangeRelay = vi.fn();
         const screen = await renderPanel(onChangeRelay);
 
-        expect(screen.getTextContent()).toContain('https://relay.example.test');
+        expect(screen.findByTestId('welcome-selected-server')?.props.accessibilityLabel).toContain('https://relay.example.test');
         screen.pressByTestId('welcome-selected-server');
         expect(onChangeRelay).toHaveBeenCalledTimes(1);
     });

@@ -222,8 +222,9 @@ function DecisionActionRow(props: DecisionActionRowProps): React.ReactElement {
                 // the animated value evaluates. The interpolation
                 // above then takes over on hover.
                 backgroundColor: surfaceRest,
-                borderColor: theme.colors.border.default,
+                borderColor: 'transparent',
             },
+        isPrimary ? null : styles.secondaryActionRow,
         isPressed ? DECISION_ROW_PRESSED_STYLE : null,
     ];
 
@@ -324,19 +325,6 @@ export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProp
 
     return (
         <View testID="welcome-decision-panel" style={styles.decisionPanel}>
-            <Pressable
-                testID="welcome-selected-server"
-                accessibilityRole="button"
-                accessibilityLabel={`${t('welcome.frontDoorSelectedServer')}: ${options.serverUrlForCopy}`}
-                onPress={props.onChangeRelay}
-                style={styles.selectedServer}
-            >
-                <View style={styles.selectedServerText}>
-                    <Text style={styles.selectedServerLabel}>{t('welcome.frontDoorSelectedServer')}</Text>
-                    <Text style={styles.selectedServerUrl}>{options.serverUrlForCopy}</Text>
-                </View>
-                <Icon name="caret-right" size={16} color={theme.colors.text.secondary} />
-            </Pressable>
             {/*
               * The mobile wordmark is rendered by WorkflowPanel (absolutely
               * pinned to the top-left of the pane) so it stays anchored at the
@@ -477,26 +465,27 @@ export function RemoteWelcomeDecisionPanel(props: RemoteWelcomeDecisionPanelProp
                     })()}
                 </View>
             ) : null}
+            <Pressable
+                testID="welcome-selected-server"
+                accessibilityRole="button"
+                accessibilityLabel={`${t('welcome.frontDoorSelectedServer')}: ${options.serverUrlForCopy}`}
+                onPress={props.onChangeRelay}
+                style={styles.selectedServer}
+            >
+                <View style={styles.selectedServerText}>
+                    <Text style={styles.selectedServerLabel}>{t('welcome.frontDoorSelectedServer')}</Text>
+                </View>
+                <Icon name="caret-right" size={16} color={theme.colors.text.secondary} />
+            </Pressable>
+
         </View>
     );
 }
 
 const stylesheet = StyleSheet.create((theme) => ({
-    selectedServer: {
-        width: '100%',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        borderWidth: 1,
-        borderColor: theme.colors.border.default,
-        borderRadius: 12,
-        backgroundColor: theme.colors.surface.base,
-    },
-    selectedServerText: { flex: 1, minWidth: 0, gap: 4 },
+    selectedServer: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44 },
+    selectedServerText: { minWidth: 0 },
     selectedServerLabel: { ...Typography.eyebrow(), color: theme.colors.text.secondary },
-    selectedServerUrl: { ...Typography.rowMeta(), color: theme.colors.text.primary },
     decisionPanel: {
         width: '100%',
         alignItems: 'center',
@@ -505,17 +494,11 @@ const stylesheet = StyleSheet.create((theme) => ({
     headingBlock: {
         width: '100%',
         maxWidth: 520,
-        // No vertical gap between the two title lines — matches the brand
-        // tagline's `Start anywhere. / Continue everywhere.` rhythm, where
-        // line-height == font-size and the lines sit flush against each other.
     },
     questionTitle: {
         ...Typography.default('semiBold'),
-        fontSize: 44,
-        // line-height == font-size mirrors the brand tagline (48/48). At 44px
-        // this gives the same tight, deliberate vertical spacing the planet
-        // tagline uses on the left pane.
-        lineHeight: 44,
+        fontSize: 32,
+        lineHeight: 40,
         color: theme.colors.text.primary,
         textAlign: 'left',
     },
@@ -621,6 +604,7 @@ const stylesheet = StyleSheet.create((theme) => ({
         justifyContent: 'space-between',
         gap: 16,
     },
+    secondaryActionRow: { minHeight: 48, paddingHorizontal: 0, borderWidth: 0 },
     decisionActionTextBlock: {
         flex: 1,
         gap: 0,

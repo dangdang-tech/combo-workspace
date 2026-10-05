@@ -15,7 +15,7 @@ export type BrandTaglineProps = Readonly<{
 /** Shared-project headline using the existing scalable display treatment. */
 export const BrandTagline = React.memo(function BrandTagline(props: BrandTaglineProps) {
     const tokens = useBrandPaneTokens();
-    const baseSize = props.mobile ? 44 : 48;
+    const baseSize = props.mobile ? 32 : 40;
     const baseStyle = {
         ...Typography.default('semiBold'),
         fontSize: baseSize,
