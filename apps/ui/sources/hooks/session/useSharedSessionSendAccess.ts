@@ -44,5 +44,5 @@ export function useSharedSessionSendAccess(sessionId: string, serverId: string |
     }, [enabled, refresh]);
     useSharedEntryPolling(refresh, enabled);
     const current = state?.sessionId === sessionId && state.serverId === serverId ? state : null;
-    return { blocked: enabled && (current?.blocked ?? true), message: enabled ? (current?.message ?? t('sharedEntry.checking')) : null, refresh };
+    return { blocked: enabled && (current?.blocked ?? true), message: enabled ? (current ? current.message : t('sharedEntry.checking')) : null, refresh };
 }

@@ -49,4 +49,50 @@ describe('shared session send access', () => {
         await act(async () => { resolveAccess(new Response(JSON.stringify({ access }), { status: 200 })); });
         expect(hook.getCurrent().message).toBe('sharedEntry.hostOffline');
     });
+    it('recovers from a failed access check only after a fresh successful check', async () => {
+        boundary.fetch.mockRejectedValueOnce(new Error('network unavailable'));
+        const { useSharedSessionSendAccess } = await import('./useSharedSessionSendAccess');
+        const hook = await renderHook(() => useSharedSessionSendAccess('child', 'relay', true));
+        expect(hook.getCurrent().blocked).toBe(true);
+        boundary.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ access: { ...access, hostOnline: true } }), { status: 200 }));
+        await act(async () => { expect(await hook.getCurrent().refresh()).toBe(true); });
+        expect(hook.getCurrent().blocked).toBe(false);
+        expect(hook.getCurrent().message).toBeNull();
+        await hook.unmount();
+    });
+    it('shares one access request across repeated concurrent checks', async () => {
+        let resolveAccess!: (response: Response) => void;
+        boundary.fetch.mockReturnValueOnce(new Promise<Response>(resolve => { resolveAccess = resolve; }));
+        const { useSharedSessionSendAccess } = await import('./useSharedSessionSendAccess');
+        const hook = await renderHook(() => useSharedSessionSendAccess('child', 'relay', true));
+        const first = hook.getCurrent().refresh();
+        const second = hook.getCurrent().refresh();
+        expect(boundary.fetch).toHaveBeenCalledTimes(1);
+        await act(async () => {
+            resolveAccess(new Response(JSON.stringify({ access: { ...access, hostOnline: true } }), { status: 200 }));
+            expect(await first).toBe(true);
+            expect(await second).toBe(true);
+        });
+        expect(hook.getCurrent().blocked).toBe(false);
+        await hook.unmount();
+    });
+    it('ignores an old online response after the current server has refused access', async () => {
+        let resolveOldAccess!: (response: Response) => void;
+        boundary.fetch.mockReturnValueOnce(new Promise<Response>(resolve => { resolveOldAccess = resolve; }));
+        const { useSharedSessionSendAccess } = await import('./useSharedSessionSendAccess');
+        const hook = await renderHook((serverId: string) => useSharedSessionSendAccess('child', serverId, true), { initialProps: 'relay-a' });
+        const oldRequest = hook.getCurrent().refresh();
+        boundary.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 }));
+        await hook.rerender('relay-b');
+        expect(hook.getCurrent().blocked).toBe(true);
+        const refusalMessage = hook.getCurrent().message;
+        await act(async () => {
+            resolveOldAccess(new Response(JSON.stringify({ access: { ...access, hostOnline: true } }), { status: 200 }));
+            expect(await oldRequest).toBe(false);
+        });
+        expect(hook.getCurrent().blocked).toBe(true);
+        expect(hook.getCurrent().message).toBe(refusalMessage);
+        await hook.unmount();
+    });
+
 });

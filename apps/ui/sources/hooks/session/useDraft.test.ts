@@ -1257,4 +1257,26 @@ describe('useDraft', () => {
     expect(sessionsById.s1?.draft).toBe('A');
     harness.unmount();
   });
+  it('keeps an unsent draft across detail-screen focus loss and return', async () => {
+    const harness = await renderHarness({ initialSessionId: 's2' });
+    await act(async () => { harness.getCurrent().setValue('unsent draft before details'); });
+    isFocused = false;
+    await act(async () => { harness.getCurrent().rerender(); });
+    expect(harness.getCurrent().value).toBe('unsent draft before details');
+    isFocused = true;
+    await act(async () => { harness.getCurrent().rerender(); });
+    expect(harness.getCurrent().value).toBe('unsent draft before details');
+    expect(sessionsById.s2?.draft).toBe('unsent draft before details');
+    harness.unmount();
+  });
+
+  it('restores an unsent draft when the session screen remounts after navigation', async () => {
+    const first = await renderHarness({ initialSessionId: 's2' });
+    await act(async () => { first.getCurrent().setValue('persist through browser navigation'); });
+    first.unmount();
+    const returned = await renderHarness({ initialSessionId: 's2' });
+    expect(returned.getCurrent().value).toBe('persist through browser navigation');
+    returned.unmount();
+  });
+
 });
