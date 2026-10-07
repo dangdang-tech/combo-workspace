@@ -23,7 +23,7 @@ const stylesheet = StyleSheet.create((theme) => ({
     decisionWide: { width: '100%', paddingTop: theme.margins.xxl },
     brand: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     publication: { gap: theme.margins.md },
-    title: { ...Typography.contentTitle(), color: theme.colors.text.primary },
+    title: { ...Typography.contentTitle(), color: theme.colors.accent.blue },
     heading: { ...Typography.pageTitle(), color: theme.colors.text.primary },
     body: { ...Typography.bodyText(), color: theme.colors.text.secondary },
     detail: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
