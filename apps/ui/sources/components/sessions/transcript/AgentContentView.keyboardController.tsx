@@ -66,5 +66,5 @@ export const AgentContentView: React.FC<AgentContentViewProps> = React.memo(({
 });
 
 const styles = StyleSheet.create((theme) => ({
-    composerDock: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.default, paddingTop: theme.margins.xs, backgroundColor: theme.colors.surface.base },
+    composerDock: { paddingTop: theme.margins.xs, backgroundColor: theme.colors.surface.base },
 }));

@@ -11,6 +11,8 @@ import { RemoteWelcomeDecisionPanel } from '@/components/account/auth/RemoteWelc
 import { deriveRemoteAuthEntryOptions } from '@/components/account/auth/useRemoteAuthEntryOptions';
 import { SharedEntryInviteSurface, type SharedEntryInviteStatus } from '@/components/sessions/sharing/SharedEntryInviteSurface';
 import { ChatHeaderView } from '@/components/sessions/transcript/ChatHeaderView';
+import { SessionHeaderInfoButton } from '@/components/sessions/actions/SessionHeaderInfoButton';
+import { ToolFullView } from '@/components/tools/shell/views/ToolFullView';
 import { AgentContentView } from '@/components/sessions/transcript/AgentContentView';
 import { MessageView } from '@/components/sessions/transcript/MessageView';
 import { AgentInput } from '@/components/sessions/agentInput';
@@ -39,7 +41,7 @@ const BASE_MESSAGES: Message[] = [
 function SyntheticConversation({ scenario, onBack, draft, setDraft }: { scenario: Scenario; onBack: () => void; draft: string; setDraft: (value: string) => void }) {
     const { theme } = useUnistyles();
     const [sent, setSent] = React.useState<Message[]>([]);
-    const [showTitle, setShowTitle] = React.useState(false);
+    const [showDetails, setShowDetails] = React.useState(false);
     const messages = React.useMemo(() => {
         const tool = BASE_MESSAGES[2] as Extract<Message, { kind: 'tool-call' }>;
         const toolState = scenario === 'running' ? 'running' : scenario === 'failure' ? 'error' : 'completed';
@@ -53,9 +55,9 @@ function SyntheticConversation({ scenario, onBack, draft, setDraft }: { scenario
         setDraft('');
     }, [draft, scenario]);
     return <View style={styles.session}>
+        <View style={[styles.session, showDetails ? styles.hiddenConversation : null]}>
         <ChatHeaderView title={title} subtitle="/synthetic-workspace/combo" onBackPress={onBack}
-            rightElement={<PressableSurface accessibilityLabel={t('sessionInfo.title')} onPress={() => setShowTitle(v => !v)} style={styles.control}><Text style={styles.label}>{t('sessionInfo.title')}</Text></PressableSurface>} />
-        {showTitle ? <View style={styles.notice}><Text selectable style={styles.body}>{title}</Text></View> : null}
+            rightElement={<SessionHeaderInfoButton onPress={() => setShowDetails(true)} />} />
         <AgentContentView safeAreaBottom={0}
             content={<ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.messages}>
                 {messages.map(message => <MessageView key={message.id} message={message} sessionId={sessionId} metadata={null} getMessageById={id => messages.find(m => m.id === id) ?? null} />)}
@@ -70,6 +72,13 @@ function SyntheticConversation({ scenario, onBack, draft, setDraft }: { scenario
                     canApprovePermissions={false} permissionDisabledReason="readOnly"
                     connectionStatus={{ text: scenario === 'offline' ? t('status.offline') : scenario === 'running' ? t('common.loading') : 'Codex · 合成测试', color: theme.colors.text.secondary, dotColor: scenario === 'offline' ? theme.colors.state.warning.foreground : theme.colors.state.success.foreground }} />
             </View>} />
+        </View>
+        {showDetails ? <View style={styles.session}>
+            <ChatHeaderView title={t('sessionInfo.title')} onBackPress={() => setShowDetails(false)} />
+            <View style={styles.notice}><Text selectable style={styles.body}>{title}</Text></View>
+            <ToolFullView tool={(messages[2] as Extract<Message, { kind: 'tool-call' }>).tool}
+                owningMessageId="qa-tool" metadata={null} />
+        </View> : null}
     </View>;
 }
 
@@ -114,6 +123,7 @@ export function ComboDesignPreview() {
 const styles = StyleSheet.create(theme => ({
     root: { flex: 1, minHeight: 0, backgroundColor: theme.colors.surface.base },
     session: { flex: 1, minHeight: 0 },
+    hiddenConversation: { display: 'none' },
     qaBar: { paddingHorizontal: theme.margins.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.default, backgroundColor: theme.colors.surface.inset },
     qaLabel: { ...Typography.rowMeta(), color: theme.colors.text.secondary },
     controls: { gap: theme.margins.xs },

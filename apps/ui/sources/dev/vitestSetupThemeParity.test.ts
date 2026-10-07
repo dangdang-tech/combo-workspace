@@ -35,4 +35,9 @@ describe('vitest unistyles theme mock', () => {
 
         expect(theme.colors.surface).toEqual(lightTheme.colors.surface);
     });
+    it('serves the real user message and composer surfaces to rendered components', () => {
+        const { theme } = useUnistyles();
+        expect(theme.colors.message.user).toEqual(lightTheme.colors.message.user);
+        expect(theme.colors.composer.background).toEqual(lightTheme.colors.composer.background);
+    });
 });

@@ -687,6 +687,7 @@ vi.mock('react-native-unistyles', () => {
                 secondary: { background: 'transparent', tint: '#666666', surface: '#ffffff' },
             },
             input: { background: '#F5F5F5', text: '#000000', placeholder: '#999999' },
+            composer: { background: lightSurfaceColors.inset },
             segmentedControl: {
                 trackBackground: '#f0f0f0',
                 trackGradient: undefined,
@@ -722,7 +723,7 @@ vi.mock('react-native-unistyles', () => {
                 inlineRemoved: { background: '#ffcaca', foreground: '#a8071a' },
             },
             message: {
-                user: { background: '#f0eee6', foreground: '#000000' },
+                user: { background: lightSurfaceColors.inset, foreground: lightTextColors.primary },
                 agent: { foreground: '#000000' },
                 event: { foreground: '#666666' },
             },

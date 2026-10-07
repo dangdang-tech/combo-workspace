@@ -192,7 +192,7 @@ const INPUT_EXPANSION_TOGGLE_HIDE_OFFSET_PX = 12;
 const INPUT_EXPANSION_TOGGLE_INPUT_PADDING_RIGHT = 32;
 const AGENT_INPUT_CONTAINER_VERTICAL_PADDING = 4;
 const AGENT_INPUT_CONTAINER_VERTICAL_CHROME_HEIGHT = AGENT_INPUT_CONTAINER_VERTICAL_PADDING * 2;
-const AGENT_INPUT_PANEL_PADDING_TOP = Platform.OS === 'web' ? 8 : 2;
+const AGENT_INPUT_PANEL_PADDING_TOP = Platform.OS === 'web' ? 4 : 2;
 const AGENT_INPUT_PANEL_PADDING_BOTTOM = 8;
 // Composer panel corner radius. Shared by the panel surface, its cast-shadow wrapper so the drop
 // shadow follows the same rounded shape, and the auxiliary banners stacked above the panel.
@@ -648,7 +648,7 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
     // The standard composer uses a quiet surface and hairline border; its outer
     // wrapper carries the soft web shadow without clipping it at the corners.
     unifiedPanel: {
-        backgroundColor: theme.colors.input.background,
+        backgroundColor: theme.colors.composer.background,
         borderRadius: AGENT_INPUT_PANEL_RADIUS,
         ...resolveThemeSurfaceBorderStyle({
             borderColor: theme.colors.border.surface,
@@ -695,7 +695,7 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
         paddingLeft: 8,
         paddingRight: 8,
         paddingVertical: AGENT_INPUT_CONTAINER_VERTICAL_PADDING,
-        minHeight: Platform.OS === 'web' ? 56 : 40,
+        minHeight: Platform.OS === 'web' ? 48 : 40,
     },
     nativeKeyboardPanelContent: {
         minHeight: 0,
@@ -2573,8 +2573,8 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
     // Fade the chip rows out to the composer's own fill: the glass surface in glass
     // mode, the standard input background otherwise.
     const actionBarFadeColor = React.useMemo(() => {
-        return isGlassComposer ? theme.colors.surface.base : theme.colors.input.background;
-    }, [isGlassComposer, theme.colors.surface.base, theme.colors.input.background]);
+        return isGlassComposer ? theme.colors.surface.base : theme.colors.composer.background;
+    }, [isGlassComposer, theme.colors.surface.base, theme.colors.composer.background]);
 
     // Handle abort button press
     const handleAbortPress = React.useCallback(async () => {
@@ -2940,8 +2940,8 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                 testID={props.sessionId ? AGENT_INPUT_TEST_IDS.sessionInput : AGENT_INPUT_TEST_IDS.newSessionInput}
                 textStyle={props.sessionId ? styles.sessionInputText : styles.newSessionInputText}
                 value={props.value}
-                paddingTop={Platform.OS === 'web' ? 10 : 8}
-                paddingBottom={Platform.OS === 'web' ? 10 : 8}
+                paddingTop={8}
+                paddingBottom={8}
                 paddingRight={shouldReserveInputExpansionToggleSpace ? INPUT_EXPANSION_TOGGLE_INPUT_PADDING_RIGHT : undefined}
                 onChangeText={handleComposerTextChange}
                 placeholder={props.placeholder}

@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { View, Platform, Pressable, type LayoutChangeEvent } from 'react-native';
+import { View, Platform, Pressable, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { isMobileLayoutWidth } from '@/components/sessions/layout/isMobileLayoutWidth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Avatar } from '@/components/ui/avatar/Avatar';
@@ -72,6 +73,7 @@ export const ChatHeaderView = React.memo(function ChatHeaderView({
     gutterElement,
 }: ChatHeaderViewProps): React.ReactElement {
     const { theme } = useUnistyles();
+    const mobile = isMobileLayoutWidth(useWindowDimensions().width);
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const headerHeight = useHeaderHeight();
@@ -121,7 +123,7 @@ export const ChatHeaderView = React.memo(function ChatHeaderView({
     };
 
     return (
-        <View style={[styles.container, { paddingTop: includeTopInset ? insets.top : 0, backgroundColor: theme.colors.chrome.header.background }]}>
+        <View style={[styles.container, mobile ? styles.containerMobile : null, { paddingTop: includeTopInset ? insets.top : 0, backgroundColor: theme.colors.chrome.header.background }]}>
             <View
                 onLayout={handleWrapperLayout}
                 style={[styles.contentWrapper, constrainWidth ? null : { alignItems: 'stretch' }]}
@@ -150,14 +152,15 @@ export const ChatHeaderView = React.memo(function ChatHeaderView({
                     </View>
                 ) : null}
 
-                <View style={styles.titleContainer}>
-                    <View style={styles.titleRow}>
+                <View style={[styles.titleContainer, mobile ? styles.titleContainerMobile : null]}>
+                    <View style={[styles.titleRow, mobile ? styles.titleRowMobile : null]}>
                         <Text
                             numberOfLines={1}
                             ellipsizeMode="tail"
                             accessibilityRole="header"
                             style={[
                                 styles.title,
+                                mobile ? styles.titleMobile : null,
                                 {
                                     color: theme.colors.chrome.header.foreground,
                                     ...Typography.default('semiBold')
@@ -198,6 +201,7 @@ export const ChatHeaderView = React.memo(function ChatHeaderView({
                             ellipsizeMode={shouldUseWebSubtitleStartEllipsis ? undefined : subtitleEllipsizeMode}
                             style={[
                                 styles.subtitle,
+                                mobile ? styles.titleMobile : null,
                                 shouldUseWebSubtitleStartEllipsis ? styles.subtitleHeadWeb : null,
                                 {
                                     color: theme.colors.chrome.header.foreground,
@@ -259,6 +263,18 @@ const styles = StyleSheet.create((theme) => ({
     contentWrapper: {
         width: '100%',
         alignItems: 'center',
+    },
+    containerMobile: {
+        borderBottomWidth: 0,
+    },
+    titleContainerMobile: {
+        alignItems: 'center',
+    },
+    titleRowMobile: {
+        justifyContent: 'center',
+    },
+    titleMobile: {
+        textAlign: 'center',
     },
     content: {
         flexDirection: 'row',

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Typography } from '@/constants/Typography';
+import { isMobileLayoutWidth } from '@/components/sessions/layout/isMobileLayoutWidth';
 
 import { Text } from '@/components/ui/text/Text';
 import { t } from '@/text';
@@ -170,7 +171,7 @@ export const ToolTimelineRowHeader = React.memo(function ToolTimelineRowHeader(p
                         <RowActionRevealSlot
                             revealed={openRevealed}
                             reserveWidth={TOOL_TIMELINE_ROW_OPEN_SLOT_WIDTH}
-                            style={styles.revealSlot}
+                            style={[styles.revealSlot, styles.openSlot]}
                             onFocus={trackHoverState ? handleHoverIn : undefined}
                             onBlur={trackHoverState ? handleHoverOut : undefined}
                             testID={TOOL_TIMELINE_ROW_REVEAL_SLOT_TEST_ID}
@@ -209,10 +210,10 @@ const styles = StyleSheet.create((theme, _runtime) => ({
         paddingVertical: 0,
         gap: 6,
         borderRadius: 10,
-        minHeight: 30,
+        minHeight: isMobileLayoutWidth(_runtime.screen.width) ? 48 : 30,
     },
     rowCompact: {
-        minHeight: 28,
+        minHeight: isMobileLayoutWidth(_runtime.screen.width) ? 48 : 28,
     },
     rowPressed: {
         backgroundColor: theme.colors.surface.pressedOverlay,
@@ -257,8 +258,8 @@ const styles = StyleSheet.create((theme, _runtime) => ({
     title: {
         fontSize: 13,
         lineHeight: 20,
-        ...Typography.default('semiBold'),
-        color: theme.colors.text.primary,
+        ...Typography.default('regular'),
+        color: theme.colors.text.secondary,
         flexShrink: 0,
     },
     titleCompact: {
@@ -298,7 +299,14 @@ const styles = StyleSheet.create((theme, _runtime) => ({
     },
     open: {
         padding: 4,
+        minWidth: isMobileLayoutWidth(_runtime.screen.width) ? 48 : undefined,
+        minHeight: isMobileLayoutWidth(_runtime.screen.width) ? 48 : undefined,
+        alignItems: 'center',
+        justifyContent: 'center',
         borderRadius: 10,
+    },
+    openSlot: {
+        minWidth: isMobileLayoutWidth(_runtime.screen.width) ? 48 : undefined,
     },
     openPressed: {
         backgroundColor: theme.colors.surface.pressedOverlay,

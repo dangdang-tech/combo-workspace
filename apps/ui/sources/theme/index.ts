@@ -217,6 +217,7 @@ export const lightTheme = {
             placeholder: lightTextColors.placeholder,
         },
         composer: {
+            background: lightSurfaceColors.inset,
             chipTint: '#767676',
         },
         //
@@ -311,8 +312,8 @@ export const lightTheme = {
         // Message View colors
         message: {
             user: {
-                background: '#171717',
-                foreground: '#FFFFFF',
+                background: lightSurfaceColors.inset,
+                foreground: lightTextColors.primary,
             },
             agent: {
                 foreground: lightTextColors.primary,
@@ -490,6 +491,7 @@ export const darkTheme = {
             placeholder: '#8a8a8a',
         },
         composer: {
+            background: darkSurfaceColors.inset,
             chipTint: '#a8a8a8',
         },
         feed: {
@@ -589,8 +591,8 @@ export const darkTheme = {
         // Message View colors
         message: {
             user: {
-                background: '#ededed',
-                foreground: '#202020',
+                background: darkSurfaceColors.inset,
+                foreground: darkTextColors.primary,
             },
             agent: {
                 foreground: '#EFEFEF',
