@@ -620,6 +620,44 @@ describe('sessions domain: renderable patches', () => {
         expect(saveWarmCache).not.toHaveBeenCalled();
     });
 
+    it('clears all session data when clearing local scope to prevent stale data after account switch', async () => {
+        mockSessionsDomainBoundaries();
+
+        const { createSessionsDomain } = await import('./sessions');
+        const { get, domain, setState } = createHarness(createSessionsDomain);
+
+        domain.activateSessionLocalStateScope({ serverId: 'server_1', accountId: 'account_a' });
+
+        // Populate session data
+        domain.replaceSessionListRenderables([
+            makeRenderable({ id: 's1' }),
+            makeRenderable({ id: 's2' }),
+        ]);
+
+        // Verify data is populated before clearing
+        const beforeState = get();
+        expect(Object.keys(beforeState.sessionListRenderables)).toHaveLength(2);
+        expect(beforeState.sessionListViewData).not.toBeNull();
+        expect(beforeState.sessionLocalStateScope).not.toBeNull();
+
+        // Simulate account switch by changing server and clearing local state
+        activeServerId = 'server_2';
+        setState({ profile: { id: 'account_b' } });
+        domain.clearSessionLocalStateScope();
+
+        // Verify all session data is cleared - this is the fix for session titles
+        // persisting after account switch
+        const afterState = get();
+        expect(Object.keys(afterState.sessions)).toHaveLength(0);
+        expect(Object.keys(afterState.sessionListRenderables)).toHaveLength(0);
+        expect(afterState.sessionsData).toBeNull();
+        expect(afterState.sessionListViewData).toBeNull();
+        expect(Object.keys(afterState.sessionListViewDataByServerId)).toHaveLength(0);
+        expect(afterState.sessionLocalStateScope).toBeNull();
+        // isDataReady should be reset to false so fresh data will be loaded
+        expect(afterState.isDataReady).toBe(false);
+    });
+
     it('records patch planning telemetry when structural patches rebuild list data', async () => {
         mockSessionsDomainBoundaries();
 
