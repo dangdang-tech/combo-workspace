@@ -11,7 +11,6 @@ export async function openSessionShareDialog(params: Readonly<{
     onAddShare: () => void;
     onUpdateShare: (shareId: string, patch: { accessLevel?: ShareAccessLevel; canApprovePermissions?: boolean }) => void;
     onRemoveShare: (shareId: string) => void;
-    onManagePublicLink: () => void;
 }>): Promise<string> {
     const { SessionShareDialog } = await import('./components/SessionShareDialog');
     return Modal.show({
@@ -24,7 +23,6 @@ export async function openSessionShareDialog(params: Readonly<{
             onAddShare: params.onAddShare,
             onUpdateShare: params.onUpdateShare,
             onRemoveShare: params.onRemoveShare,
-            onManagePublicLink: params.onManagePublicLink,
         },
         chrome: {
             kind: 'card',

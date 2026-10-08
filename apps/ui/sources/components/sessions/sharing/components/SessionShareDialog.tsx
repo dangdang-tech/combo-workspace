@@ -29,8 +29,6 @@ interface SessionShareDialogProps {
     onUpdateShare: (shareId: string, patch: { accessLevel?: ShareAccessLevel; canApprovePermissions?: boolean }) => void;
     /** Callback when user removes a share */
     onRemoveShare: (shareId: string) => void;
-    /** Callback when user wants to create/manage public link */
-    onManagePublicLink: () => void;
 }
 
 /**
@@ -41,7 +39,6 @@ interface SessionShareDialogProps {
  * - List of users the session is shared with
  * - Their access levels (view/edit/admin)
  * - Options to add/remove shares (if canManage)
- * - Link to public share management
  */
 export const SessionShareDialog = memo(function SessionShareDialog({
     sessionId: _sessionId,
@@ -51,7 +48,6 @@ export const SessionShareDialog = memo(function SessionShareDialog({
     onAddShare,
     onUpdateShare,
     onRemoveShare,
-    onManagePublicLink,
     onClose,
 }: SessionShareDialogProps & CustomModalInjectedProps) {
     const { theme } = useUnistyles();
@@ -94,15 +90,6 @@ export const SessionShareDialog = memo(function SessionShareDialog({
                                 onClose();
                                 onAddShare();
                             }}
-                        />
-                        <Item
-                            title={t('session.sharing.publicLink')}
-                            icon={<Icon name="link" size={29} color={theme.colors.accent.blue} />}
-                            onPress={() => {
-                                onClose();
-                                onManagePublicLink();
-                            }}
-                            showDivider={false}
                         />
                     </ItemGroup>
                 ) : null}
