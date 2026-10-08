@@ -33,6 +33,7 @@ export type PendingMaterializationDeliveryState = Readonly<{
 }>;
 
 export type PendingQueueMaterializedMessage = {
+    consumerMessageSource?: 'owner' | 'private' | 'consumer' | 'unknown';
     id: string | null;
     seq: number | null;
     localId: string | null;
@@ -637,6 +638,8 @@ function parseMaterializedMessage(value: unknown): PendingQueueMaterializedMessa
         localId,
         messageRole: parsedRole.success ? parsedRole.data : null,
         content: parsedContent.success ? parsedContent.data : null,
+        ...(typeof record.consumerMessageSource === 'string' && ['owner', 'private', 'consumer', 'unknown'].includes(record.consumerMessageSource)
+            ? { consumerMessageSource: record.consumerMessageSource as PendingQueueMaterializedMessage['consumerMessageSource'] } : {}),
         createdAt: parseMaterializedMessageTimestamp(record.createdAt),
         updatedAt: parseMaterializedMessageTimestamp(record.updatedAt),
         ...(parsedRequestedAction.success ? { requestedAction: parsedRequestedAction.data } : {}),

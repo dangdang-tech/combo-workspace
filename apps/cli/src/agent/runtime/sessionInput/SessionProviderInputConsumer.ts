@@ -815,6 +815,7 @@ async function materializeNextPendingForDrain(
       logTerminalAuthDrainStop(opts, result.statusCode);
       return 'auth_failure';
     }
+    if (result.type === 'blocked') return 'deferred';
     if (result.type === 'retryable_transport') return 'error';
     return 'no_pending';
   } catch (error) {

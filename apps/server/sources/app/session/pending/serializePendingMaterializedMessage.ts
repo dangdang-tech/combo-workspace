@@ -17,6 +17,7 @@ export function serializePendingMaterializedMessage(
         localId: message.localId,
         ...(typeof message.messageRole === "string" ? { messageRole: message.messageRole } : {}),
         content: message.content,
+        ...(message.consumerMessageSource ? { consumerMessageSource: message.consumerMessageSource } : {}),
         ...(message.requestedAction ? { requestedAction: message.requestedAction } : {}),
         ...(message.providerAction ? { providerAction: message.providerAction } : {}),
         ...(message.deliveryResolution ? { deliveryResolution: message.deliveryResolution } : {}),

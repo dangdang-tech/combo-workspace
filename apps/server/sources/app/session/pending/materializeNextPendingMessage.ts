@@ -71,7 +71,7 @@ export type MaterializeNextPendingMessageResult =
         ok: true;
         didMaterialize: true;
         didWriteMessage: false;
-        message: { id: string | null; seq: number | null; localId: string; messageRole: SessionMessageRole | null; content: PrismaJson.SessionMessageContent; requestedAction: PendingRequestedActionV1; providerAction: PendingProviderAction; createdAt: Date; updatedAt: Date };
+        message: { id: string | null; seq: number | null; localId: string; messageRole: SessionMessageRole | null; content: PrismaJson.SessionMessageContent; consumerMessageSource?: "owner" | "private" | "consumer" | "unknown"; requestedAction: PendingRequestedActionV1; providerAction: PendingProviderAction; createdAt: Date; updatedAt: Date };
         participantCursorsPending: ParticipantCursor[];
         pendingCount: number;
         pendingBlockedCount: number;
@@ -84,6 +84,18 @@ export type MaterializeNextPendingMessageResult =
 
 function toSessionMessageContentFromPending(content: PrismaJson.SessionPendingMessageContent): PrismaJson.SessionMessageContent {
     return content;
+}
+
+// Only authenticated server attribution and managed-session relations decide scope.
+// Payload metadata is encrypted/user-controlled and never participates in this decision.
+async function classifyConsumerMessage(tx: Tx, sessionId: string, authorAccountId: string | null) {
+    const session = await tx.session.findUniqueOrThrow({
+        where: { id: sessionId },
+        select: { accountId: true, sharedSessionEntryMember: { select: { userId: true } } },
+    });
+    if (authorAccountId === session.accountId) return session.sharedSessionEntryMember ? "owner" as const : "private" as const;
+    return session.sharedSessionEntryMember && authorAccountId === session.sharedSessionEntryMember.userId
+        ? "consumer" as const : "unknown" as const;
 }
 
 async function tryRejoinProviderClaimInTx(params: Readonly<{
@@ -102,6 +114,7 @@ async function tryRejoinProviderClaimInTx(params: Readonly<{
                 orderBy: [{ position: "asc" }, { createdAt: "asc" }, { localId: "asc" }],
                 select: {
                     localId: true,
+                    authorAccountId: true,
                     messageRole: true,
                     content: true,
                     requestedAction: true,
@@ -199,6 +212,7 @@ async function tryRejoinProviderClaimInTx(params: Readonly<{
                     id: null,
                     seq: null,
                     localId: claimed.localId,
+                    consumerMessageSource: await classifyConsumerMessage(tx, params.sessionId, claimed.authorAccountId),
                     messageRole,
                     content,
                     requestedAction: requestedAction.data,
@@ -438,6 +452,7 @@ async function materializeNextPendingMessageInTx(
                 orderBy: [{ position: "asc" }, { createdAt: "asc" }, { localId: "asc" }],
                 select: {
                     localId: true,
+                    authorAccountId: true,
                     messageRole: true,
                     content: true,
                     requestedAction: true,
@@ -716,6 +731,7 @@ async function materializeNextPendingMessageInTx(
                         id: null,
                         seq: null,
                         localId,
+                        consumerMessageSource: await classifyConsumerMessage(tx, sessionId, nextPending.authorAccountId),
                         messageRole,
                         content,
                         requestedAction,

@@ -183,7 +183,7 @@ Every screen should answer without effort:
 - Place controls close to the content or state they affect.
 - Separate primary actions, secondary alternatives, and destructive actions clearly.
 - Preserve reading order between visual layout, keyboard navigation, and accessibility traversal.
-- Use whitespace to create rhythm and comprehension, not to imitate minimalism.
+- Use whitespace to create rhythm and comprehension. An open layout still needs a clear next action, way back, and recovery path; do not remove them to make a screen look empty.
 - Use controlled density for expert and data-rich workflows; density still needs clear grouping and scan paths.
 
 ### Responsive composition
@@ -267,19 +267,19 @@ Reduced motion is a functional requirement, not an optional polish pass.
 
 ### Product identity
 
-Happier should be recognizable without relying solely on its logo.
+Happier should be recognizable without relying solely on its logo. COMBO's web workspace and sharing flows are minimal, direct, and clean while retaining the existing COMBO C mark, wordmark, and blue accent as recognizable cues. Lead with the person's task, a clear action hierarchy, quiet typography, and useful state. On a phone, treat conversation and its composer as the main experience; use restrained surfaces and comfortable spacing rather than a stack of form cards. Do not add illustrations or decoration merely to make the brand louder.
 
-- Use the established warm cosmic identity, palette relationships, typography, iconography, and compositional rhythm where appropriate.
+- Use the established warm cosmic identity, palette relationships, typography, iconography, and compositional rhythm when they serve an authored signature moment; routine COMBO web workflows keep the existing mark and accent without imposing signature-scene decoration.
 - Let distinctive atmosphere support a moment rather than cover every surface.
 - Combine a memorable visual idea with restrained utility UI; do not make every element compete to be the signature.
 - Avoid generic “AI product” styling: interchangeable purple gradients, excessive glowing cards, indiscriminate glass, floating pill overload, decorative grids, and layouts that could belong to any assistant product.
-- Avoid sterile monochrome minimalism with no warmth, hierarchy, or product character.
+- Avoid minimalism that removes warmth, hierarchy, or product character. A restrained secondary utility surface may be nearly monochrome, while primary COMBO web and conversation surfaces retain the existing mark and selective blue accent.
 
 ### Color and theme
 
 - Use canonical Unistyles theme tokens and semantic roles; do not hardcode production colors in feature components.
 - Treat light and dark themes as designed experiences, not mechanical inversions.
-- Use accent color deliberately to guide attention, show state, or create a signature moment.
+- Use accent color deliberately to carry COMBO identity, guide attention, show state, or serve a signature moment; keep it selective so conversation content remains primary.
 - Do not use color as the only carrier of meaning.
 - Preserve legibility over gradients, images, blur, transparency, terminal colors, diffs, and syntax highlighting.
 - Keep provider- or agent-specific colors owned by their canonical contribution or registry rather than branching in generic UI.
@@ -287,6 +287,8 @@ Happier should be recognizable without relying solely on its logo.
 Art-directed imagery and narrative surfaces may need locally owned visual tokens. Keep them in one named, domain-owned, theme-aware token module under the bounded exception in `apps/ui/AGENTS.md`; feature components must not scatter raw values. Document why global semantic roles are insufficient, define light/dark and accessibility behavior, and do not create a competing app-wide design system.
 
 ### Typography
+
+- COMBO 中文对话优先使用系统中文字体（网页系统栈中的苹方、微软雅黑等回退），不把品牌字体用于长正文。正文与输入采用 16px / 24px；常规会话标题 15px / 22px、辅助提示 13px / 20px，紧凑密度仍保留其既有布局。对话页面标题采用 20px / 28px、适度字重，不使用展示型大标题或收紧中文字距。字号放大时保留换行、状态内容和触控面积；这些是本产品选择，不是竞品官方规范。
 
 - Use Happier’s canonical text primitives and typography tokens so scaling, platform rendering, theme, and localization continue to work.
 - Build hierarchy from size, weight, leading, tracking, color, and spacing as a coherent set.
@@ -450,7 +452,7 @@ The baseline is WCAG 2.2 Level AA for applicable web, desktop, and native behavi
 - Provide keyboard access and visible focus on web and desktop.
 - Do not rely on color, hover, animation, spatial position, sound, or haptics alone.
 - Honor reduced motion and reduced transparency throughout a complete flow, not only in isolated components.
-- Target at least 44×44 points on iOS and 48×48 dp on Android for touch interactions, using the stricter applicable platform or canonical-primitive requirement elsewhere. Keep targets from overlapping; dense pointer layouts must still meet applicable WCAG target-size requirements and remain keyboard accessible.
+- Target at least 44×44 points on iOS and 48×48 dp on Android for touch interactions, using the stricter applicable platform or canonical-primitive requirement elsewhere. Minimal visual styling never means shrinking a touch target. Keep targets from overlapping; dense pointer layouts must still meet applicable WCAG target-size requirements and remain keyboard accessible.
 - Automatically started moving, blinking, or scrolling content that lasts more than five seconds and appears alongside other content must provide the pause, stop, or hide controls required by WCAG 2.2.2 unless it is essential. Auto-updating content presented alongside other content must provide the applicable pause, stop, hide, or update-frequency control unless essential. Document and verify any essential exception; short entrance and exit transitions remain governed by the motion rules rather than being treated as auto-updating content.
 - Keep accessibility labels specific and localized.
 - Verify accessibility after responsive recomposition; mobile and desktop DOM/native order may differ.
