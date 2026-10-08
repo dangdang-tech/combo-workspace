@@ -97,7 +97,7 @@ function MachineSelection({ serverId, serverUrl }: { serverId: string; serverUrl
     useEffect(() => { if (selected && selected.id !== selectedId) setSelectedId(selected.id); }, [selected?.id, selectedId]);
     if (!selected && showSetup) return <View style={stylesheet.container}>
         <ItemGroup><Item testID="native-publish-setup-back" title={t('common.back')} onPress={() => setShowSetup(false)} /></ItemGroup>
-        <SessionGettingStartedGuidanceView variant="primaryPane" model={{ kind: 'connect_machine', targetLabel: serverUrl,
+        <SessionGettingStartedGuidanceView variant="primaryPane" context="publish" model={{ kind: 'connect_machine', targetLabel: serverUrl,
             serverUrl, serverName: serverUrl, showServerSetup: true }} />
     </View>;
     return <ItemList keyboardAware keyboardShouldPersistTaps="handled">
