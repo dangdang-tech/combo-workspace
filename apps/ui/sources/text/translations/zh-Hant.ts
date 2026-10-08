@@ -626,10 +626,8 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         subtitle: "Same project, separate AI conversations",
         hostPath: {
             title: "Start sharing sessions",
-            description: "Connect your computer to create and share Codex conversations with your team.",
-            cliInstallTitle: "Install the CLI",
-            cliInstallDescription: "Run this in a terminal on the computer you want to connect:",
-            actionTitle: "Connect a computer",
+            description: "To share Codex conversations, connect a computer running the COMBO host. Follow the setup guide to get started.",
+            actionTitle: "View setup guide",
         },
         recipientPath: {
             title: "Join a shared session",

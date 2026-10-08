@@ -90,8 +90,8 @@ describe('SessionGettingStartedGuidanceView', () => {
   beforeEach(() => { tauriState.desktop = false; vi.unstubAllGlobals(); });
 
   // Web browser users see the new WebBrowserGuidance component with two-path flow:
-  // Flow A (host): CLI install → connect computer → create sessions
-  // Flow B (recipient): Open shared link → continue chatting
+  // Flow A (host): Setup guide button → no CLI command front and center
+  // Flow B (recipient): Open shared link → no installation needed
   it.each(['connect_machine', 'start_daemon'] as const)('shows %s web guidance with two-path flow (host and recipient)', async (kind) => {
     const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
     openSourceGuide.mockClear();
@@ -106,12 +106,15 @@ describe('SessionGettingStartedGuidanceView', () => {
     // Should show both paths: host and recipient
     expect(screen.findByTestId('web-guidance-host-path')).not.toBeNull();
     expect(screen.findByTestId('web-guidance-recipient-path')).not.toBeNull();
-    // Should have CLI install copy button for host path
-    expect(screen.findByTestId('web-guidance-copy-cli-install')).not.toBeNull();
+    // Host path should have setup guide button (not CLI command)
+    expect(screen.findByTestId('web-guidance-setup-guide')).not.toBeNull();
+    // Should NOT show CLI commands front and center (no curl command visible)
+    const content = screen.getTextContent();
+    expect(content).not.toContain('curl');
+    expect(content).not.toContain('happier.dev/install');
     // Should NOT show old-style CLI follow-up
     expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
     // Should NOT show git clone or developer setup by default
-    const content = screen.getTextContent();
     expect(content).not.toContain('git clone');
     expect(content).not.toContain('yarn install');
     expect(content).not.toContain('HAPPIER_SERVER_URL');
@@ -168,8 +171,8 @@ describe('SessionGettingStartedGuidanceView', () => {
     );
     // Web browser users see the two-path guidance
     expect(screen.findByTestId('web-browser-guidance')).not.toBeNull();
-    // CLI install copy button is available
-    expect(screen.findByTestId('web-guidance-copy-cli-install')).not.toBeNull();
+    // Host path has setup guide button instead of CLI command
+    expect(screen.findByTestId('web-guidance-setup-guide')).not.toBeNull();
     // Old-style CLI follow-up should not appear
     expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
     // Advanced content is hidden by default

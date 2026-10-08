@@ -349,23 +349,12 @@ function buildDeferredCliFollowUpKey(params: Readonly<{
 
 type WebBrowserGuidanceProps = Readonly<{
     serverUrl: string;
-    copyFeedback: ReturnType<typeof useTemporaryCopyFeedback>;
 }>;
 
-function WebBrowserGuidance({ serverUrl, copyFeedback }: WebBrowserGuidanceProps): React.ReactElement {
+function WebBrowserGuidance({ serverUrl }: WebBrowserGuidanceProps): React.ReactElement {
     const { theme } = useUnistyles();
     const styles = stylesheet;
-    const cliInstallCommand = buildCliInstallCommand();
     const [showAdvanced, setShowAdvanced] = React.useState(false);
-
-    const handleCopyCliInstall = React.useCallback(async () => {
-        const copied = await setClipboardStringSafe(cliInstallCommand);
-        if (copied) {
-            copyFeedback.markCopied('web-cli-install');
-        } else {
-            Modal.alert(t('common.error'), t('textSelection.failedToCopy'));
-        }
-    }, [cliInstallCommand, copyFeedback]);
 
     return (
         <View testID="web-browser-guidance" style={styles.webGuidanceContainer}>
@@ -376,22 +365,13 @@ function WebBrowserGuidance({ serverUrl, copyFeedback }: WebBrowserGuidanceProps
             <View testID="web-guidance-host-path" style={styles.webPathCard}>
                 <Text style={styles.webPathTitle}>{t('webGuidance.hostPath.title')}</Text>
                 <Text style={styles.webPathDescription}>{t('webGuidance.hostPath.description')}</Text>
-                <Text style={styles.stepDescription}>{t('webGuidance.hostPath.cliInstallDescription')}</Text>
-                <View style={styles.codeBlock}>
-                    <Text style={[styles.terminalText, styles.codeText]}>{cliInstallCommand}</Text>
-                    <Pressable
-                        testID="web-guidance-copy-cli-install"
-                        accessibilityRole="button"
-                        accessibilityLabel={t('common.copyWithLabel', { label: t('webGuidance.hostPath.cliInstallTitle') })}
-                        style={styles.codeCopyButton}
-                        onPress={handleCopyCliInstall}
-                    >
-                        {copyFeedback.isCopied('web-cli-install') ? (
-                            <CopiedPill visible testID="web-guidance-copy-cli-install-copied" />
-                        ) : normalizeNodeForView(
-                            <Icon name="copy" size={16} color={theme.colors.text.secondary} />,
-                        )}
-                    </Pressable>
+                <View style={styles.buttonWrapper}>
+                    <RoundButton
+                        testID="web-guidance-setup-guide"
+                        title={t('webGuidance.hostPath.actionTitle')}
+                        onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
+                        size="normal"
+                    />
                 </View>
             </View>
 
@@ -402,7 +382,7 @@ function WebBrowserGuidance({ serverUrl, copyFeedback }: WebBrowserGuidanceProps
                 <View style={styles.orDividerLine} />
             </View>
 
-            {/* Path B: Recipient flow - Open shared link */}
+            {/* Path B: Recipient flow - Open shared link (no install needed) */}
             <View testID="web-guidance-recipient-path" style={styles.webPathCard}>
                 <Text style={styles.webPathTitle}>{t('webGuidance.recipientPath.title')}</Text>
                 <Text style={styles.webPathDescription}>{t('webGuidance.recipientPath.description')}</Text>
@@ -426,7 +406,7 @@ function WebBrowserGuidance({ serverUrl, copyFeedback }: WebBrowserGuidanceProps
                 <Text style={styles.advancedToggleText}>{t('webGuidance.advancedSetup.title')}</Text>
             </Pressable>
 
-            {/* Advanced section - Source setup */}
+            {/* Advanced section - Source setup for developers */}
             {showAdvanced ? (
                 <View testID="web-guidance-advanced-content" style={styles.advancedContent}>
                     <Text style={styles.webPathTitle}>{t('webGuidance.advancedSetup.sourceSetupTitle')}</Text>
@@ -663,10 +643,7 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
                     ) : null}
                 </View>
             ) : isSourceBrowser && needsHost ? (
-                <WebBrowserGuidance
-                    serverUrl={model.serverUrl}
-                    copyFeedback={copyFeedback}
-                />
+                <WebBrowserGuidance serverUrl={model.serverUrl} />
             ) : model.kind !== 'select_session' ? (
                 <>
                     <Text style={styles.title}>{title}</Text>
