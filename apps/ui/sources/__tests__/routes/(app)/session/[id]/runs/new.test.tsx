@@ -940,7 +940,7 @@ describe('Session New Run Screen', () => {
             screen.changeTextByTestId('execution-run-new-instructions-input', 'review with default permissions');
         });
 
-        const selectClaude = screen.findByProps({ accessibilityLabel: 'Toggle backend claude' });
+        const selectClaude = screen.findByProps({ accessibilityLabel: 'Toggle backend agentInput.agent.claude' });
         expect(selectClaude).toBeDefined();
         await pressTestInstanceAsync(selectClaude, 'backend claude');
 
@@ -977,7 +977,7 @@ describe('Session New Run Screen', () => {
         localSearchParamsMock = { id: 'session-1', intent: 'delegate' };
 
         const screen = await renderNewRunScreen();
-        const toggleClaude = screen.findByProps({ accessibilityLabel: 'Toggle backend claude' });
+        const toggleClaude = screen.findByProps({ accessibilityLabel: 'Toggle backend agentInput.agent.claude' });
         expect(toggleClaude).toBeDefined();
 
         await pressTestInstanceAsync(toggleClaude, 'backend claude');
@@ -1008,7 +1008,7 @@ describe('Session New Run Screen', () => {
         };
 
         const screen = await renderNewRunScreen();
-        const togglePi = screen.findByProps({ accessibilityLabel: 'Toggle backend pi' });
+        const togglePi = screen.findByProps({ accessibilityLabel: 'Toggle backend agentInput.agent.pi' });
         expect(togglePi).toBeDefined();
         expect(togglePi!.props.disabled).toBe(true);
     });
