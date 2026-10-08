@@ -621,6 +621,28 @@ const zhHantOverrides: DeepPartial<TranslationStructure> = {
         connectBody: "依指南設定此處顯示的服務位址和獨立主機資料目錄，再執行 auth login 與 daemon start。",
         runBody: "在倉庫目錄下、已設定相同服務和主機資料目錄的終端執行，或在網頁中建立工作階段。",
     },
+    webGuidance: {
+        title: "Welcome to COMBO",
+        subtitle: "Same project, separate AI conversations",
+        hostPath: {
+            title: "Start sharing sessions",
+            description: "Connect your computer to create and share Codex conversations with your team.",
+            cliInstallTitle: "Install the CLI",
+            cliInstallDescription: "Run this in a terminal on the computer you want to connect:",
+            actionTitle: "Connect a computer",
+        },
+        recipientPath: {
+            title: "Join a shared session",
+            description: "Someone shared a conversation link with you? Open it to continue chatting.",
+            hint: "Paste the shared link in your browser or ask the host to resend it.",
+        },
+        advancedSetup: {
+            title: "Advanced setup",
+            sourceSetupTitle: "Source setup (developers)",
+            sourceSetupDescription: "Build and run COMBO from the source repository.",
+        },
+        orDivider: "or",
+    },
     nativeSessionSharing: {
         shareAction: '分享對話',
         generatingDetail: "正在複製聊天記錄並準備連結。較長的對話可能需要一兩分鐘，請保持此頁面和電腦在線。",

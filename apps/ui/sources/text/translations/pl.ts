@@ -612,6 +612,28 @@ export const pl: TranslationStructure = {
         connectBody: "Według instrukcji ustaw ten serwer i osobny katalog danych, a następnie uruchom auth login i daemon start.",
         runBody: "Uruchom z repozytorium z tym samym serwerem i katalogiem danych lub utwórz sesję w aplikacji.",
     },
+    webGuidance: {
+        title: "Welcome to COMBO",
+        subtitle: "Same project, separate AI conversations",
+        hostPath: {
+            title: "Start sharing sessions",
+            description: "Connect your computer to create and share Codex conversations with your team.",
+            cliInstallTitle: "Install the CLI",
+            cliInstallDescription: "Run this in a terminal on the computer you want to connect:",
+            actionTitle: "Connect a computer",
+        },
+        recipientPath: {
+            title: "Join a shared session",
+            description: "Someone shared a conversation link with you? Open it to continue chatting.",
+            hint: "Paste the shared link in your browser or ask the host to resend it.",
+        },
+        advancedSetup: {
+            title: "Advanced setup",
+            sourceSetupTitle: "Source setup (developers)",
+            sourceSetupDescription: "Build and run COMBO from the source repository.",
+        },
+        orDivider: "or",
+    },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
         shareAction: 'Udostępnij sesję',

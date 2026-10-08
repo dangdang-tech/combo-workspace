@@ -599,6 +599,28 @@ export const zhHans: TranslationStructure = {
         connectBody: "按指南配置这里显示的服务地址和独立的主机数据目录，再运行 auth login 与 daemon start。",
         runBody: "在仓库目录下、已配置相同服务和主机数据目录的终端运行，或在网页中创建会话。",
     },
+    webGuidance: {
+        title: "Welcome to COMBO",
+        subtitle: "Same project, separate AI conversations",
+        hostPath: {
+            title: "Start sharing sessions",
+            description: "Connect your computer to create and share Codex conversations with your team.",
+            cliInstallTitle: "Install the CLI",
+            cliInstallDescription: "Run this in a terminal on the computer you want to connect:",
+            actionTitle: "Connect a computer",
+        },
+        recipientPath: {
+            title: "Join a shared session",
+            description: "Someone shared a conversation link with you? Open it to continue chatting.",
+            hint: "Paste the shared link in your browser or ask the host to resend it.",
+        },
+        advancedSetup: {
+            title: "Advanced setup",
+            sourceSetupTitle: "Source setup (developers)",
+            sourceSetupDescription: "Build and run COMBO from the source repository.",
+        },
+        orDivider: "or",
+    },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
         shareAction: '分享会话',

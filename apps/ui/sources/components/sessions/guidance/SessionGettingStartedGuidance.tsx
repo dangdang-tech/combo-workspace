@@ -118,6 +118,72 @@ const stylesheet = StyleSheet.create((theme) => ({
         borderColor: theme.colors.border.default,
         backgroundColor: theme.colors.surface.inset,
     },
+    webGuidanceContainer: {
+        width: '100%',
+        maxWidth: 720,
+        gap: 24,
+    },
+    webPathCard: {
+        width: '100%',
+        gap: 12,
+        paddingHorizontal: 18,
+        paddingVertical: 18,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: theme.colors.border.default,
+        backgroundColor: theme.colors.surface.inset,
+    },
+    webPathTitle: {
+        fontSize: 16,
+        color: theme.colors.text.primary,
+        ...Typography.default('semiBold'),
+    },
+    webPathDescription: {
+        fontSize: 14,
+        color: theme.colors.text.secondary,
+        ...Typography.default(),
+    },
+    webPathHint: {
+        fontSize: 12,
+        color: theme.colors.text.tertiary,
+        ...Typography.default(),
+    },
+    orDivider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 4,
+    },
+    orDividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: theme.colors.border.default,
+    },
+    orDividerText: {
+        fontSize: 12,
+        color: theme.colors.text.tertiary,
+        ...Typography.default(),
+    },
+    advancedToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        marginTop: 8,
+    },
+    advancedToggleText: {
+        fontSize: 13,
+        color: theme.colors.text.secondary,
+        ...Typography.default(),
+    },
+    advancedContent: {
+        marginTop: 8,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border.default,
+        gap: 12,
+    },
     sectionTitle: {
         width: '100%',
         maxWidth: 720,
@@ -281,9 +347,111 @@ function buildDeferredCliFollowUpKey(params: Readonly<{
     ].join('\n');
 }
 
+type WebBrowserGuidanceProps = Readonly<{
+    serverUrl: string;
+    copyFeedback: ReturnType<typeof useTemporaryCopyFeedback>;
+}>;
+
+function WebBrowserGuidance({ serverUrl, copyFeedback }: WebBrowserGuidanceProps): React.ReactElement {
+    const { theme } = useUnistyles();
+    const styles = stylesheet;
+    const cliInstallCommand = buildCliInstallCommand();
+    const [showAdvanced, setShowAdvanced] = React.useState(false);
+
+    const handleCopyCliInstall = React.useCallback(async () => {
+        const copied = await setClipboardStringSafe(cliInstallCommand);
+        if (copied) {
+            copyFeedback.markCopied('web-cli-install');
+        } else {
+            Modal.alert(t('common.error'), t('textSelection.failedToCopy'));
+        }
+    }, [cliInstallCommand, copyFeedback]);
+
+    return (
+        <View testID="web-browser-guidance" style={styles.webGuidanceContainer}>
+            <Text style={styles.title}>{t('webGuidance.title')}</Text>
+            <Text style={styles.subtitle}>{t('webGuidance.subtitle')}</Text>
+
+            {/* Path A: Host flow - Connect a computer */}
+            <View testID="web-guidance-host-path" style={styles.webPathCard}>
+                <Text style={styles.webPathTitle}>{t('webGuidance.hostPath.title')}</Text>
+                <Text style={styles.webPathDescription}>{t('webGuidance.hostPath.description')}</Text>
+                <Text style={styles.stepDescription}>{t('webGuidance.hostPath.cliInstallDescription')}</Text>
+                <View style={styles.codeBlock}>
+                    <Text style={[styles.terminalText, styles.codeText]}>{cliInstallCommand}</Text>
+                    <Pressable
+                        testID="web-guidance-copy-cli-install"
+                        accessibilityRole="button"
+                        accessibilityLabel={t('common.copyWithLabel', { label: t('webGuidance.hostPath.cliInstallTitle') })}
+                        style={styles.codeCopyButton}
+                        onPress={handleCopyCliInstall}
+                    >
+                        {copyFeedback.isCopied('web-cli-install') ? (
+                            <CopiedPill visible testID="web-guidance-copy-cli-install-copied" />
+                        ) : normalizeNodeForView(
+                            <Icon name="copy" size={16} color={theme.colors.text.secondary} />,
+                        )}
+                    </Pressable>
+                </View>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.orDivider}>
+                <View style={styles.orDividerLine} />
+                <Text style={styles.orDividerText}>{t('webGuidance.orDivider')}</Text>
+                <View style={styles.orDividerLine} />
+            </View>
+
+            {/* Path B: Recipient flow - Open shared link */}
+            <View testID="web-guidance-recipient-path" style={styles.webPathCard}>
+                <Text style={styles.webPathTitle}>{t('webGuidance.recipientPath.title')}</Text>
+                <Text style={styles.webPathDescription}>{t('webGuidance.recipientPath.description')}</Text>
+                <Text style={styles.webPathHint}>{t('webGuidance.recipientPath.hint')}</Text>
+            </View>
+
+            {/* Advanced toggle */}
+            <Pressable
+                testID="web-guidance-advanced-toggle"
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showAdvanced }}
+                accessibilityLabel={t('webGuidance.advancedSetup.title')}
+                style={styles.advancedToggle}
+                onPress={() => setShowAdvanced(prev => !prev)}
+            >
+                <Icon
+                    name={showAdvanced ? 'caret-up' : 'caret-down'}
+                    size={14}
+                    color={theme.colors.text.secondary}
+                />
+                <Text style={styles.advancedToggleText}>{t('webGuidance.advancedSetup.title')}</Text>
+            </Pressable>
+
+            {/* Advanced section - Source setup */}
+            {showAdvanced ? (
+                <View testID="web-guidance-advanced-content" style={styles.advancedContent}>
+                    <Text style={styles.webPathTitle}>{t('webGuidance.advancedSetup.sourceSetupTitle')}</Text>
+                    <Text style={styles.webPathDescription}>{t('webGuidance.advancedSetup.sourceSetupDescription')}</Text>
+                    {serverUrl ? (
+                        <Text selectable style={styles.stepDescription}>
+                            {t('welcome.frontDoorSelectedServer')}: {serverUrl}
+                        </Text>
+                    ) : null}
+                    <RoundButton
+                        testID="web-guidance-source-guide"
+                        title={t('sourceSetup.openGuide')}
+                        onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
+                        size="normal"
+                        display="inverted"
+                    />
+                </View>
+            ) : null}
+        </View>
+    );
+}
+
 function buildSteps(model: SessionGettingStartedGuidanceViewModel): SessionGettingStartedGuidanceStep[] {
     // Web browser users (non-Tauri desktop) see no terminal commands; guidance
-    // is handled by the title/subtitle messaging instead.
+    // is handled by WebBrowserGuidance component instead.
     if (Platform.OS === 'web' && !isTauriDesktop()) {
         return [];
     }
@@ -494,24 +662,16 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
                         </View>
                     ) : null}
                 </View>
+            ) : isSourceBrowser && needsHost ? (
+                <WebBrowserGuidance
+                    serverUrl={model.serverUrl}
+                    copyFeedback={copyFeedback}
+                />
             ) : model.kind !== 'select_session' ? (
                 <>
                     <Text style={styles.title}>{title}</Text>
                     <Text style={styles.subtitle}>{subtitle}</Text>
                 </>
-            ) : null}
-
-            {isSourceBrowser && steps.length > 0 ? (
-                <View style={styles.primaryCard}>
-                    <Text style={styles.stepTitle}>{t('welcome.frontDoorSelectedServer')}</Text>
-                    <Text selectable style={styles.stepDescription}>{model.serverUrl}</Text>
-                    <RoundButton
-                        testID="session-getting-started-source-guide"
-                        title={t('sourceSetup.openGuide')}
-                        onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
-                        size="normal"
-                    />
-                </View>
             ) : null}
 
             {model.kind !== 'select_session' && showCliFollowUp ? (
