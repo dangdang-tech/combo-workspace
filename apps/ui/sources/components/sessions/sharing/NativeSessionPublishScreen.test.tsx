@@ -1,4 +1,5 @@
 import React from 'react';
+import { Linking } from 'react-native';
 import { RPC_ERROR_CODES } from '@happier-dev/protocol/rpc';
 import { act } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -352,12 +353,21 @@ describe('NativeSessionPublishScreen', () => {
         const { NativeSessionPublishScreen } = await import('./NativeSessionPublishScreen');
         const screen = await renderScreen(<NativeSessionPublishScreen />);
         await act(async () => { screen.pressByTestId('native-publish-connect-machine'); });
-        expect(screen.findByTestId('session-getting-started-source-guide')).not.toBeNull();
+        expect(screen.findByTestId('web-guidance-setup-guide')).not.toBeNull();
+        expect(screen.findByTestId('web-guidance-recipient-path')).toBeNull();
+        expect(screen.findByTestId('web-guidance-advanced-toggle')).toBeNull();
+        expect(screen.getTextContent()).not.toContain('webGuidance.title');
+        expect(screen.getTextContent()).toContain('sourceSetup.title');
+        expect(screen.getTextContent()).toContain(boundary.server.serverUrl);
+        const openGuide = vi.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+        await act(async () => { screen.pressByTestId('web-guidance-setup-guide'); });
+        expect(openGuide).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace#从源码启动');
+        openGuide.mockRestore();
         expect(boundary.push).not.toHaveBeenCalled();
         boundary.machines = [{ id: 'machine-a', active: true, metadata: { displayName: 'My Mac' } }];
         await screen.update(<NativeSessionPublishScreen />);
         expect(screen.findByTestId('direct-session-directory-toggle:/home/owner/project')).not.toBeNull();
-        expect(screen.findByTestId('session-getting-started-source-guide')).toBeNull();
+        expect(screen.findByTestId('web-guidance-setup-guide')).toBeNull();
     });
 
     it('keeps the selected host, reviewed text and form through an outage, then can publish after reconnection', async () => {
