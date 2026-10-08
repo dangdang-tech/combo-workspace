@@ -282,39 +282,10 @@ function buildDeferredCliFollowUpKey(params: Readonly<{
 }
 
 function buildSteps(model: SessionGettingStartedGuidanceViewModel): SessionGettingStartedGuidanceStep[] {
+    // Web browser users (non-Tauri desktop) see no terminal commands; guidance
+    // is handled by the title/subtitle messaging instead.
     if (Platform.OS === 'web' && !isTauriDesktop()) {
-        const origin = typeof window !== 'undefined' ? window.location?.origin : undefined;
-        const webappUrl = origin && /^https?:\/\//.test(origin) ? origin : model.serverUrl;
-        const sourceEnvironment = [
-            'export HAPPIER_HOME_DIR="$HOME/.combo-workspace/host"',
-            `export HAPPIER_SERVER_URL=${quoteShellArgument(model.serverUrl, 'linux')}`,
-            `export HAPPIER_WEBAPP_URL=${quoteShellArgument(webappUrl, 'linux')}`,
-            'export HAPPIER_CLI_RUNTIME_DISABLE=1',
-            'export HAPPIER_CLI_SUBPROCESS_PREFER_TSX=1',
-        ];
-        const connectStep: SessionGettingStartedGuidanceStep = {
-            id: 'auth_login',
-            title: t('sourceSetup.connectTitle'),
-            description: t('sourceSetup.connectBody'),
-            command: [...sourceEnvironment, 'yarn --cwd apps/cli dev auth login', 'yarn --cwd apps/cli dev daemon start'].join('\n'),
-            copyLabel: t('sourceSetup.connectTitle'),
-        };
-        switch (model.kind) {
-            case 'connect_machine':
-                return [{
-                    id: 'install_cli',
-                    title: t('sourceSetup.cloneTitle'),
-                    description: t('sourceSetup.cloneBody'),
-                    command: 'git clone https://github.com/dangdang-tech/combo-workspace.git\ncd combo-workspace\nHAPPIER_INSTALL_SCOPE=server,cli,ui yarn install --frozen-lockfile\nyarn build:packages',
-                    copyLabel: t('sourceSetup.cloneTitle'),
-                }, connectStep];
-            case 'start_daemon':
-                return [connectStep];
-            case 'create_session':
-                return [];
-            default:
-                return [];
-        }
+        return [];
     }
     switch (model.kind) {
         case 'connect_machine': {
@@ -396,12 +367,9 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
 
     const isSourceBrowser = Platform.OS === 'web' && !isTauriDesktop();
     const needsHost = model.kind === 'connect_machine' || model.kind === 'start_daemon';
-    const title = isSourceBrowser && needsHost ? t('sourceSetup.title') : titleForKind(model.kind);
-    const subtitle = isSourceBrowser && needsHost
-        ? t('sourceSetup.body')
-        : isSourceBrowser && model.kind === 'create_session'
-            ? t('sharedEntry.guideSteps')
-            : subtitleForKind(model.kind, model.targetLabel);
+    // Web browser users see standard guidance messaging instead of source-setup instructions.
+    const title = titleForKind(model.kind);
+    const subtitle = subtitleForKind(model.kind, model.targetLabel);
     const steps = React.useMemo(() => buildSteps(model), [
         model.kind,
         model.serverName,
