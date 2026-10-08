@@ -658,6 +658,85 @@ describe('sessions domain: renderable patches', () => {
         expect(afterState.isDataReady).toBe(false);
     });
 
+    it('reloads sessions for new account after clearing local scope without getting stuck', async () => {
+        mockSessionsDomainBoundaries();
+
+        const { createSessionsDomain } = await import('./sessions');
+        const { get, domain, setState } = createHarness(createSessionsDomain);
+
+        // Start with account A with sessions
+        domain.activateSessionLocalStateScope({ serverId: 'server_1', accountId: 'account_a' });
+        domain.replaceSessionListRenderables([
+            makeRenderable({ id: 's1' }),
+            makeRenderable({ id: 's2' }),
+        ]);
+        domain.applyReady();
+        expect(get().isDataReady).toBe(true);
+        expect(Object.keys(get().sessionListRenderables)).toHaveLength(2);
+
+        // Switch to account B
+        activeServerId = 'server_1';
+        setState({ profile: { id: 'account_b' } });
+        domain.clearSessionLocalStateScope();
+
+        // Verify state is reset
+        expect(get().isDataReady).toBe(false);
+        expect(Object.keys(get().sessionListRenderables)).toHaveLength(0);
+
+        // Activate new account and load its sessions (which may be empty)
+        domain.activateSessionLocalStateScope({ serverId: 'server_1', accountId: 'account_b' });
+        domain.replaceSessionListRenderables([]); // New account has no sessions
+        domain.applyReady();
+
+        // Verify new account state is ready (even with zero sessions)
+        expect(get().isDataReady).toBe(true);
+        expect(get().sessionLocalStateScope).toEqual({ serverId: 'server_1', accountId: 'account_b' });
+        expect(Object.keys(get().sessionListRenderables)).toHaveLength(0);
+        expect(get().sessionListViewData).not.toBeNull(); // Should have empty view data, not null
+    });
+
+    it('restores session data when switching back to original account', async () => {
+        mockSessionsDomainBoundaries();
+
+        const { createSessionsDomain } = await import('./sessions');
+        const { get, domain, setState } = createHarness(createSessionsDomain);
+
+        // Start with account A
+        domain.activateSessionLocalStateScope({ serverId: 'server_1', accountId: 'account_a' });
+        domain.replaceSessionListRenderables([
+            makeRenderable({ id: 's1' }),
+            makeRenderable({ id: 's2' }),
+        ]);
+        domain.applyReady();
+        expect(Object.keys(get().sessionListRenderables)).toHaveLength(2);
+
+        // Switch to account B (no sessions)
+        activeServerId = 'server_1';
+        setState({ profile: { id: 'account_b' } });
+        domain.clearSessionLocalStateScope();
+        domain.activateSessionLocalStateScope({ serverId: 'server_1', accountId: 'account_b' });
+        domain.replaceSessionListRenderables([]);
+        domain.applyReady();
+        expect(Object.keys(get().sessionListRenderables)).toHaveLength(0);
+
+        // Switch back to account A with sessions
+        setState({ profile: { id: 'account_a' } });
+        domain.clearSessionLocalStateScope();
+        domain.activateSessionLocalStateScope({ serverId: 'server_1', accountId: 'account_a' });
+        domain.replaceSessionListRenderables([
+            makeRenderable({ id: 's1' }),
+            makeRenderable({ id: 's3' }), // Different session
+        ]);
+        domain.applyReady();
+
+        // Verify account A's sessions are restored correctly
+        expect(get().isDataReady).toBe(true);
+        expect(get().sessionLocalStateScope).toEqual({ serverId: 'server_1', accountId: 'account_a' });
+        expect(Object.keys(get().sessionListRenderables)).toHaveLength(2);
+        expect(get().sessionListRenderables).toHaveProperty('s1');
+        expect(get().sessionListRenderables).toHaveProperty('s3');
+    });
+
     it('records patch planning telemetry when structural patches rebuild list data', async () => {
         mockSessionsDomainBoundaries();
 
