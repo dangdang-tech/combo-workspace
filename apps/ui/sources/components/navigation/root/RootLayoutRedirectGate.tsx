@@ -1,13 +1,14 @@
-import { Redirect, useSegments } from 'expo-router';
+import { Redirect, usePathname, useSegments } from 'expo-router';
 import * as React from 'react';
 import { useAuth } from '@/auth/context/AuthContext';
 import { isPublicRouteForUnauthenticated } from '@/auth/routing/authRouting';
 import { isWorkspaceRoute } from './coreSharingRoutes';
+import { resolveLegacyShareLinkRedirect } from './legacyShareLinkRedirect';
 
 /**
  * Gates the app shell behind the unauthenticated redirect check.
  *
- * This component subscribes to `useSegments()` (which changes per navigation) so that the
+ * This component subscribes to `useSegments()` and `usePathname()` so that the
  * redirect decision stays live, but it is the ONLY navigation-subscribing owner in the root
  * layout render path. When no redirect is needed it returns its `children` unchanged — because
  * the parent (`RootLayout`) never re-renders on navigation, the child element reference is stable
@@ -17,10 +18,12 @@ import { isWorkspaceRoute } from './coreSharingRoutes';
 export function RootLayoutRedirectGate({ children }: { children: React.ReactNode }): React.ReactElement {
     const { isAuthenticated } = useAuth();
     const segments = useSegments();
+    const pathname = usePathname();
 
     // Old bookmarks must not mount removed feature screens or their background consumers.
     if (!isWorkspaceRoute(segments)) {
-        return <Redirect href="/" />;
+        // The invite screen explains invalid/expired legacy links and preserves sign-in intent.
+        return <Redirect href={resolveLegacyShareLinkRedirect(segments, pathname) ?? '/'} />;
     }
 
     // Avoid rendering protected screens for a frame during redirect.

@@ -73,6 +73,31 @@ describe('RootLayoutRedirectGate', () => {
         navState.segments = [];
     });
 
+    it.each([true, false])('preserves a legacy share token when authenticated=%s', async (isAuthenticated) => {
+        authState.isAuthenticated = isAuthenticated;
+        setNav('/share/abc123', ['(app)', 'share', '[token]']);
+        const shell: Counter = { n: 0 };
+        const screen = await renderScreen(<RootLayoutRedirectGate><ShellProbe counter={shell} /></RootLayoutRedirectGate>);
+        expect(screen.findAllByType('Redirect' as never)[0]?.props.href).toBe('/invite/abc123');
+        expect(shell.n).toBe(0);
+        await screen.unmount();
+    });
+
+    it.each([
+        ['/share/a%20b', '/invite/a%20b'],
+        ['/share/a%2Fb/', '/invite/a%2Fb'],
+        ['/share/%E0%A4%A', '/'],
+        ['/share/%20', '/'],
+        ['/share/codex', '/'],
+        ['/share/:token', '/'],
+        ['/share/[token]', '/'],
+    ])('resolves legacy pathname %s to %s', async (pathname, href) => {
+        setNav(pathname, ['(app)', 'share', '[token]']);
+        const screen = await renderScreen(<RootLayoutRedirectGate>{null}</RootLayoutRedirectGate>);
+        expect(screen.findAllByType('Redirect' as never)[0]?.props.href).toBe(href);
+        await screen.unmount();
+    });
+
     it('does not re-render its children (Stack subtree) on a pathname/segments-only change', async () => {
         authState.isAuthenticated = true;
         setNav('/', ['index']);
@@ -162,6 +187,7 @@ describe('RootLayoutRedirectGate', () => {
         );
         expect(screen.findAllByType('Redirect' as never)).toHaveLength(1);
         expect(shell.n).toBe(0);
+        expect(screen.findAllByType('Redirect' as never)[0]?.props.href).toBe('/');
         await screen.unmount();
     });
 
