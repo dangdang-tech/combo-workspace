@@ -14,6 +14,8 @@ import { resolvePendingQueueHeadMaxHeightPx } from './pendingQueueContentClippin
 
 /** `transcriptMarkdownTextStyle.lineHeight` in the test theme. */
 const LINE_PX = 24;
+// Keep the user foreground distinct so substituting primary text cannot pass this contract.
+const { userMessageForeground } = vi.hoisted(() => ({ userMessageForeground: '#123456' }));
 /** The head stays fully visible; the collapsed backlog scrolls in the compact strip beneath it. */
 const QUEUE_CAP_PX = resolvePendingQueueHeadMaxHeightPx(LINE_PX) + 80;
 
@@ -102,7 +104,9 @@ installPendingMessagesCommonModuleMocks({
     },
     unistyles: async () => {
         const { createUnistylesMock } = await import('@/dev/testkit/mocks/unistyles');
-        return createUnistylesMock();
+        return createUnistylesMock({
+            theme: { colors: { message: { user: { foreground: userMessageForeground } } } },
+        });
     },
     icons: async () => ({
         Ionicons: 'Ionicons',
@@ -2197,7 +2201,7 @@ describe('PendingMessagesTranscriptBlock', () => {
             expect(screen.findByTestId('pendingMessages.viewMore:p2')).toBeTruthy();
         });
 
-        it('keeps pending text on its inverted bubble foreground before and after expanding the backlog', async () => {
+        it('keeps pending text on the configured user bubble foreground before and after expanding the backlog', async () => {
             settingValues = crossoverSettings();
             const PendingMessagesTranscriptBlock = await loadPendingMessagesTranscriptBlock();
             const { lightTheme: theme } = await import('@/theme');
@@ -2210,16 +2214,16 @@ describe('PendingMessagesTranscriptBlock', () => {
             const head = screen.findByTestId('pendingMessages.message:p1')!;
             const backlog = screen.findByTestId('pendingMessages.message:p2')!;
             expect(flattenStyle(head.props.style({ pressed: false })).backgroundColor).toBe(theme.colors.message.user.background);
-            expect(flattenStyle(head.findByType('MarkdownView' as any).props.textStyle).color).toBe(theme.colors.message.user.foreground);
+            expect(flattenStyle(head.findByType('MarkdownView' as any).props.textStyle).color).toBe(userMessageForeground);
             const collapsedText = backlog.findAllByType('Text' as any).find((node) => node.props.children === LONG_TEXT)!;
-            expect(flattenStyle(collapsedText.props.style).color).toBe(theme.colors.message.user.foreground);
+            expect(flattenStyle(collapsedText.props.style).color).toBe(userMessageForeground);
             const expand = screen.findByTestId('pendingMessages.viewMore:p2')!;
-            expect(flattenStyle(expand.findByType('Text' as any).props.style).color).toBe(theme.colors.message.user.foreground);
-            expect(theme.colors.message.user.foreground).not.toBe(theme.colors.text.primary);
+            expect(flattenStyle(expand.findByType('Text' as any).props.style).color).toBe(userMessageForeground);
+            expect(userMessageForeground).not.toBe(theme.colors.text.primary);
 
             await screen.pressByTestIdAsync('pendingMessages.viewMore:p2');
             const expandedBacklog = screen.findByTestId('pendingMessages.message:p2')!;
-            expect(flattenStyle(expandedBacklog.findByType('MarkdownView' as any).props.textStyle).color).toBe(theme.colors.message.user.foreground);
+            expect(flattenStyle(expandedBacklog.findByType('MarkdownView' as any).props.textStyle).color).toBe(userMessageForeground);
             expect(screen.findByTestId('pendingMessages.pendingAffordanceLabel:p2')).toBeTruthy();
             await screen.unmount();
         });

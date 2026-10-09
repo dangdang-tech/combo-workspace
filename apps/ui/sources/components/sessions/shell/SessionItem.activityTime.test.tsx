@@ -768,7 +768,7 @@ describe('SessionItem activity time', () => {
         expect(screen.getTextContent()).not.toContain('1m');
     });
 
-    it('uses a tighter fixed row height in very compact mode', async () => {
+    it('uses a 48px readable fixed row height in very compact phone-width web mode', async () => {
         const { SessionItem } = await importSessionItemForTest();
 
         const screen = await renderScreen(
@@ -787,14 +787,15 @@ describe('SessionItem activity time', () => {
         );
 
         const rowStyle = flattenStyle(screen.findByTestId('session-list-item-sess_compact_height')?.props.style);
-        expect(rowStyle.height).toBe(34);
+        expect(rowStyle.height).toBe(48);
         expect(rowStyle.paddingHorizontal).toBe(8);
 
         expect(screen.findByTestId('session-row-attention-indicator-sess_compact_height')).toBeNull();
     });
 
-    it('renders an 18px micro avatar in very compact web rows', async () => {
+    it('renders an 18px micro avatar in very compact desktop web rows', async () => {
         platformOs = 'web';
+        isTabletDevice = true;
         const { SessionItem } = await importSessionItemForTest();
 
         const screen = await renderScreen(
@@ -842,12 +843,12 @@ describe('SessionItem activity time', () => {
         );
 
         const rowStyle = flattenStyle(screen.findByTestId('session-list-item-sess_compact_avatar_phone')?.props.style);
-        expect(rowStyle.height).toBe(42);
+        expect(rowStyle.height).toBe(48);
         expect(screen.findAllByType(AvatarMock)[0].props.size).toBe(20);
         expect(findRowContentStyle(screen, 'sess_compact_avatar_phone').marginLeft).toBe(8);
     });
 
-    it('renders the selected agent logo in the same narrow identity slot', async () => {
+    it('renders the selected agent logo at 16px in the readable phone-width identity slot', async () => {
         mockSessionListIdentityDisplay = 'agentLogo';
         const { SessionItem } = await importSessionItemForTest();
 
@@ -869,7 +870,7 @@ describe('SessionItem activity time', () => {
         expect(screen.findAllByType(AvatarMock)).toHaveLength(0);
         expect(screen.findAllByType(AgentIconMock)[0].props).toMatchObject({
             agentId: 'grok',
-            size: 14,
+            size: 16,
             style: { transform: [{ scale: 1.25 }] },
             testID: 'session-list-agent-logo-sess_agent_logo_narrow',
         });
@@ -1042,8 +1043,9 @@ describe('SessionItem activity time', () => {
         expect(findRowContentStyle(narrow, 'sess_avatar_none_narrow').marginLeft).toBe(0);
     });
 
-    it('keeps very compact web rows dense for the sidebar surface', async () => {
+    it('keeps very compact desktop web rows dense for the sidebar surface', async () => {
         platformOs = 'web';
+        isTabletDevice = true;
         const { SessionItem } = await importSessionItemForTest();
 
         const screen = await renderScreen(
@@ -1092,9 +1094,9 @@ describe('SessionItem activity time', () => {
         const rowStyle = flattenStyle(screen.findByTestId('session-list-item-sess_compact_phone')?.props.style);
         const titleStyle = flattenStyle(findSessionTitleText(screen, 'Session')?.props.style);
 
-        expect(rowStyle.height).toBe(42);
+        expect(rowStyle.height).toBe(48);
         expect(titleStyle.fontSize).toBe(15);
-        expect(titleStyle.lineHeight).toBe(20);
+        expect(titleStyle.lineHeight).toBe(22);
     });
 
     it('renders meaningful working status with canonical row indicator and themed text', async () => {
@@ -1139,8 +1141,8 @@ describe('SessionItem activity time', () => {
         const statusText = screen.findAllByType('Text').find((node) => node.props.children === 'working on it');
         const flat = flattenStyle(statusText?.props.style);
         expect(flat.color).not.toBe('#07f');
-        expect(flat.fontSize).toBe(12);
-        expect(flat.lineHeight).toBe(16);
+        expect(flat.fontSize).toBe(13);
+        expect(flat.lineHeight).toBe(20);
         expect(screen.getTextContent()).toContain('working on it');
     });
 

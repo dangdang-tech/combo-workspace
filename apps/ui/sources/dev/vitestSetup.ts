@@ -743,6 +743,14 @@ vi.mock('react-native-unistyles', () => {
                 removed: { foreground: '#ef4444', background: 'rgba(239, 68, 68, 0.12)' },
             },
         },
+        margins: {
+            xs: 4,
+            sm: 8,
+            md: 12,
+            lg: 16,
+            xl: 20,
+            xxl: 24,
+        },
         borderRadius: {
             sm: 4,
             md: 8,
@@ -754,15 +762,34 @@ vi.mock('react-native-unistyles', () => {
         iconSize: { small: 12, medium: 16, large: 20, xlarge: 24 },
     };
 
+    const runtime = {
+        screen: { width: 1200, height: 800 },
+        insets: { top: 0, bottom: 0, left: 0, right: 0, ime: 0 },
+        breakpoint: 'lg',
+        orientation: 'landscape',
+        fontScale: 1,
+        pixelRatio: 2,
+        rtl: false,
+        statusBar: { height: 0 },
+        isPortrait: false,
+        isLandscape: true,
+        colorScheme: 'light',
+        themeName: 'light',
+    };
+
     return {
         StyleSheet: {
-            create: (styles: any) => (typeof styles === 'function' ? styles(theme) : styles),
+            create: <T,>(styles: T | ((currentTheme: typeof theme, currentRuntime: typeof runtime) => T)) =>
+                typeof styles === 'function'
+                    ? (styles as (currentTheme: typeof theme, currentRuntime: typeof runtime) => T)(theme, runtime)
+                    : styles,
             flatten: flattenStyle,
             configure: () => {},
             absoluteFillObject: {},
         },
-        useUnistyles: () => ({ theme }),
+        useUnistyles: () => ({ theme, rt: runtime }),
         UnistylesRuntime: {
+            ...runtime,
             setRootViewBackgroundColor: () => {},
             setAdaptiveThemes: () => {},
             setTheme: () => {},
