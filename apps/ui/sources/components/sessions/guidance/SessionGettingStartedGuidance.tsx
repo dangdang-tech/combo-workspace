@@ -65,6 +65,7 @@ export type SessionGettingStartedGuidanceViewModel = Readonly<{
 
 type SessionGettingStartedGuidanceViewProps = Readonly<{
     variant: SessionGettingStartedGuidanceVariant;
+    context?: 'home' | 'publish';
     model: SessionGettingStartedGuidanceViewModel;
 }>;
 
@@ -349,82 +350,93 @@ function buildDeferredCliFollowUpKey(params: Readonly<{
 
 type WebBrowserGuidanceProps = Readonly<{
     serverUrl: string;
+    context?: 'home' | 'publish';
 }>;
 
-function WebBrowserGuidance({ serverUrl }: WebBrowserGuidanceProps): React.ReactElement {
+function WebBrowserGuidance({ serverUrl, context }: WebBrowserGuidanceProps): React.ReactElement {
     const { theme } = useUnistyles();
     const styles = stylesheet;
     const [showAdvanced, setShowAdvanced] = React.useState(false);
+    const isPublishing = context === 'publish';
 
     return (
         <View testID="web-browser-guidance" style={styles.webGuidanceContainer}>
-            <Text style={styles.title}>{t('webGuidance.title')}</Text>
-            <Text style={styles.subtitle}>{t('webGuidance.subtitle')}</Text>
+            {!isPublishing ? <>
+                <Text style={styles.title}>{t('webGuidance.title')}</Text>
+                <Text style={styles.subtitle}>{t('webGuidance.subtitle')}</Text>
+            </> : null}
 
             {/* Path A: Host flow - Connect a computer */}
             <View testID="web-guidance-host-path" style={styles.webPathCard}>
-                <Text style={styles.webPathTitle}>{t('webGuidance.hostPath.title')}</Text>
-                <Text style={styles.webPathDescription}>{t('webGuidance.hostPath.description')}</Text>
+                <Text style={styles.webPathTitle}>{t(isPublishing ? 'sourceSetup.title' : 'webGuidance.hostPath.title')}</Text>
+                <Text style={styles.webPathDescription}>{t(isPublishing ? 'sourceSetup.body' : 'webGuidance.hostPath.description')}</Text>
+                {isPublishing && serverUrl ? (
+                    <Text selectable style={styles.stepDescription}>
+                        {t('welcome.frontDoorSelectedServer')}: {serverUrl}
+                    </Text>
+                ) : null}
                 <View style={styles.buttonWrapper}>
                     <RoundButton
                         testID="web-guidance-setup-guide"
-                        title={t('webGuidance.hostPath.actionTitle')}
+                        title={t(isPublishing ? 'sourceSetup.openGuide' : 'webGuidance.hostPath.actionTitle')}
                         onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
                         size="normal"
                     />
                 </View>
             </View>
 
-            {/* Divider */}
-            <View style={styles.orDivider}>
-                <View style={styles.orDividerLine} />
-                <Text style={styles.orDividerText}>{t('webGuidance.orDivider')}</Text>
-                <View style={styles.orDividerLine} />
-            </View>
-
-            {/* Path B: Recipient flow - Open shared link (no install needed) */}
-            <View testID="web-guidance-recipient-path" style={styles.webPathCard}>
-                <Text style={styles.webPathTitle}>{t('webGuidance.recipientPath.title')}</Text>
-                <Text style={styles.webPathDescription}>{t('webGuidance.recipientPath.description')}</Text>
-                <Text style={styles.webPathHint}>{t('webGuidance.recipientPath.hint')}</Text>
-            </View>
-
-            {/* Advanced toggle */}
-            <Pressable
-                testID="web-guidance-advanced-toggle"
-                accessibilityRole="button"
-                accessibilityState={{ expanded: showAdvanced }}
-                accessibilityLabel={t('webGuidance.advancedSetup.title')}
-                style={styles.advancedToggle}
-                onPress={() => setShowAdvanced(prev => !prev)}
-            >
-                <Icon
-                    name={showAdvanced ? 'caret-up' : 'caret-down'}
-                    size={14}
-                    color={theme.colors.text.secondary}
-                />
-                <Text style={styles.advancedToggleText}>{t('webGuidance.advancedSetup.title')}</Text>
-            </Pressable>
-
-            {/* Advanced section - Source setup for developers */}
-            {showAdvanced ? (
-                <View testID="web-guidance-advanced-content" style={styles.advancedContent}>
-                    <Text style={styles.webPathTitle}>{t('webGuidance.advancedSetup.sourceSetupTitle')}</Text>
-                    <Text style={styles.webPathDescription}>{t('webGuidance.advancedSetup.sourceSetupDescription')}</Text>
-                    {serverUrl ? (
-                        <Text selectable style={styles.stepDescription}>
-                            {t('welcome.frontDoorSelectedServer')}: {serverUrl}
-                        </Text>
-                    ) : null}
-                    <RoundButton
-                        testID="web-guidance-source-guide"
-                        title={t('sourceSetup.openGuide')}
-                        onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
-                        size="normal"
-                        display="inverted"
-                    />
+            {!isPublishing ? <>
+                {/* Divider */}
+                <View style={styles.orDivider}>
+                    <View style={styles.orDividerLine} />
+                    <Text style={styles.orDividerText}>{t('webGuidance.orDivider')}</Text>
+                    <View style={styles.orDividerLine} />
                 </View>
-            ) : null}
+
+                {/* Path B: Recipient flow - Open shared link (no install needed) */}
+                <View testID="web-guidance-recipient-path" style={styles.webPathCard}>
+                    <Text style={styles.webPathTitle}>{t('webGuidance.recipientPath.title')}</Text>
+                    <Text style={styles.webPathDescription}>{t('webGuidance.recipientPath.description')}</Text>
+                    <Text style={styles.webPathHint}>{t('webGuidance.recipientPath.hint')}</Text>
+                </View>
+
+                {/* Advanced toggle */}
+                <Pressable
+                    testID="web-guidance-advanced-toggle"
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: showAdvanced }}
+                    accessibilityLabel={t('webGuidance.advancedSetup.title')}
+                    style={styles.advancedToggle}
+                    onPress={() => setShowAdvanced(prev => !prev)}
+                >
+                    <Icon
+                        name={showAdvanced ? 'caret-up' : 'caret-down'}
+                        size={14}
+                        color={theme.colors.text.secondary}
+                    />
+                    <Text style={styles.advancedToggleText}>{t('webGuidance.advancedSetup.title')}</Text>
+                </Pressable>
+
+                {/* Advanced section - Source setup for developers */}
+                {showAdvanced ? (
+                    <View testID="web-guidance-advanced-content" style={styles.advancedContent}>
+                        <Text style={styles.webPathTitle}>{t('webGuidance.advancedSetup.sourceSetupTitle')}</Text>
+                        <Text style={styles.webPathDescription}>{t('webGuidance.advancedSetup.sourceSetupDescription')}</Text>
+                        {serverUrl ? (
+                            <Text selectable style={styles.stepDescription}>
+                                {t('welcome.frontDoorSelectedServer')}: {serverUrl}
+                            </Text>
+                        ) : null}
+                        <RoundButton
+                            testID="web-guidance-source-guide"
+                            title={t('sourceSetup.openGuide')}
+                            onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
+                            size="normal"
+                            display="inverted"
+                        />
+                    </View>
+                ) : null}
+            </> : null}
         </View>
     );
 }
@@ -643,7 +655,7 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
                     ) : null}
                 </View>
             ) : isSourceBrowser && needsHost ? (
-                <WebBrowserGuidance serverUrl={model.serverUrl} />
+                <WebBrowserGuidance serverUrl={model.serverUrl} context={props.context} />
             ) : model.kind !== 'select_session' ? (
                 <>
                     <Text style={styles.title}>{title}</Text>
@@ -754,6 +766,7 @@ function areSessionGettingStartedGuidanceViewPropsEqual(
     next: SessionGettingStartedGuidanceViewProps,
 ): boolean {
     return previous.variant === next.variant
+        && previous.context === next.context
         && areSessionGettingStartedGuidanceViewModelsEqual(previous.model, next.model);
 }
 
