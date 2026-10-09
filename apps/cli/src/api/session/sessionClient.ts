@@ -1,3 +1,4 @@
+import { createConsumerMessageRiskGate, ConsumerMessageRiskBlockedError, type ConsumerMessageRiskConfig } from './consumerMessageRiskGate';
 import { logger } from '@/ui/logger'
 import { EventEmitter } from 'node:events'
 import axios from 'axios';
@@ -210,7 +211,6 @@ import {
     type PendingQueueReadOptions,
 } from './pendingQueueReadPolicy';
 import { waitForTranscriptEncryptedMessageByLocalId } from './transcriptMessageLookup';
-import { continuePendingQueueV2OnReleasedServer } from './pendingQueueV2ReleasedServerAdapter';
 import { catchUpSessionMessagesAfterSeq } from './sessionMessageCatchUp';
 import { fetchEncryptedTranscriptMessagesPage } from '@/session/replay/fetchEncryptedTranscriptMessages';
 import {
@@ -582,7 +582,9 @@ export class ApiSessionClient extends EventEmitter {
     private socket!: Socket<ServerToClientEvents, ClientToServerEvents>;
     private userSocket: Socket<ServerToClientEvents, ClientToServerEvents>;
     private pendingMessages: UserMessage[] = [];
-    private readonly bufferedPendingMessageDeliveryInfoByLocalId = new Map<string, SessionUserMessageDeliveryInfo>();
+    private readonly bufferedPendingMessageDeliveryInfoByLocalId = new Map<string, { info: SessionUserMessageDeliveryInfo; isCurrent: () => boolean }>();
+    private consumerSourceUpgradeNoticeSent = false;
+    private readonly consumerMessageRiskGate: ReturnType<typeof createConsumerMessageRiskGate>;
     private pendingMessageCallback: ((message: UserMessage, info?: SessionUserMessageDeliveryInfo) => unknown | Promise<unknown>) | null = null;
     readonly rpcHandlerManager: RpcHandlerManager;
     private sessionPermissionRpcRouter: SessionPermissionRpcRouter | null = null;
@@ -936,8 +938,10 @@ export class ApiSessionClient extends EventEmitter {
             session: Session,
             runtimeActivity?: SessionRuntimeActivityClientConfig,
             permissionNotifications?: SessionPermissionNotificationConfig,
+            consumerMessageRisk?: ConsumerMessageRiskConfig,
         ) {
 	        super()
+            this.consumerMessageRiskGate = createConsumerMessageRiskGate(consumerMessageRisk);
 	        this.token = token;
 	        this.sessionId = session.id;
 	        this.metadata = session.metadata;
@@ -3247,11 +3251,39 @@ export class ApiSessionClient extends EventEmitter {
 
     private async deliverPendingQueueMessage(
         message: PendingQueueMaterializedMessage | null | undefined,
-        opts: Readonly<{ providerAcceptancePending: boolean }>,
+        opts: Readonly<{ providerAcceptancePending: boolean; isRuntimeAuthorityCurrent?: () => boolean }>,
     ): Promise<boolean> {
+        const socket = this.socket;
+        const epoch = this.sessionConnectionEpoch;
+        const producerGeneration = this.providerInputOutcomeProducerGeneration;
+        const isCurrent = () => !this.closed && !this.runtimeTerminationStarted
+            && this.socket === socket && this.sessionConnectionEpoch === epoch
+            && socket.connected === true && this.providerInputOutcomeProducerGeneration === producerGeneration
+            && (opts.isRuntimeAuthorityCurrent?.() ?? true);
+        const assertCurrent = () => {
+            if (!isCurrent()) throw new ConsumerMessageRiskBlockedError({
+                decision: 'unavailable', code: 'consumer_risk_unavailable', retryable: true,
+                reason: 'runtime_authority_lost',
+            });
+        };
+        assertCurrent();
         const userMessage = this.readPendingQueueUserMessage(message);
         if (!userMessage) return false;
         const localId = readPendingLocalId(userMessage.localId);
+        if (localId && this.hasAgentQueueDeliveredLocalId(localId)) return true;
+        if (message?.consumerMessageSource !== 'owner' && message?.consumerMessageSource !== 'private') {
+            const risk = await this.consumerMessageRiskGate(this.sessionId, userMessage);
+            if (risk.decision !== 'allow') {
+                logger.warn('[pendingQueue] consumer input not delivered', {
+                    sessionId: this.sessionId, localId, code: risk.code,
+                    retryable: risk.retryable,
+                    ...(risk.decision === 'unavailable' ? { reason: risk.reason } : {}),
+                });
+                throw new ConsumerMessageRiskBlockedError(risk);
+            }
+        }
+        // Recheck authorization and deduplication after awaiting the external evaluator.
+        assertCurrent();
         if (localId) {
             if (this.hasAgentQueueDeliveredLocalId(localId)) {
                 return true;
@@ -3268,9 +3300,12 @@ export class ApiSessionClient extends EventEmitter {
         } else {
             if (localId) {
                 this.bufferedPendingMessageDeliveryInfoByLocalId.set(localId, {
-                    seq: typeof message?.seq === 'number' && Number.isFinite(message.seq) ? message.seq : null,
-                    ...(opts.providerAcceptancePending ? { providerAcceptancePending: true } : {}),
-                    ...(message?.providerAction ? { pendingProviderAction: message.providerAction } : {}),
+                    isCurrent,
+                    info: {
+                        seq: typeof message?.seq === 'number' && Number.isFinite(message.seq) ? message.seq : null,
+                        ...(opts.providerAcceptancePending ? { providerAcceptancePending: true } : {}),
+                        ...(message?.providerAction ? { pendingProviderAction: message.providerAction } : {}),
+                    },
                 });
             }
             this.pendingMessages.push(userMessage);
@@ -3303,7 +3338,16 @@ export class ApiSessionClient extends EventEmitter {
                 ? this.bufferedPendingMessageDeliveryInfoByLocalId.get(localId)
                 : undefined;
             if (localId) this.bufferedPendingMessageDeliveryInfoByLocalId.delete(localId);
-            void Promise.resolve(callback(message, deliveryInfo ?? { seq: null })).catch((error) => {
+            if (!deliveryInfo?.isCurrent()) {
+                if (localId) {
+                    this.clearAgentQueueDeliveryAttempt(localId);
+                    void this.blockCanonicalPendingDeliveries([localId], 'runtime_disposed_before_delivery').catch((error) => {
+                        logger.warn('[pendingQueue] retired buffered claim settlement failed', { sessionId: this.sessionId, localId, error: serializeAxiosErrorForLog(error) });
+                    });
+                }
+                continue;
+            }
+            void Promise.resolve(callback(message, deliveryInfo.info)).catch((error) => {
                 logger.debug('[pendingQueue] buffered provider-input callback failed', {
                     sessionId: this.sessionId,
                     localId,
@@ -5748,6 +5792,8 @@ export class ApiSessionClient extends EventEmitter {
     }
 
     async close() {
+        // Revoke dispatch before the first await; cleanup may still settle unaccepted claims.
+        this.beginRuntimeTermination();
         logger.debug('[API] socket.close() called');
         this.executionRunPermissionHandler?.reset();
         this.executionRunPermissionHandler = null;
@@ -6148,35 +6194,18 @@ export class ApiSessionClient extends EventEmitter {
         let materializeResult: PendingQueueMaterializeNextResult;
         reportPendingMaterializationDiagnosticPhase(opts.onDiagnosticPhase, 'materialize.server_claim');
         if (serverContract.pendingInput === 'released_server_v0_2_1') {
-            const releasedResult = await continuePendingQueueV2OnReleasedServer({
-                contract: serverContract,
-                getServerContract: () => this.sessionSyncPendingInputServerContract,
-                token: this.token,
-                serverUrl: resolveServerHttpBaseUrl(),
-                sessionId: this.sessionId,
-                getSessionConnectionEpoch: () => this.sessionConnectionEpoch,
-                getSocket: () => this.socket,
-                hasCurrentLocalRuntimeAuthority: () => !this.closed && !this.runtimeTerminationStarted,
-                decodeStoredContent: (content) => this.decodeStoredSessionMessageContent(content),
-                reportDiagnosticPhase: (phase) => {
-                    reportPendingMaterializationDiagnosticPhase(opts.onDiagnosticPhase, phase);
-                },
+            // The released sid-only operation commits/removes a row before returning it.
+            // It has no atomic authenticated-writer scope; a pre-read cannot fence edits,
+            // reordering, or sharing changes. Never consume a row we cannot authorize.
+            logger.warn('[pendingQueue] older server cannot attest consumer input source', {
+                sessionId: this.sessionId, code: 'consumer_source_unavailable', retryable: false,
             });
-            if (releasedResult.type === 'auth_failed') {
-                return {
-                    didMaterialize: false,
-                    result: { type: 'auth_failure', statusCode: releasedResult.statusCode },
-                };
+            const message = 'This server uses the unsupported server-v0.2.1 pending protocol. Upgrade the server to a COMBO build with authenticated message-source classification and provider-claim delivery, then reconnect this session. Your queued messages are retained. Automatic retry is disabled.';
+            if (!this.consumerSourceUpgradeNoticeSent) {
+                this.consumerSourceUpgradeNoticeSent = true;
+                this.sendSessionEvent({ type: 'message', message }, `consumer-source-upgrade-required:${this.sessionId}`);
             }
-            if (releasedResult.type === 'no_pending' || releasedResult.type === 'zero_effect') {
-                return { didMaterialize: false, result: { type: 'no_pending' } };
-            }
-            materializeResult = {
-                didMaterialize: true,
-                localId: releasedResult.message.localId,
-                didWrite: true,
-                message: releasedResult.message,
-            };
+            return { didMaterialize: false, result: { type: 'blocked', code: 'consumer_source_unavailable', retryable: false, message } };
         } else {
             try {
                 materializeResult = await runSupervisedRequest({
@@ -6253,9 +6282,7 @@ export class ApiSessionClient extends EventEmitter {
             return {
                 didMaterialize: false,
                 result: {
-                    type: serverContract.pendingInput === 'released_server_v0_2_1'
-                        ? 'no_pending'
-                        : 'retryable_transport',
+                    type: 'retryable_transport',
                 },
             };
         }
@@ -6431,19 +6458,31 @@ export class ApiSessionClient extends EventEmitter {
             return {
                 didMaterialize: false,
                 result: {
-                    type: serverContract.pendingInput === 'released_server_v0_2_1'
-                        ? 'no_pending'
-                        : 'retryable_transport',
+                    type: 'retryable_transport',
                 },
             };
         }
-        if (materializedLocalId) {
+        reportPendingMaterializationDiagnosticPhase(opts.onDiagnosticPhase, 'materialize.provider_handoff');
+        let deliveredMaterializedMessage: boolean;
+        try {
+            deliveredMaterializedMessage = await this.deliverPendingQueueMessage(materializedMessage, {
+                providerAcceptancePending: isProviderDeliveryHandoff,
+                isRuntimeAuthorityCurrent: isServerContractCurrent,
+            });
+        } catch (error) {
+            if (!(error instanceof ConsumerMessageRiskBlockedError)) throw error;
+            if (isProviderDeliveryHandoff && materializedMessage?.localId) {
+                await this.blockCanonicalPendingDeliveries([materializedMessage.localId],
+                    error.result.decision === 'unavailable' && error.result.reason === 'runtime_authority_lost'
+                        ? 'runtime_disposed_before_delivery'
+                        : error.result.retryable ? 'provider_unavailable_before_acceptance' : 'provider_rejected_before_acceptance');
+            }
+            return { didMaterialize: false, result: error.result.retryable
+                ? { type: 'retryable_transport' } : { type: 'no_pending' } };
+        }
+        if (deliveredMaterializedMessage && materializedLocalId) {
             this.pendingQueueMaterializedLocalIds.add(materializedLocalId);
         }
-        reportPendingMaterializationDiagnosticPhase(opts.onDiagnosticPhase, 'materialize.provider_handoff');
-        const deliveredMaterializedMessage = await this.deliverPendingQueueMessage(materializedMessage, {
-            providerAcceptancePending: isProviderDeliveryHandoff,
-        });
         if (shouldClearResolvedCanonicalDelivery && materializedMessage?.localId) {
             this.clearCanonicalPendingDeliveryLocalState(materializedMessage.localId);
         }

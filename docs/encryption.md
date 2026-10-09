@@ -641,8 +641,64 @@ Publication metadata (`publicMetadata.v = 1`) is a separate plaintext whitelist 
 
 New entries retain `inviteTokenEncrypted` using the existing server-master-key encryption owner, with a derivation path bound to the entry owner, entry ID, and invite version. This is server-side encryption at rest, not end-to-end encryption. Only the authenticated owner can recover the token. The SHA-256 token hash remains the lookup authority; recovery also checks that the plaintext matches it. Explicit rotation updates both hash and ciphertext, while preserving context and existing members. A legacy hash-only token is not recoverable, and reading it never rotates it implicitly.
 
+
+### Execution-policy assessment: unresolved (2026-10-04)
+
+A disposable SQLite probe observed that a managed recipient with `canApprovePermissions = false` could update the child's plaintext metadata from `permissionMode: "default"` to `"yolo"`. The write passed through `updateSessionMetadata` and `ensureSessionEditAccess` in `apps/server/sources/app/session/sessionWriteService.ts`; that boundary accepts the recipient's edit grant. This proves a metadata-write capability, not a real model execution or sandbox escape. No model, shell tool, real login, or customer account was used.
+
+To reproduce without execution, run from `apps/server` with its existing `createLightSqliteHarness` against a fresh temporary database. Create synthetic owner and recipient accounts, an owner machine, a plain source and child session, an entry and a ready member assigned to that child. Create a `SessionShare` with `entryMemberId`, `accessLevel: "edit"`, and `canApprovePermissions: false`. Do not connect an agent. Then use the real boundaries:
+
+```ts
+import { canApprovePermissions } from '@/app/share/accessControl';
+import { updateSessionMetadata } from '@/app/session/sessionWriteService';
+import { db } from '@/storage/db';
+
+const canApprove = await canApprovePermissions(recipient.id, child.id);
+const result = await updateSessionMetadata({
+    actorUserId: recipient.id,
+    sessionId: child.id,
+    expectedVersion: child.metadataVersion,
+    metadataCiphertext: JSON.stringify({ permissionMode: 'yolo', permissionModeUpdatedAt: 1 }),
+});
+const saved = await db.session.findUniqueOrThrow({ where: { id: child.id } });
+console.log({ canApprove, metadataUpdateAccepted: result.ok,
+    savedPermissionMode: JSON.parse(saved.metadata).permissionMode });
+// Observed: { canApprove: false, metadataUpdateAccepted: true, savedPermissionMode: 'yolo' }
+```
+
+Close the harness afterward so it removes its temporary database. Use the repository's normal Yarn invocation and current generated SQLite client; no retained database migration or credentials are required.
+
+A second, source-derived risk is the permission override in `message.meta`: the Codex `onUserMessage` handler in `apps/cli/src/backends/codex/runCodex.ts` reads it and updates the runtime permission mode. The Codex policy owner maps `yolo` to `approvalPolicy: "never"` and `sandbox: "danger-full-access"`. The live consequence of a recipient-supplied override has not been exercised. Separately, `provisionSharedSession` inherits the source's permission mode and uses the same project directory, so independent conversations provide neither file isolation nor a guarantee of per-action host approval.
+
+The proposed requirement is awaiting user confirmation: recipients may chat and submit tasks, while the host retains authority over execution permissions. If approved, repair the host's permission resolution and the server's session-control mutation boundary together, preserving recipient chat access, ordinary owner controls, offline recovery, and encrypted-message support. Hiding a UI picker or parsing only plaintext metadata on the relay is insufficient. Validate recipient metadata and message overrides, owner changes, inherited automatic modes, and recovery at those real boundaries before a paid/live execution test. No policy change has been implemented by this assessment.
+
+
+### Consumer message risk gate: local mock integration (2026-10-04)
+
+`apps/cli/src/api/session/consumerMessageRiskGate.ts` implements the approved risk disposition: a valid risk probability at or above an explicitly supplied threshold refuses input; missing configuration, malformed results, exceptions, and timeout return `consumer_risk_unavailable` with `retryable: true`. There is no human-review decision. Provider ID, threshold, evaluator, and request budget are injected through `ApiClient.sessionSyncClient`/`ApiSessionClient`; the synthetic test threshold is not calibrated Jev policy. No Jev network adapter or credentials are configured.
+
+The server assigns `SessionPendingMessage.authorAccountId` from authenticated `request.userId`, including when the body is edited. The canonical materializer compares this writer with Session ownership and `SharedSessionEntryMember.userId`, returning `consumerMessageSource` outside encrypted payload content: `owner`, `private` (verified owner input outside a managed child), `consumer`, or `unknown`. HTTP and socket serialization use the same owner; rejoining a provider claim recalculates the classification from its stored author. No schema shape or migration changes are required. Deleted/missing attribution and other unverified writers are unknown; absence of a managed member alone never exempts a message. Neither payload metadata nor editable `sharedSessionEntryId` decides this classification.
+
+`ApiSessionClient.deliverPendingQueueMessage` checks consumer/unknown input after decryption and before marking it delivered, buffering it, or invoking the Agent callback. Confirmed owner/private input bypasses evaluation. A missing or malformed classification on the current provider-claim contract is screened rather than presumed owner. The released `server-v0.2.1` sid-only materializer commits/removes a row before returning it and cannot atomically attest the message writer. The host therefore blocks that operation before materialization with non-retryable `consumer_source_unavailable`, preserving the queue. A pre-read would not fence editing, reordering, or sharing changes. This blocks **all** Pending continuation against that old protocol, including private owner messages whose current author cannot be attested atomically; private-owner compatibility with `server-v0.2.1` is not restored. The returned non-retryable error and one standard transcript message tell the user to upgrade to a COMBO server with authenticated source classification and provider-claim delivery, then reconnect. The gate never retries the old materialize operation. Current-server verified owner/private input retains its bypass. Supporting that older peer again requires a separately approved atomic source-attestation backport, not payload trust or a pre-read. After evaluation and again before buffered dispatch, the host rechecks runtime closure/termination, socket identity, connection epoch, server contract, and provider generation. Invalidated unaccepted claims follow existing runtime-disposed settlement; close/replacement retains the existing server recovery owner. Concurrent successful claims recheck canonical local deduplication after evaluation. Refusal settles a current claim with existing `provider_rejected_before_acceptance`; evaluator unavailability uses `provider_unavailable_before_acceptance`, preserving explicit retry without classifying the content as malicious. Default-on warning logs contain codes and identifiers, not message text or private evaluator errors.
+
+Local tests inject mock evaluators; no real Jev/model request is sent. This gate covers the canonical remote Pending-to-Agent callback and its buffer, not local terminal input, initial host/provider prompts, or execution-run/direct provider APIs. It is not filesystem isolation and does not repair the unresolved execution-policy assessment above. Live use still requires an approved real adapter/configuration; without an evaluator, consumer/unknown messages stop with retryable unavailability.
+
+Before live TypeSafe/Jev use, approve the outbound message/context disclosure and request budget, choose provider endpoint/model and a product threshold with evaluation evidence, and supply credentials through the existing approved secret owner. The official guardrails cookbook gives application-owned policy examples, not calibrated COMBO settings: https://docs.typesafe.ai/cookbooks/llm_guardrails and https://docs.typesafe.ai/model-jaggedness/jev-1.13.
+
 ## Implementation references
 - Client crypto: `apps/cli/src/api/encryption.ts`
 - Session message format: `apps/cli/src/api/types.ts`
 - Server message ingestion: `apps/server/sources/app/api/socket/sessionUpdateHandler.ts`
 - Artifact/KV routes: `apps/server/sources/app/api/routes/artifactsRoutes.ts`, `apps/server/sources/app/kv/kvMutate.ts`
+
+### Paired local sharing smoke test
+
+From `apps/cli`, run:
+
+```sh
+HAPPIER_CLI_TEST_SKIP_BUILD=1 yarn vitest run --config vitest.integration.config.ts src/daemon/sharing/comboSharingFlow.integration.test.ts
+```
+
+This source-level integration lane starts the current production API and SQLite schema on a disposable loopback port. It creates three synthetic identities and a temporary project, publishes an invitation, redeems it, runs the canonical CLI sharing provisioner, sends recipient input through the actual pending queue and session socket, and reads the committed reply as the recipient. It checks frozen context, denied outsider access, one evaluation and one provider delivery. The process-launch boundary, risk evaluator and model reply are explicitly mocked; this does not validate real Codex execution, browser rendering or filesystem isolation. The fixture deletes its own temporary data and shuts down only its own server.
+
+`HAPPIER_CLI_TEST_SKIP_BUILD=1` uses the existing source-debug lane; it does not prove a distribution build. Normal dependency build validation remains a separate check.

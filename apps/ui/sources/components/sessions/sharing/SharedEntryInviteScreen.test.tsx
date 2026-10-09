@@ -42,7 +42,7 @@ describe('SharedEntryInviteScreen', () => {
         expect(boundary.previewFetch).toHaveBeenCalledTimes(1);
         expect(boundary.fetch).not.toHaveBeenCalled();
     });
-    it('keeps automatic failure inline and alerts once on explicit retry', async () => {
+    it('keeps a failed invitation check inline and offers retry and home without an alert', async () => {
         boundary.previewFetch.mockReset().mockResolvedValue(response({ error: 'operation_failed' }, 503));
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token={'a'.repeat(43)} />);
@@ -51,7 +51,7 @@ describe('SharedEntryInviteScreen', () => {
         expect(screen.findByTestId('shared-entry-exit')).not.toBeNull();
         await act(async () => { screen.pressByTestId('shared-entry-preview-retry'); });
         expect(boundary.previewFetch).toHaveBeenCalledTimes(2);
-        expect(boundary.alert).toHaveBeenCalledTimes(1);
+        expect(boundary.alert).not.toHaveBeenCalled();
         expect(boundary.fetch).not.toHaveBeenCalled();
     });
     it('keeps the recipient outcome clear when invitation metadata is absent', async () => {
@@ -81,13 +81,13 @@ describe('SharedEntryInviteScreen', () => {
         expect(screen.findByTestId('shared-entry-title')?.props.numberOfLines).toBe(2);
         expect(boundary.fetch).not.toHaveBeenCalled();
     });
-    it('alerts once on explicit failure and keeps inline recovery', async () => {
+    it('reports an explicit action failure inline and keeps the invitation recoverable until a real retry', async () => {
         boundary.fetch.mockResolvedValueOnce(response({ error: 'host_offline' }, 409));
         const { SharedEntryInviteScreen } = await import('./SharedEntryInviteScreen');
         const screen = await renderScreen(<SharedEntryInviteScreen token="public-token" />);
         expect(boundary.alert).not.toHaveBeenCalled();
         await act(async () => { screen.pressByTestId('shared-entry-accept'); });
-        expect(boundary.alert).toHaveBeenCalledTimes(1);
+        expect(boundary.alert).not.toHaveBeenCalled();
         expect(screen.findByTestId('shared-entry-error')?.props.children).toBe('sharedEntry.inviteHostOffline');
         expect(screen.findByTestId('shared-entry-title')?.props.children).toBe('Interview coach');
         expect(screen.findByTestId('shared-entry-accept')?.props.disabled).toBe(false);

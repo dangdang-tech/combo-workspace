@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
+import type { Socket } from "socket.io";
+import { eventRouter } from "@/app/events/eventRouter";
+import { serializePendingMaterializedMessage } from "./serializePendingMaterializedMessage";
 import type { Prisma } from "@prisma/client";
 
 import { db } from "@/storage/db";
@@ -200,6 +203,40 @@ describe("pendingMessageService (shared sessions)", () => {
             trustedPublisherFence: fence,
         });
     };
+
+    it("exempts verified private owner input but not missing attribution", async () => {
+        const owner = await createAccount("private-risk-owner");
+        const session = await createSession(owner.id);
+        expect((await enqueuePendingMessage({ actorUserId: owner.id, sessionId: session.id, localId: "private-risk", ciphertext: "synthetic-private" })).ok).toBe(true);
+        expect(await materializeNextPendingMessage({ actorUserId: owner.id, sessionId: session.id })).toMatchObject({ ok: true, didMaterialize: true, message: { consumerMessageSource: "private" } });
+        await db.sessionPendingMessage.update({ where: { sessionId_localId: { sessionId: session.id, localId: "private-risk" } }, data: { authorAccountId: null } });
+        expect(await materializeNextPendingMessage({ actorUserId: owner.id, sessionId: session.id })).toMatchObject({ ok: true, didMaterialize: true, message: { consumerMessageSource: "unknown" } });
+    });
+
+    it("binds risk classification to the current authenticated editor and retains it on claim retry", async () => {
+        const owner = await createAccount("risk-owner");
+        const recipient = await createAccount("risk-recipient");
+        const source = await createSession(owner.id);
+        const child = await createSession(owner.id);
+        const machine = await db.machine.create({ data: { id: randomUUID(), accountId: owner.id, metadata: "{}", active: true, lastActiveAt: new Date() } });
+        const connection = { connectionType: "machine-scoped" as const, userId: owner.id, machineId: machine.id, socket: { connected: true, emit: vi.fn() } as unknown as Socket };
+        eventRouter.addConnection(owner.id, connection);
+        try {
+            const entry = await db.sharedSessionEntry.create({ data: { ownerId: owner.id, sourceSessionId: source.id, machineId: machine.id, title: "Synthetic", inviteTokenHash: randomUUID() } });
+            await db.sharedSessionEntryMember.create({ data: { entryId: entry.id, userId: recipient.id, sessionId: child.id, status: "ready" } });
+            await shareSession({ sessionId: child.id, ownerId: owner.id, participantId: recipient.id, accessLevel: "edit" });
+            expect((await enqueuePendingMessage({ actorUserId: owner.id, sessionId: child.id, localId: "synthetic-risk", ciphertext: "synthetic-owner" })).ok).toBe(true);
+            expect((await updatePendingMessage({ actorUserId: recipient.id, sessionId: child.id, localId: "synthetic-risk", ciphertext: "synthetic-recipient" })).ok).toBe(true);
+            expect((await db.sessionPendingMessage.findUniqueOrThrow({ where: { sessionId_localId: { sessionId: child.id, localId: "synthetic-risk" } } })).authorAccountId).toBe(recipient.id);
+            const first = await materializeNextPendingMessage({ actorUserId: owner.id, sessionId: child.id });
+            if (first.ok && first.didMaterialize) expect(serializePendingMaterializedMessage(first.message)).toMatchObject({ consumerMessageSource: "consumer" });
+            expect(first).toMatchObject({ ok: true, didMaterialize: true, message: { consumerMessageSource: "consumer" } });
+            const retry = await materializeNextPendingMessage({ actorUserId: owner.id, sessionId: child.id });
+            expect(retry).toMatchObject({ ok: true, didMaterialize: true, message: { consumerMessageSource: "consumer" } });
+            await db.sessionPendingMessage.update({ where: { sessionId_localId: { sessionId: child.id, localId: "synthetic-risk" } }, data: { authorAccountId: null } });
+            expect(await materializeNextPendingMessage({ actorUserId: owner.id, sessionId: child.id })).toMatchObject({ ok: true, didMaterialize: true, message: { consumerMessageSource: "unknown" } });
+        } finally { eventRouter.removeConnection(owner.id, connection); }
+    });
 
     it("commits resume authorization for an ordinary queued row without changing its delivery priority", async () => {
         const owner = await createAccount("inactive-ui-death-owner");

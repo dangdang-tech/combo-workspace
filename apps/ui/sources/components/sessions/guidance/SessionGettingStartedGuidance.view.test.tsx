@@ -1,5 +1,4 @@
 import React from 'react';
-import { execFileSync } from 'node:child_process';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react-test-renderer';
 import { collectUnexpectedRawTextNodes, renderScreen } from '@/dev/testkit';
@@ -89,7 +88,11 @@ vi.mock('@/config', () => ({
 
 describe('SessionGettingStartedGuidanceView', () => {
   beforeEach(() => { tauriState.desktop = false; vi.unstubAllGlobals(); });
-  it.each(['connect_machine', 'start_daemon'] as const)('keeps %s web guidance on the fork source workflow', async (kind) => {
+
+  // Web browser users see the new WebBrowserGuidance component with two-path flow:
+  // Flow A (host): Setup guide button → no CLI command front and center
+  // Flow B (recipient): Open shared link → no installation needed
+  it.each(['connect_machine', 'start_daemon'] as const)('shows %s web guidance with two-path flow (host and recipient)', async (kind) => {
     const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
     openSourceGuide.mockClear();
     const screen = await renderScreen(
@@ -98,14 +101,29 @@ describe('SessionGettingStartedGuidanceView', () => {
         model={{ kind, targetLabel: 'Company', serverUrl: 'https://api.company.example', serverName: 'company', showServerSetup: true }}
       />,
     );
+    // Should show the web browser guidance container
+    expect(screen.findByTestId('web-browser-guidance')).not.toBeNull();
+    // Should show both paths: host and recipient
+    expect(screen.findByTestId('web-guidance-host-path')).not.toBeNull();
+    expect(screen.findByTestId('web-guidance-recipient-path')).not.toBeNull();
+    // Host path should have setup guide button (not CLI command)
+    expect(screen.findByTestId('web-guidance-setup-guide')).not.toBeNull();
+    // Should NOT show CLI commands front and center (no curl command visible)
     const content = screen.getTextContent();
+    expect(content).not.toContain('curl');
     expect(content).not.toContain('happier.dev/install');
-    expect(content).not.toMatch(/\b(?:happier|hprev) (?:setup|service|codex)/);
-    await screen.pressByTestIdAsync('session-getting-started-source-guide');
-    expect(openSourceGuide).toHaveBeenCalledWith('https://github.com/dangdang-tech/combo-workspace#从源码启动');
+    // Should NOT show old-style CLI follow-up
+    expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
+    // Should NOT show git clone or developer setup by default
+    expect(content).not.toContain('git clone');
+    expect(content).not.toContain('yarn install');
+    expect(content).not.toContain('HAPPIER_SERVER_URL');
+    // Should still show the scroll container and kind marker
+    expect(screen.findByTestId('session-getting-started-scroll')).not.toBeNull();
+    expect(screen.findByTestId(`session-getting-started-kind-${kind}`)).not.toBeNull();
   });
 
-  it.each(['connect_machine', 'start_daemon'] as const)('copies a standalone %s command bound to the selected server and current web origin', async (kind) => {
+  it.each(['connect_machine', 'start_daemon'] as const)('web browser %s guidance has collapsible advanced section with source setup', async (kind) => {
     const origin = 'https://combo-workspace-test.43-160-242-46.sslip.io';
     const serverUrl = 'https://relay.example.test';
     vi.stubGlobal('window', { location: { origin } });
@@ -113,18 +131,15 @@ describe('SessionGettingStartedGuidanceView', () => {
     const screen = await renderScreen(
       <SessionGettingStartedGuidanceView variant="primaryPane" model={{ kind, targetLabel: 'COMBO', serverUrl, serverName: 'test', showServerSetup: true }} />,
     );
-    await screen.pressByTestIdAsync('session-getting-started-copy-auth_login');
-    const command = clipboardMocks.setStringAsync.mock.calls.at(-1)?.[0];
-    expect(command).toBeTruthy();
-    // Run the copied shell text with only the CLI process boundary replaced.
-    // Each CLI invocation must receive the same explicit scope in a fresh shell.
-    const output = execFileSync('/bin/sh', ['-c', `yarn() { printf '%s\\n' "$*" "$HAPPIER_SERVER_URL" "$HAPPIER_WEBAPP_URL" "$HAPPIER_HOME_DIR" "$HAPPIER_CLI_RUNTIME_DISABLE" "$HAPPIER_CLI_SUBPROCESS_PREFER_TSX"; }\n${command}`], {
-      env: { HOME: '/combo-test-home', NODE_ENV: 'test' }, encoding: 'utf8',
-    });
-    const commands = ['auth login', 'daemon start'];
-    expect(output.trim().split('\n')).toEqual(commands.flatMap((args) => [
-      `--cwd apps/cli dev ${args}`, serverUrl, origin, '/combo-test-home/.combo-workspace/host', '1', '1',
-    ]));
+    // Should have advanced toggle
+    expect(screen.findByTestId('web-guidance-advanced-toggle')).not.toBeNull();
+    // Advanced content should be hidden by default
+    expect(screen.findByTestId('web-guidance-advanced-content')).toBeNull();
+    // Click to expand advanced section
+    await screen.pressByTestIdAsync('web-guidance-advanced-toggle');
+    // Now should show advanced content with source setup
+    expect(screen.findByTestId('web-guidance-advanced-content')).not.toBeNull();
+    expect(screen.findByTestId('web-guidance-source-guide')).not.toBeNull();
   });
 
   it('takes an online host straight to session preparation without another terminal setup workflow', async () => {
@@ -147,19 +162,29 @@ describe('SessionGettingStartedGuidanceView', () => {
     expect(onStartNewSession).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps shell metacharacters in the configured server URL literal when copying a command', async () => {
+  it('web browser guidance hides server URL in collapsed advanced section', async () => {
     vi.stubGlobal('window', { location: { origin: 'https://workspace.example.test' } });
-    const serverUrl = "https://relay.example.test/path?q='; printf injected; #$(printf expanded)`printf expanded`";
+    const serverUrl = "https://relay.example.test/path?q=test";
     const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
     const screen = await renderScreen(
       <SessionGettingStartedGuidanceView variant="primaryPane" model={{ kind: 'start_daemon', targetLabel: 'COMBO', serverUrl, serverName: 'test', showServerSetup: true }} />,
     );
-    await screen.pressByTestIdAsync('session-getting-started-copy-auth_login');
-    const command = clipboardMocks.setStringAsync.mock.calls.at(-1)?.[0];
-    const output = execFileSync('/bin/sh', ['-c', `yarn() { printf '%s' "$HAPPIER_SERVER_URL"; }\n${command}`], {
-      env: { HOME: '/combo-test-home', NODE_ENV: 'test' }, encoding: 'utf8',
-    });
-    expect(output).toBe(serverUrl.repeat(2));
+    // Web browser users see the two-path guidance
+    expect(screen.findByTestId('web-browser-guidance')).not.toBeNull();
+    // Host path has setup guide button instead of CLI command
+    expect(screen.findByTestId('web-guidance-setup-guide')).not.toBeNull();
+    // Old-style CLI follow-up should not appear
+    expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
+    // Advanced content is hidden by default
+    expect(screen.findByTestId('web-guidance-advanced-content')).toBeNull();
+    // Server URL is only shown in advanced section
+    const content = screen.getTextContent();
+    expect(content).not.toContain(serverUrl);
+    // Expand advanced and verify server URL appears
+    await screen.pressByTestIdAsync('web-guidance-advanced-toggle');
+    expect(screen.findByTestId('web-guidance-advanced-content')).not.toBeNull();
+    const expandedContent = screen.getTextContent();
+    expect(expandedContent).toContain(serverUrl);
   });
 
   it('uses one target-bound guided setup instead of a parallel server/auth/service recipe', async () => {
@@ -250,7 +275,7 @@ describe('SessionGettingStartedGuidanceView', () => {
     }
   });
 
-  it('keeps the phone manual terminal action available while deferring CLI follow-up until interactions settle', async () => {
+  it('shows the phone web browser guidance with two-path flow', async () => {
     vi.useFakeTimers();
     try {
       const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
@@ -273,22 +298,28 @@ describe('SessionGettingStartedGuidanceView', () => {
       );
 
       expect(screen.findByTestId('session-getting-started-kind-connect_machine')).not.toBeNull();
+      // Web browser users see the new two-path guidance
+      expect(screen.findByTestId('web-browser-guidance')).not.toBeNull();
+      expect(screen.findByTestId('web-guidance-host-path')).not.toBeNull();
+      expect(screen.findByTestId('web-guidance-recipient-path')).not.toBeNull();
+      // Old CLI follow-up should not appear
       expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
-      expect(screen.findAllByType('RoundButton' as any)).toHaveLength(2);
 
       act(() => {
         vi.runOnlyPendingTimers();
       });
 
-      expect(screen.findByTestId('session-getting-started-cli-follow-up')).not.toBeNull();
-      expect(screen.findByTestId('session-getting-started-step-install_cli')).not.toBeNull();
-      expect(screen.findByTestId('session-getting-started-step-auth_login')).not.toBeNull();
+      // After timers settle, the two-path guidance remains
+      expect(screen.findByTestId('web-browser-guidance')).not.toBeNull();
+      expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
+      expect(screen.findByTestId('session-getting-started-step-install_cli')).toBeNull();
+      expect(screen.findByTestId('session-getting-started-step-auth_login')).toBeNull();
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('defers new-session blocking CLI follow-up while keeping the blocking header visible', async () => {
+  it('shows new-session blocking header without CLI follow-up for web browser users', async () => {
     vi.useFakeTimers();
     try {
       const { SessionGettingStartedGuidanceView } = await import('./SessionGettingStartedGuidance');
@@ -308,15 +339,17 @@ describe('SessionGettingStartedGuidanceView', () => {
 
       expect(screen.findByTestId('session-getting-started-logo')).not.toBeNull();
       expect(screen.findByTestId('session-getting-started-kind-connect_machine')).not.toBeNull();
+      // Web browser users don't see CLI follow-up steps
       expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
 
       act(() => {
         vi.runOnlyPendingTimers();
       });
 
-      expect(screen.findByTestId('session-getting-started-cli-follow-up')).not.toBeNull();
+      // After timers settle, web browser users still don't see CLI follow-up
+      expect(screen.findByTestId('session-getting-started-cli-follow-up')).toBeNull();
       expect(screen.findByTestId('session-getting-started-step-server_setup')).toBeNull();
-      expect(screen.findByTestId('session-getting-started-step-auth_login')).not.toBeNull();
+      expect(screen.findByTestId('session-getting-started-step-auth_login')).toBeNull();
     } finally {
       vi.useRealTimers();
     }

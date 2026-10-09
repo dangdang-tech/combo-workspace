@@ -424,6 +424,26 @@ export const en = {
         connectBody: "Follow the guide to set this server address and a separate host data directory, then run auth login and daemon start.",
         runBody: "Run from the repository in a terminal already configured with the same server and host data directory, or create a session in the app.",
     },
+    webGuidance: {
+        title: "Welcome to COMBO",
+        subtitle: "Same project, separate AI conversations",
+        hostPath: {
+            title: "Start sharing sessions",
+            description: "To share Codex conversations, connect a computer running the COMBO host. Follow the setup guide to get started.",
+            actionTitle: "View setup guide",
+        },
+        recipientPath: {
+            title: "Join a shared session",
+            description: "Someone shared a conversation link with you? Open it to continue chatting.",
+            hint: "Paste the shared link in your browser or ask the host to resend it.",
+        },
+        advancedSetup: {
+            title: "Advanced setup",
+            sourceSetupTitle: "Source setup (developers)",
+            sourceSetupDescription: "Build and run COMBO from the source repository.",
+        },
+        orDivider: "or",
+    },
     brand: { name: 'COMBO' },
     nativeSessionSharing: {
         shareAction: 'Share session',

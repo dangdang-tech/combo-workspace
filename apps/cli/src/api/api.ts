@@ -752,10 +752,11 @@ export class ApiClient {
   sessionSyncClient(
     session: Session,
     runtimeActivity?: import('./session/sessionClient').SessionRuntimeActivityClientConfig,
+    consumerMessageRisk?: import('./session/consumerMessageRiskGate').ConsumerMessageRiskConfig,
   ): ApiSessionClient {
     return new ApiSessionClient(this.credential.token, session, runtimeActivity, {
       permissionRequestPushSender: this.pushClient,
-    });
+    }, consumerMessageRisk);
   }
 
   machineSyncClient(

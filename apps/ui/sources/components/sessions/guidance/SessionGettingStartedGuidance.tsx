@@ -118,6 +118,72 @@ const stylesheet = StyleSheet.create((theme) => ({
         borderColor: theme.colors.border.default,
         backgroundColor: theme.colors.surface.inset,
     },
+    webGuidanceContainer: {
+        width: '100%',
+        maxWidth: 720,
+        gap: 24,
+    },
+    webPathCard: {
+        width: '100%',
+        gap: 12,
+        paddingHorizontal: 18,
+        paddingVertical: 18,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: theme.colors.border.default,
+        backgroundColor: theme.colors.surface.inset,
+    },
+    webPathTitle: {
+        fontSize: 16,
+        color: theme.colors.text.primary,
+        ...Typography.default('semiBold'),
+    },
+    webPathDescription: {
+        fontSize: 14,
+        color: theme.colors.text.secondary,
+        ...Typography.default(),
+    },
+    webPathHint: {
+        fontSize: 12,
+        color: theme.colors.text.tertiary,
+        ...Typography.default(),
+    },
+    orDivider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 4,
+    },
+    orDividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: theme.colors.border.default,
+    },
+    orDividerText: {
+        fontSize: 12,
+        color: theme.colors.text.tertiary,
+        ...Typography.default(),
+    },
+    advancedToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        marginTop: 8,
+    },
+    advancedToggleText: {
+        fontSize: 13,
+        color: theme.colors.text.secondary,
+        ...Typography.default(),
+    },
+    advancedContent: {
+        marginTop: 8,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border.default,
+        gap: 12,
+    },
     sectionTitle: {
         width: '100%',
         maxWidth: 720,
@@ -281,40 +347,93 @@ function buildDeferredCliFollowUpKey(params: Readonly<{
     ].join('\n');
 }
 
+type WebBrowserGuidanceProps = Readonly<{
+    serverUrl: string;
+}>;
+
+function WebBrowserGuidance({ serverUrl }: WebBrowserGuidanceProps): React.ReactElement {
+    const { theme } = useUnistyles();
+    const styles = stylesheet;
+    const [showAdvanced, setShowAdvanced] = React.useState(false);
+
+    return (
+        <View testID="web-browser-guidance" style={styles.webGuidanceContainer}>
+            <Text style={styles.title}>{t('webGuidance.title')}</Text>
+            <Text style={styles.subtitle}>{t('webGuidance.subtitle')}</Text>
+
+            {/* Path A: Host flow - Connect a computer */}
+            <View testID="web-guidance-host-path" style={styles.webPathCard}>
+                <Text style={styles.webPathTitle}>{t('webGuidance.hostPath.title')}</Text>
+                <Text style={styles.webPathDescription}>{t('webGuidance.hostPath.description')}</Text>
+                <View style={styles.buttonWrapper}>
+                    <RoundButton
+                        testID="web-guidance-setup-guide"
+                        title={t('webGuidance.hostPath.actionTitle')}
+                        onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
+                        size="normal"
+                    />
+                </View>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.orDivider}>
+                <View style={styles.orDividerLine} />
+                <Text style={styles.orDividerText}>{t('webGuidance.orDivider')}</Text>
+                <View style={styles.orDividerLine} />
+            </View>
+
+            {/* Path B: Recipient flow - Open shared link (no install needed) */}
+            <View testID="web-guidance-recipient-path" style={styles.webPathCard}>
+                <Text style={styles.webPathTitle}>{t('webGuidance.recipientPath.title')}</Text>
+                <Text style={styles.webPathDescription}>{t('webGuidance.recipientPath.description')}</Text>
+                <Text style={styles.webPathHint}>{t('webGuidance.recipientPath.hint')}</Text>
+            </View>
+
+            {/* Advanced toggle */}
+            <Pressable
+                testID="web-guidance-advanced-toggle"
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showAdvanced }}
+                accessibilityLabel={t('webGuidance.advancedSetup.title')}
+                style={styles.advancedToggle}
+                onPress={() => setShowAdvanced(prev => !prev)}
+            >
+                <Icon
+                    name={showAdvanced ? 'caret-up' : 'caret-down'}
+                    size={14}
+                    color={theme.colors.text.secondary}
+                />
+                <Text style={styles.advancedToggleText}>{t('webGuidance.advancedSetup.title')}</Text>
+            </Pressable>
+
+            {/* Advanced section - Source setup for developers */}
+            {showAdvanced ? (
+                <View testID="web-guidance-advanced-content" style={styles.advancedContent}>
+                    <Text style={styles.webPathTitle}>{t('webGuidance.advancedSetup.sourceSetupTitle')}</Text>
+                    <Text style={styles.webPathDescription}>{t('webGuidance.advancedSetup.sourceSetupDescription')}</Text>
+                    {serverUrl ? (
+                        <Text selectable style={styles.stepDescription}>
+                            {t('welcome.frontDoorSelectedServer')}: {serverUrl}
+                        </Text>
+                    ) : null}
+                    <RoundButton
+                        testID="web-guidance-source-guide"
+                        title={t('sourceSetup.openGuide')}
+                        onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
+                        size="normal"
+                        display="inverted"
+                    />
+                </View>
+            ) : null}
+        </View>
+    );
+}
+
 function buildSteps(model: SessionGettingStartedGuidanceViewModel): SessionGettingStartedGuidanceStep[] {
+    // Web browser users (non-Tauri desktop) see no terminal commands; guidance
+    // is handled by WebBrowserGuidance component instead.
     if (Platform.OS === 'web' && !isTauriDesktop()) {
-        const origin = typeof window !== 'undefined' ? window.location?.origin : undefined;
-        const webappUrl = origin && /^https?:\/\//.test(origin) ? origin : model.serverUrl;
-        const sourceEnvironment = [
-            'export HAPPIER_HOME_DIR="$HOME/.combo-workspace/host"',
-            `export HAPPIER_SERVER_URL=${quoteShellArgument(model.serverUrl, 'linux')}`,
-            `export HAPPIER_WEBAPP_URL=${quoteShellArgument(webappUrl, 'linux')}`,
-            'export HAPPIER_CLI_RUNTIME_DISABLE=1',
-            'export HAPPIER_CLI_SUBPROCESS_PREFER_TSX=1',
-        ];
-        const connectStep: SessionGettingStartedGuidanceStep = {
-            id: 'auth_login',
-            title: t('sourceSetup.connectTitle'),
-            description: t('sourceSetup.connectBody'),
-            command: [...sourceEnvironment, 'yarn --cwd apps/cli dev auth login', 'yarn --cwd apps/cli dev daemon start'].join('\n'),
-            copyLabel: t('sourceSetup.connectTitle'),
-        };
-        switch (model.kind) {
-            case 'connect_machine':
-                return [{
-                    id: 'install_cli',
-                    title: t('sourceSetup.cloneTitle'),
-                    description: t('sourceSetup.cloneBody'),
-                    command: 'git clone https://github.com/dangdang-tech/combo-workspace.git\ncd combo-workspace\nHAPPIER_INSTALL_SCOPE=server,cli,ui yarn install --frozen-lockfile\nyarn build:packages',
-                    copyLabel: t('sourceSetup.cloneTitle'),
-                }, connectStep];
-            case 'start_daemon':
-                return [connectStep];
-            case 'create_session':
-                return [];
-            default:
-                return [];
-        }
+        return [];
     }
     switch (model.kind) {
         case 'connect_machine': {
@@ -396,12 +515,9 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
 
     const isSourceBrowser = Platform.OS === 'web' && !isTauriDesktop();
     const needsHost = model.kind === 'connect_machine' || model.kind === 'start_daemon';
-    const title = isSourceBrowser && needsHost ? t('sourceSetup.title') : titleForKind(model.kind);
-    const subtitle = isSourceBrowser && needsHost
-        ? t('sourceSetup.body')
-        : isSourceBrowser && model.kind === 'create_session'
-            ? t('sharedEntry.guideSteps')
-            : subtitleForKind(model.kind, model.targetLabel);
+    // Web browser users see standard guidance messaging instead of source-setup instructions.
+    const title = titleForKind(model.kind);
+    const subtitle = subtitleForKind(model.kind, model.targetLabel);
     const steps = React.useMemo(() => buildSteps(model), [
         model.kind,
         model.serverName,
@@ -526,24 +642,13 @@ function SessionGettingStartedGuidanceViewImpl(props: SessionGettingStartedGuida
                         </View>
                     ) : null}
                 </View>
+            ) : isSourceBrowser && needsHost ? (
+                <WebBrowserGuidance serverUrl={model.serverUrl} />
             ) : model.kind !== 'select_session' ? (
                 <>
                     <Text style={styles.title}>{title}</Text>
                     <Text style={styles.subtitle}>{subtitle}</Text>
                 </>
-            ) : null}
-
-            {isSourceBrowser && steps.length > 0 ? (
-                <View style={styles.primaryCard}>
-                    <Text style={styles.stepTitle}>{t('welcome.frontDoorSelectedServer')}</Text>
-                    <Text selectable style={styles.stepDescription}>{model.serverUrl}</Text>
-                    <RoundButton
-                        testID="session-getting-started-source-guide"
-                        title={t('sourceSetup.openGuide')}
-                        onPress={() => { void Linking.openURL(SOURCE_SETUP_URL); }}
-                        size="normal"
-                    />
-                </View>
             ) : null}
 
             {model.kind !== 'select_session' && showCliFollowUp ? (

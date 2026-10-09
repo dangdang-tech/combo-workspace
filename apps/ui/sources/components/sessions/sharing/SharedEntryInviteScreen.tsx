@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
-import { Modal } from '@/modal';
 import { RoundButton } from '@/components/ui/buttons/RoundButton';
 import { createExternalProviderAuthActions } from '@/auth/flows/createExternalProviderAuthActions';
 import { getServerFeaturesSnapshot } from '@/sync/api/capabilities/serverFeaturesClient';
@@ -47,7 +46,7 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
     const returnTo = `/invite/${encodeURIComponent(token)}${target ? `?server=${encodeURIComponent(target)}` : ''}`;
     const needsServerSwitch = Boolean(target && ![snapshot.serverUrl, snapshot.activeShareableServerUrl, snapshot.activeLocalRelayUrl]
         .some(url => url && createServerUrlComparableKey(url) === createServerUrlComparableKey(target)));
-    const run = useCallback(async (operation: () => Promise<void>, reportFailure = false) => {
+    const run = useCallback(async (operation: () => Promise<void>) => {
         if (inFlight.current === scope || !isCurrent()) return;
         inFlight.current = scope;
         setBusyScope(scope);
@@ -55,14 +54,13 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
         try { await operation(); } catch (nextError) {
             if (isCurrent()) {
                 setState((previous) => ({ ...previous, scope, error: nextError }));
-                if (reportFailure) Modal.alert(t('common.error'), sharedEntryInviteErrorMessage(nextError));
             }
         } finally {
             if (inFlight.current === scope) inFlight.current = null;
             if (isCurrent()) setBusyScope(null);
         }
     }, [scope, isCurrent]);
-    const loadPreview = useCallback((reportFailure = false) => run(async () => {
+    const loadPreview = useCallback(() => run(async () => {
         try {
             const next = await client.preview(token);
             if (isCurrent()) setState({ scope, preview: next.preview, access: auth.isAuthenticated ? next.access : null, error: null, loaded: true });
@@ -72,16 +70,16 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
             if (!(error instanceof SharedEntryError) || error.status !== 404 || !['Not Found', 'not_found'].includes(error.code)) throw error;
             if (isCurrent()) setState({ scope, preview: null, access: null, error: null, loaded: true });
         }
-    }, reportFailure), [client, token, auth.isAuthenticated, scope, run, isCurrent]);
+    }), [client, token, auth.isAuthenticated, scope, run, isCurrent]);
     useEffect(() => {
         if (!invalidServer && token && !needsServerSwitch) void loadPreview();
     }, [invalidServer, token, needsServerSwitch, loadPreview]);
-    const refresh = useCallback(async (reportFailure = false) => {
+    const refresh = useCallback(async () => {
         if (!access) return;
         await run(async () => {
             const next = await client.access(access.entryId);
             if (isCurrent()) setState((previous) => ({ ...previous, access: next }));
-        }, reportFailure);
+        });
     }, [access?.entryId, client, run, isCurrent]);
     useSharedEntryPolling(refresh, Boolean(access && ['pending', 'provisioning'].includes(access.status) && !error));
     useEffect(() => {
@@ -105,17 +103,15 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
                 } else {
                     throw new SharedEntryError('google_auth_unavailable', 409);
                 }
-            }, true);
+            });
             return;
         }
         void run(async () => {
             const next = await client.redeem(token);
             if (isCurrent()) {
                 setState((previous) => ({ ...previous, access: next }));
-                if (next.status === 'failed') Modal.alert(t('common.error'), next.errorCode
-                    ? sharedEntryInviteErrorMessage(new SharedEntryError(next.errorCode, 409)) : t('sharedEntry.preparationFailed'));
             }
-        }, true);
+        });
     };
     const preparing = access?.status === 'pending' || access?.status === 'provisioning';
     const preparationError = access?.status === 'failed' && access.errorCode
@@ -140,16 +136,16 @@ export function SharedEntryInviteScreen({ token, serverUrl }: { token: string; s
             action = { testID: 'shared-entry-switch-server', title: t('sharedEntry.connectServer'), onPress: () => void run(async () => {
                 await upsertActivateAndSwitchServer({ serverUrl: target, source: 'url', scope: 'tab', refreshAuth: auth.refreshFromActiveServer });
                 if (mounted.current) setRevision((value) => value + 1);
-            }, true) };
+            }) };
         } else if (recovery === 'account' || recovery === 'restore') {
             action = { testID: 'shared-entry-recover', title: recovery === 'account' ? t('sharedEntry.linkGoogle') : t('sharedEntry.restoreKeys'),
                 onPress: () => router.push(withAuthReturnTo(recovery === 'account' ? '/settings/account' : '/restore', returnTo)) };
         } else if (!visible?.loaded && error && canRetry) {
-            action = { testID: 'shared-entry-preview-retry', title: t('common.retry'), onPress: () => void loadPreview(true) };
+            action = { testID: 'shared-entry-preview-retry', title: t('common.retry'), onPress: () => void loadPreview() };
         } else if (access?.status === 'ready') {
             action = { testID: 'shared-entry-open', title: t('sharedEntry.inviteOpening'), disabled: true, loading: true };
         } else if (preparing && canRetry) {
-            action = { testID: 'shared-entry-refresh', title: t('sharedEntry.refresh'), onPress: () => void refresh(true) };
+            action = { testID: 'shared-entry-refresh', title: t('sharedEntry.refresh'), onPress: () => void refresh() };
         } else if (visible?.loaded && canRetry && access?.status !== 'revoked') {
             action = { testID: 'shared-entry-accept', title: auth.isAuthenticated ? (access || error ? t('common.retry') : t('sharedEntry.startConversation')) : t('sharedEntry.signIn'), onPress: accept };
         }

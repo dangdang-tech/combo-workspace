@@ -690,24 +690,33 @@ export function createSessionsDomain<S extends SessionsDomain & SessionsDomainDe
             sessionPermissionModeUpdatedAts = {};
             sessionModelModeUpdatedAts = {};
             sessionLastViewed = {};
+            sessionRepositoryTreeExpandedPathsBySessionId = {};
             reviewCommentsDraftsBySessionId = {};
             reviewCommentsDraftsByWorkspaceCacheKey = {};
             actionDraftsBySessionId = {};
-            set((state) => {
-                const strippedSessions: Record<string, Session> = {};
-                Object.entries(state.sessions).forEach(([id, session]) => {
-                    strippedSessions[id] = stripLocalSessionFields(session);
-                });
-                return {
-                    ...state,
-                    sessionLocalStateScope: null,
-                    sessions: strippedSessions,
-                    sessionLastViewed: {},
-                    reviewCommentsDraftsBySessionId: {},
-                    reviewCommentsDraftsByWorkspaceCacheKey: {},
-                    actionDraftsBySessionId: {},
-                };
-            });
+            set((state) => ({
+                ...state,
+                sessionLocalStateScope: null,
+                sessions: {},
+                sessionListRenderables: {},
+                deletedSessionIds: {},
+                sessionListRenderableDelta: {
+                    revision: 0,
+                    changedSessionIds: [],
+                    removedSessionIds: [],
+                    rebuiltSessionListViewData: false,
+                },
+                sessionsData: null,
+                sessionListViewData: null,
+                sessionListViewDataByServerId: {},
+                sessionScmStatus: {},
+                sessionLastViewed: {},
+                sessionRepositoryTreeExpandedPathsBySessionId: {},
+                reviewCommentsDraftsBySessionId: {},
+                reviewCommentsDraftsByWorkspaceCacheKey: {},
+                actionDraftsBySessionId: {},
+                isDataReady: false,
+            }));
         },
         getActiveSessions: () => {
             const state = get();
