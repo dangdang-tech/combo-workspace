@@ -33,6 +33,10 @@ const onSessionVisibleSpy = vi.hoisted(() => vi.fn());
 const markSessionLiveTailIntentSpy = vi.hoisted(() => vi.fn());
 const fetchPendingMessagesSpy = vi.hoisted(() => vi.fn(async (_sessionId: string) => undefined));
 const chatHeaderRenderSpy = vi.hoisted(() => vi.fn());
+// Match storage selector stability: 5c3ddfcba added account scope; 84228be37 added approvals.
+// Fresh mock identities invalidate the picker edit callback and transcript memo on pending updates.
+const activeAccountScope = vi.hoisted(() => ({ serverId: 'server-1', accountId: 'account-1' }));
+const emptyApprovalArtifacts = vi.hoisted(() => Object.freeze([]));
 const chatListRenderSpy = vi.hoisted(() => vi.fn());
 const surfaceMountSpy = vi.hoisted(() => vi.fn());
 const surfaceUnmountSpy = vi.hoisted(() => vi.fn());
@@ -317,7 +321,7 @@ installSessionShellCommonModuleMocks({
                     () => sessionUsageState,
                     () => sessionUsageState,
                 ),
-                useActiveServerAccountScope: () => ({ serverId: 'server-1', accountId: 'account-1' }),
+                useActiveServerAccountScope: () => activeAccountScope,
                 useLocalSetting: (key: string) => {
                     if (key === 'acknowledgedCliVersions') return {};
                     if (key === 'uiMultiPanePanelsEnabled') return false;
@@ -333,7 +337,7 @@ installSessionShellCommonModuleMocks({
                 useSettings: () => ({ experiments: true, featureToggles: {} }),
                 useAutomations: () => [],
                 useSessionAutomationsEnabledCount: () => 0,
-                useOpenApprovalArtifactsForSession: () => [],
+                useOpenApprovalArtifactsForSession: () => emptyApprovalArtifacts,
                 useMachine: () => null,
             } as any,
         });
