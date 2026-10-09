@@ -13,37 +13,27 @@ import { Typography } from '@/constants/Typography';
 import { useHydrateSessionForRoute } from '@/hooks/session/useHydrateSessionForRoute';
 import { isSessionRouteHydrationAvailable, isSessionRouteHydrationMissing } from '@/sync/domains/session/sessionRouteHydrationState';
 import { openFriendSelectorModal } from '@/components/sessions/sharing/openFriendSelectorModal';
-import { openPublicLinkDialog } from '@/components/sessions/sharing/openPublicLinkDialog';
 import { openSessionShareDialog } from '@/components/sessions/sharing/openSessionShareDialog';
-import { SessionShare, PublicSessionShare, ShareAccessLevel } from '@/sync/domains/social/sharingTypes';
+import { SessionShare, ShareAccessLevel } from '@/sync/domains/social/sharingTypes';
 import { ActivitySpinner } from '@/components/ui/feedback/ActivitySpinner';
 import {
     getSessionShares,
     createSessionShare,
     updateSessionShare,
-    deleteSessionShare,
-    getPublicShare,
-    createPublicShare,
-    deletePublicShare
+    deleteSessionShare
 } from '@/sync/api/social/apiSharing';
 import { sync } from '@/sync/sync';
-import { useHappyAction } from '@/hooks/ui/useHappyAction';
 import { HappyError } from '@/utils/errors/errors';
 import { getSessionFriendsList } from '@/sync/api/social/createSessionSocialRequest';
 import { UserProfile } from '@/sync/domains/social/friendTypes';
-import { encryptDataKeyForPublicShare } from '@/sync/encryption/publicShareEncryption';
-import { getRandomBytes } from 'expo-crypto';
 import { encryptDataKeyForRecipientV0, verifyRecipientContentPublicKeyBinding } from '@/sync/encryption/directShareEncryption';
 import { buildCreateSessionShareRequest } from '@/sync/domains/social/sharingRequests/buildCreateSessionShareRequest';
 import { Text } from '@/components/ui/text/Text';
-import { mergePublicShareWithCachedToken } from '@/sync/domains/social/mergePublicShareWithCachedToken';
-import { createPublicShareWithClientToken } from '@/sync/domains/social/createPublicShareWithClientToken';
 import { Icon } from '@/components/ui/icons/Icon';
 import { resolveSessionShareRecipientEligibility } from '@/sync/domains/social/sessionShareRecipientEligibility';
 
 type SharingData = Readonly<{
     shares: SessionShare[];
-    publicShare: PublicSessionShare | null;
     friends: UserProfile[];
 }>;
 
@@ -58,7 +48,6 @@ function SharingManagementContent({ sessionId }: { sessionId: string }) {
     const session = useSession(sessionId);
     const canManage = !session?.accessLevel || session.accessLevel === 'admin';
 
-    const publicShareTokenRef = useRef<string | null>(null);
     const sharingDataRequestRevisionRef = useRef(0);
     const [sharingDataState, setSharingDataState] = useState<SharingDataState>({
         data: null,
@@ -66,7 +55,6 @@ function SharingManagementContent({ sessionId }: { sessionId: string }) {
         error: false,
     });
     const shares = sharingDataState.data?.shares ?? [];
-    const publicShare = sharingDataState.data?.publicShare ?? null;
     const friends = sharingDataState.data?.friends ?? [];
 
     // Load sharing data
@@ -78,28 +66,15 @@ function SharingManagementContent({ sessionId }: { sessionId: string }) {
         setSharingDataState((current) => ({ ...current, loading: true, error: false }));
         const credentials = sync.getCredentials();
         try {
-            const [sharesData, publicShareData, friendsData] = await Promise.all([
+            const [sharesData, friendsData] = await Promise.all([
                 getSessionShares(credentials, sessionId),
-                getPublicShare(credentials, sessionId),
                 getSessionFriendsList(credentials, sessionId),
             ]);
             if (sharingDataRequestRevisionRef.current !== requestRevision) return;
-            setSharingDataState((current) => {
-                const merged = mergePublicShareWithCachedToken({
-                    previousPublicShare: current.data?.publicShare ?? null,
-                    cachedToken: publicShareTokenRef.current,
-                    outcome: { ok: true, publicShare: publicShareData },
-                });
-                publicShareTokenRef.current = merged.cachedToken;
-                return {
-                    data: {
-                        shares: sharesData,
-                        publicShare: merged.publicShare,
-                        friends: friendsData,
-                    },
-                    loading: false,
-                    error: false,
-                };
+            setSharingDataState({
+                data: { shares: sharesData, friends: friendsData },
+                loading: false,
+                error: false,
             });
         } catch (error) {
             if (sharingDataRequestRevisionRef.current !== requestRevision) return;
@@ -199,63 +174,6 @@ function SharingManagementContent({ sessionId }: { sessionId: string }) {
         }
     }, [sessionId, loadSharingData]);
 
-    // Handle creating public share
-    const handleCreatePublicShare = useCallback(async (options: {
-        expiresInDays?: number;
-        maxUses?: number;
-        isConsentRequired: boolean;
-    }): Promise<PublicSessionShare> => {
-        try {
-            const credentials = sync.getCredentials();
-
-            const sessionEncryptionMode = session?.encryptionMode === 'plain' ? 'plain' : 'e2ee';
-
-            const created = await createPublicShareWithClientToken({
-                credentials,
-                sessionId,
-                sessionEncryptionMode,
-                expiresInDays: options.expiresInDays,
-                maxUses: options.maxUses,
-                isConsentRequired: options.isConsentRequired,
-                tokenCache: {
-                    get: () => publicShareTokenRef.current,
-                    set: (token) => {
-                        publicShareTokenRef.current = token;
-                    },
-                },
-                generateTokenHex: () => {
-                    // Generate random token (12 bytes = 24 hex chars)
-                    const tokenBytes = getRandomBytes(12);
-                    return Array.from(tokenBytes)
-                        .map((b) => b.toString(16).padStart(2, '0'))
-                        .join('');
-                },
-                getSessionDataKey: (sid) => sync.getSessionDataKey(sid),
-                encryptDataKeyForPublicShare,
-                api: { createPublicShare },
-            });
-
-            await loadSharingData();
-            return created;
-        } catch (error) {
-            console.error('Failed to create public share:', error);
-            if (error instanceof HappyError) throw error;
-            throw new HappyError(t('errors.operationFailed'), false);
-        }
-    }, [sessionId, loadSharingData, session?.encryptionMode]);
-
-    // Handle deleting public share
-    const handleDeletePublicShare = useCallback(async () => {
-        try {
-            const credentials = sync.getCredentials();
-            await deletePublicShare(credentials, sessionId);
-            publicShareTokenRef.current = null;
-            await loadSharingData();
-        } catch (error) {
-            throw new HappyError(t('errors.operationFailed'), false);
-        }
-    }, [sessionId, loadSharingData]);
-
     if (!session) {
         return (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -284,14 +202,6 @@ function SharingManagementContent({ sessionId }: { sessionId: string }) {
         });
     }, [canManagePermissionDelegation, excludedUserIds, friends, handleAddShare]);
 
-    const openPublicLink = useCallback(() => {
-        void openPublicLinkDialog({
-            publicShare,
-            onCreate: handleCreatePublicShare,
-            onDelete: handleDeletePublicShare,
-        });
-    }, [handleCreatePublicShare, handleDeletePublicShare, publicShare]);
-
     const openShareDialog = useCallback(() => {
         void openSessionShareDialog({
             sessionId,
@@ -301,7 +211,6 @@ function SharingManagementContent({ sessionId }: { sessionId: string }) {
             onAddShare: openFriendSelector,
             onUpdateShare: handleUpdateShare,
             onRemoveShare: handleRemoveShare,
-            onManagePublicLink: openPublicLink,
         });
     }, [
         canManage,
@@ -309,7 +218,6 @@ function SharingManagementContent({ sessionId }: { sessionId: string }) {
         handleRemoveShare,
         handleUpdateShare,
         openFriendSelector,
-        openPublicLink,
         sessionId,
         shares,
     ]);
@@ -411,28 +319,6 @@ function SharingManagementContent({ sessionId }: { sessionId: string }) {
                             title={t('session.sharing.addShare')}
                             icon={<Icon name="user-plus" size={29} color={theme.colors.state.success.foreground} />}
                             onPress={openFriendSelector}
-                        />
-                    )}
-                </ItemGroup>
-
-                {/* Public Link */}
-                <ItemGroup title={t('session.sharing.publicLink')}>
-                    {publicShare ? (
-                        <Item
-                            title={t('session.sharing.publicLinkActive')}
-                            subtitle={publicShare.expiresAt
-                                ? t('session.sharing.expiresOn') + ': ' + new Date(publicShare.expiresAt).toLocaleDateString()
-                                : t('session.sharing.never')
-                            }
-                            icon={<Icon name="link" size={29} color={theme.colors.state.success.foreground} />}
-                            onPress={openPublicLink}
-                        />
-                    ) : (
-                        <Item
-                            title={t('session.sharing.createPublicLink')}
-                            subtitle={t('session.sharing.publicLinkDescription')}
-                            icon={<Icon name="link" size={29} color={theme.colors.accent.blue} />}
-                            onPress={openPublicLink}
                         />
                     )}
                 </ItemGroup>

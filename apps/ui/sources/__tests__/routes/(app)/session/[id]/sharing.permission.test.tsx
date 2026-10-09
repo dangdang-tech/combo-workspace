@@ -8,7 +8,6 @@ import { installSessionRouteCommonModuleMocks } from './sessionRouteTestHelpers'
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const getSessionSharesSpy = vi.fn(async (..._args: any[]) => []);
-const getPublicShareSpy = vi.fn(async (..._args: any[]) => null);
 const getFriendsListSpy = vi.fn(async (..._args: any[]) => []);
 let routeHydrationState: 'available' | 'loading' | 'missing' = 'available';
 let mockServerId: string | undefined;
@@ -71,9 +70,6 @@ vi.mock('@/sync/api/social/apiSharing', () => ({
     createSessionShare: vi.fn(),
     updateSessionShare: vi.fn(),
     deleteSessionShare: vi.fn(),
-    getPublicShare: (...args: any[]) => getPublicShareSpy(...args),
-    createPublicShare: vi.fn(),
-    deletePublicShare: vi.fn(),
 }));
 
 vi.mock('@/sync/api/social/createSessionSocialRequest', () => ({
@@ -94,7 +90,6 @@ vi.mock('@/components/ui/lists/ItemList', () => ({
 
 vi.mock('@/components/sessions/sharing', () => ({
     FriendSelector: () => null,
-    PublicLinkDialog: () => null,
     SessionShareDialog: () => null,
 }));
 
@@ -108,7 +103,6 @@ describe('Session Sharing Screen permissions', () => {
         mockServerId = undefined;
         mockAccessLevel = 'edit';
         getSessionSharesSpy.mockClear();
-        getPublicShareSpy.mockClear();
         getFriendsListSpy.mockReset();
         getFriendsListSpy.mockResolvedValue([]);
         hydrateSpy.mockClear();
@@ -123,7 +117,6 @@ describe('Session Sharing Screen permissions', () => {
 
         expect(screen.findByProps({ accessibilityRole: 'progressbar' })).toBeDefined();
         expect(getSessionSharesSpy).not.toHaveBeenCalled();
-        expect(getPublicShareSpy).not.toHaveBeenCalled();
         expect(getFriendsListSpy).not.toHaveBeenCalled();
         expect(hydrateSpy).toHaveBeenCalledWith('session-1', 'SessionSharingRoute.ensureSessionVisible', { serverId: 'server-b' });
     });
@@ -137,7 +130,6 @@ describe('Session Sharing Screen permissions', () => {
 
         expect(screen.findByTestId('session-invalid-link')).toBeTruthy();
         expect(getSessionSharesSpy).not.toHaveBeenCalled();
-        expect(getPublicShareSpy).not.toHaveBeenCalled();
         expect(getFriendsListSpy).not.toHaveBeenCalled();
     });
 
@@ -151,7 +143,6 @@ describe('Session Sharing Screen permissions', () => {
         await act(async () => {});
 
         expect(getSessionSharesSpy).not.toHaveBeenCalled();
-        expect(getPublicShareSpy).not.toHaveBeenCalled();
         expect(getFriendsListSpy).not.toHaveBeenCalled();
     });
 
