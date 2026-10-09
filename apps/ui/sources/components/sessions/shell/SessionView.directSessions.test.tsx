@@ -3199,12 +3199,10 @@ describe('SessionView (direct sessions)', () => {
 
     const agentInput = findAgentInput(screen);
     expect(agentInput.props.agentType).toBe('codex');
-    // The composer still builds its own current-Agent rows: SessionView never hands it a
-    // wholesale replacement projection. The in-session picker only *extends* that list and
-    // reports which row is armed — null here, because no continuation has been selected.
+    // 032742386 removed in-session picker extensions for COMBO snapshots.
     expect(agentInput.props.agentPickerOptions).toBeUndefined();
-    expect(agentInput.props.composeAgentPickerOptions).toBeTypeOf('function');
-    expect(agentInput.props.agentPickerSelectedOptionId).toBeNull();
+    expect(agentInput.props.composeAgentPickerOptions).toBeUndefined();
+    expect(agentInput.props.agentPickerSelectedOptionId).toBeUndefined();
     expect(agentInput.props.agentPickerApplyLabel).toBeUndefined();
     expect(agentInput.props.metadata).toEqual(session.metadata);
     expect(typeof agentInput.props.onModelModeChange).toBe('function');
@@ -3585,10 +3583,13 @@ describe('SessionView (direct sessions)', () => {
     const agentInput = findAgentInput(screen);
     expect(agentInput.props.permissionMode).toBe('default');
     expect(agentInput.props.modelMode).toBe('claude-sonnet-4-5');
-    expect(agentInput.props.profileId).toBe('profile-metadata');
+    // 032742386 removed the profile control, preserving provider metadata.
+    expect(agentInput.props.metadata.profileId).toBe('profile-metadata');
+    expect(agentInput.props.profileId).toBeUndefined();
+    expect(agentInput.props.onProfileClick).toBeUndefined();
   });
 
-  it('passes recipient controls through canonical extra action chips', async () => {
+  it('omits recipient and delivery controls despite live participant routing data', async () => {
     participantTargetsState.current = [
       {
         key: 'member-1',
@@ -3612,40 +3613,13 @@ describe('SessionView (direct sessions)', () => {
     const screen = await renderSessionViewAndSettle();
 
     const agentInput = findAgentInput(screen);
-    // R5/Lane F-redo migrated the recipient chip from flat `options` to
-    // `presentation: 'list' + rootStep` with sections — walk the rootStep here.
-    const recipientChip = (agentInput.props.extraActionChips ?? []).find((chip: {
-      key: string;
-      controlId?: string;
-      collapsedOptionsPopover?: {
-        presentation?: 'picker' | 'list';
-        rootStep?: { sections: ReadonlyArray<{ kind: 'static' | 'dynamic'; options?: ReadonlyArray<{ id: string }> }> };
-        selectedOptionId?: string | null;
-        onSelect?: (id: string) => void;
-      };
-    }) => chip.key === 'participants-recipient');
-
-    expect(recipientChip).toEqual(expect.objectContaining({
-      key: 'participants-recipient',
-      controlId: 'recipient',
-    }));
-    expect(recipientChip?.collapsedOptionsPopover?.presentation).toBe('list');
-    const recipientFirstSection = recipientChip?.collapsedOptionsPopover?.rootStep?.sections?.[0];
-    const recipientOptions = (recipientFirstSection && recipientFirstSection.kind === 'static'
-      ? recipientFirstSection.options ?? []
-      : []);
-    expect(recipientOptions.map((option: { id: string }) => option.id)).toEqual([
-      'lead',
-      'agent_team_broadcast:team-1',
-      'member-1',
-      'run-1',
-    ]);
-    expect(recipientChip?.collapsedOptionsPopover?.selectedOptionId).toBe('run-1');
-    expect(typeof recipientChip?.collapsedOptionsPopover?.onSelect).toBe('function');
-    expect((agentInput.props.extraActionChips ?? []).map((chip: { key: string }) => chip.key)).toContain('execution-run-delivery');
+    // 032742386 removed extra chips at the COMBO SessionView composition boundary,
+    // even when upstream feature flags, drafts or routing data are available.
+    expect(agentInput.props.extraActionChips).toBeUndefined();
+    expect(agentInput.props.onFileViewerPress).toBeUndefined();
   });
 
-  it('promotes review comment drafts into canonical extra control metadata', async () => {
+  it('omits review controls even with enabled review comments and populated drafts', async () => {
     featureEnabledState['files.reviewComments'] = true;
     reviewCommentDraftsState.current = [
       {
@@ -3662,13 +3636,10 @@ describe('SessionView (direct sessions)', () => {
     const screen = await renderSessionViewAndSettle();
 
     const agentInput = findAgentInput(screen);
-    const reviewCommentsChip = (agentInput.props.extraActionChips ?? []).find((chip: { key: string }) => chip.key === 'review-comments');
-
-    expect(reviewCommentsChip).toEqual(expect.objectContaining({
-      key: 'review-comments',
-      controlId: 'reviewComments',
-    }));
-    expect(typeof reviewCommentsChip?.collapsedAction).toBe('function');
+    // 032742386 removed extra chips at the COMBO SessionView composition boundary,
+    // even when upstream feature flags, drafts or routing data are available.
+    expect(agentInput.props.extraActionChips).toBeUndefined();
+    expect(agentInput.props.onFileViewerPress).toBeUndefined();
   });
 
   it('removes only sent workspace review comment drafts after submitting them', async () => {
@@ -3737,17 +3708,14 @@ describe('SessionView (direct sessions)', () => {
     expect(clearWorkspaceReviewCommentDraftsSpy).not.toHaveBeenCalled();
   });
 
-	  it('promotes project file link into canonical extra control metadata', async () => {
+	  it('omits the project file link control in the COMBO composer', async () => {
 	    const screen = await renderSessionViewAndSettle();
 
 	    const agentInput = findAgentInput(screen);
-	    const linkFileChip = (agentInput.props.extraActionChips ?? []).find((chip: { key: string }) => chip.key === 'project-file-link');
-
-	    expect(linkFileChip).toEqual(expect.objectContaining({
-	      key: 'project-file-link',
-	      controlId: 'linkedFiles',
-	    }));
-	    expect(linkFileChip?.collapsedContentPopover).toBeTruthy();
+	    // 032742386 removed extra chips at the COMBO SessionView composition boundary,
+	    // even when upstream feature flags, drafts or routing data are available.
+	    expect(agentInput.props.extraActionChips).toBeUndefined();
+	    expect(agentInput.props.onFileViewerPress).toBeUndefined();
 	  });
 
   it('does not surface delivery controls when live participant routing data is absent', async () => {
@@ -3767,7 +3735,7 @@ describe('SessionView (direct sessions)', () => {
     expect((agentInput.props.extraActionChips ?? []).map((chip: { key: string }) => chip.key)).not.toContain('execution-run-delivery');
   });
 
-  it('surfaces delivery controls when live participant routing data resolves to an execution run', async () => {
+  it('omits delivery controls even when live routing resolves to an execution run', async () => {
     participantTargetsState.current = [
       {
         key: 'run-1',
@@ -3786,37 +3754,10 @@ describe('SessionView (direct sessions)', () => {
     const screen = await renderSessionViewAndSettle();
 
     const agentInput = findAgentInput(screen);
-    // R5/Lane F-redo migrated the delivery chip from flat `options` to
-    // `presentation: 'list' + rootStep` with sections — walk the rootStep here.
-    const deliveryChip = (agentInput.props.extraActionChips ?? []).find((chip: {
-      key: string;
-      controlId?: string;
-      collapsedOptionsPopover?: {
-        label?: string | null;
-        presentation?: 'picker' | 'list';
-        rootStep?: { sections: ReadonlyArray<{ kind: 'static' | 'dynamic'; options?: ReadonlyArray<{ id: string }> }> };
-        selectedOptionId?: string | null;
-        onSelect?: (id: string) => void;
-      };
-    }) => chip.key === 'execution-run-delivery');
-
-    expect(deliveryChip).toEqual(expect.objectContaining({
-      key: 'execution-run-delivery',
-      controlId: 'delivery',
-    }));
-    expect(deliveryChip?.collapsedOptionsPopover?.label).toBe('runs.delivery.cardDelivery');
-    expect(deliveryChip?.collapsedOptionsPopover?.presentation).toBe('list');
-    const deliveryFirstSection = deliveryChip?.collapsedOptionsPopover?.rootStep?.sections?.[0];
-    const deliveryOptions = (deliveryFirstSection && deliveryFirstSection.kind === 'static'
-      ? deliveryFirstSection.options ?? []
-      : []);
-    expect(deliveryOptions.map((option: { id: string }) => option.id)).toEqual([
-      'prompt',
-      'steer_if_supported',
-      'interrupt',
-    ]);
-    expect(deliveryChip?.collapsedOptionsPopover?.selectedOptionId).toBe('interrupt');
-    expect(typeof deliveryChip?.collapsedOptionsPopover?.onSelect).toBe('function');
+    // 032742386 removed extra chips at the COMBO SessionView composition boundary,
+    // even when upstream feature flags, drafts or routing data are available.
+    expect(agentInput.props.extraActionChips).toBeUndefined();
+    expect(agentInput.props.onFileViewerPress).toBeUndefined();
   });
 
   it('passes storage and provider badges to the session header for direct sessions', async () => {
